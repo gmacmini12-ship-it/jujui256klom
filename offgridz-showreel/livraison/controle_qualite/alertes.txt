@@ -1,0 +1,6 @@
+saut de luminance de +0.053 entre 54 et 55
+saut de luminance de +0.290 entre 55 et 56
+saut de luminance de -0.449 entre 56 et 57
+saut de luminance de +0.056 entre 57 et 58
+saut de luminance de +0.058 entre 212 et 213
+saut de luminance de -0.111 entre 359 et 360

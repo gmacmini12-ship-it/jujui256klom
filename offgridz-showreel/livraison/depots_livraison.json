@@ -1,0 +1,14 @@
+{
+ "livraison_films.zip": {
+  "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/a92f9bb6-1497-4d6a-9a57-c9034b79e162.zip",
+  "media_id": "a92f9bb6-1497-4d6a-9a57-c9034b79e162",
+  "octets": 102990363,
+  "sha256": "3e71a89c347fe3a229d97a50ee45c1e3cb4649b3c11efaf9bd5e1263e1319ce8"
+ },
+ "livraison_maitre.zip": {
+  "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/0dd4d793-45ea-4b0c-a5e8-fdd6e8c56a2a.zip",
+  "media_id": "0dd4d793-45ea-4b0c-a5e8-fdd6e8c56a2a",
+  "octets": 343124652,
+  "sha256": "04bc6ba6f0b384e24102b310dbb28335f9977df13ada2e4775e56d55bfeaf8ef"
+ }
+}

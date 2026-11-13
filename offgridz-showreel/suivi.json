@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Contrôle qualité : les 55 images du versement se refont sur la machine louée avec la finition corrigée et vérifiée en pleine définition (session D lancée à 20 h 09 UTC)",
+ "etape": "Film final livré après contrôle qualité : 600 images, 20 s, liquide du mojito entièrement dans le verre, brin de menthe corrigé, son retouché. Fichiers envoyés ; maître ProRes et archives déposés",
  "credits": {
-  "depenses": 130.42,
+  "depenses": 147.68,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien : la machine s'éteint seule à la fin (15 minutes environ)",
- "action": false
+ "attente": "Votre regard sur le film final : validation, ou dernières retouches",
+ "action": true
 }

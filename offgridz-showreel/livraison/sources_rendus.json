@@ -138,45 +138,56 @@
    "sequence": "seq3 (mojito)",
    "images": [
     264,
-    280
+    264
    ],
    "session": "A",
    "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/1f1f8a25-3a7a-4b49-babb-900b7622ec69.zip",
    "accessible": true,
-   "note": "l'archive contient 264 à 287 ; 281 à 287 sont remplacées par la session B"
+   "note": "l'archive contient 264 à 287 ; seule l'image 264 est gardée"
   },
   {
    "sequence": "seq3 (mojito)",
    "images": [
-    281,
-    304
+    265,
+    288
    ],
-   "session": "B",
-   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/dad0e085-3ffd-4b75-b41b-a0aec1dd9611.zip",
+   "session": "D",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/0e714242-f3f0-4dbf-9a49-dee38d0f82b3.zip",
    "accessible": true,
-   "note": "liquide confiné"
+   "note": "liquide entièrement dans le verre (finition corrigée)"
   },
   {
    "sequence": "seq3 (mojito)",
    "images": [
-    305,
-    308
+    289,
+    312
    ],
-   "session": "B",
-   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/e66ef75c-4ca0-4b12-afec-4f1217963fa3.zip",
+   "session": "D",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/3e3519cf-4a05-4ed3-b3e6-c8159075cb91.zip",
    "accessible": true,
-   "note": "liquide confiné"
+   "note": "liquide entièrement dans le verre (finition corrigée)"
   },
   {
    "sequence": "seq3 (mojito)",
    "images": [
-    309,
+    313,
+    319
+   ],
+   "session": "D",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/e2f052d7-24b3-4494-94c0-ca29540ad947.zip",
+   "accessible": true,
+   "note": "liquide entièrement dans le verre (finition corrigée)"
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    320,
     332
    ],
    "session": "B2",
    "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/b60cf567-f13c-4d7e-94d6-b39e1d42621c.zip",
    "accessible": true,
-   "note": "liquide confiné jusqu'à 320, brin de menthe corrigé"
+   "note": "l'archive contient 309 à 332 ; 309 à 319 et 321 sont remplacées (session D, rendu local)"
   },
   {
    "sequence": "seq3 (mojito)",
@@ -240,10 +251,20 @@
    "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/7529b9b2-9145-4d8e-b0eb-bf114dc052a5.zip",
    "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/a92df191-4ee5-4965-b8dd-1864dfa66a3c.zip"
   ],
-  "liquide_confine_r256c": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/16970d6b-9b65-4d96-9d24-fb154accd4d8.zip",
+  "liquide_confine_r256c": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/0725aeb8-4ec5-424a-9cf2-eb4a746c181b.zip",
   "caches_papier_et_encre": [
    "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/8c90359c-536f-4233-a103-afb53fe80f23.zip",
    "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/d6d58ebe-41e2-419a-9472-060c5d08fbc1.zip"
   ]
+ },
+ "images_refaites_en_local": {
+  "seq01": [
+   57,
+   58
+  ],
+  "seq3": [
+   321
+  ],
+  "note": "rendues sur notre machine (processeur) avec le code du dépôt ; jointes à l'archive de livraison"
  }
 }

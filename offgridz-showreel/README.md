@@ -10,8 +10,8 @@ Le film est calculé, pas généré : simulations et rendus sont reproductibles 
 
 ## État
 
-Phase 5 (contrôle qualité). Crédits Higgsfield dépensés : 130,42 avant la session D (test GPU 8,63 ; palier 3 : 33,82 ;
-palier 4 : 70,99 ; session C : 16,98). Cible 200, plafond 345 ; chaque dépense est soumise au client avant d'être engagée.
+Phase 5 (contrôle qualité) terminée, film livré le 13 novembre. Crédits Higgsfield dépensés : 147,68, uniquement en
+location de machine de calcul (test GPU 8,63 ; palier 3 : 33,82 ; palier 4 : 70,99 ; session C : 16,98 ; session D : 17,26). Cible 200, plafond 345 ; chaque dépense est soumise au client avant d'être engagée.
 
 | Séquence | Images | État |
 |---|---|---|
@@ -82,7 +82,7 @@ python build/final/apercu.py                # aperçu complet à partir des rend
 |---|---|
 | Dalle, avalanche, filet, déferlement | grains simulés (points matériels, sable de Drucker-Prager) |
 | Citron, feuilles de menthe, paille, glaçons | corps rigides simulés ; premiers chocs calés sur la grille musicale |
-| Versement | liquide simulé (FLIP) autour des corps au repos ; surface raccordée au verre après coup, sans toucher au mouvement |
+| Versement | liquide simulé (FLIP) autour des corps au repos ; surface raccordée au verre après coup. Le mouvement n'est plus tout à fait celui de la simulation : pendant le trop-plein (images 281 à 320) sa surface est tassée verticalement, et tout ce qui sortirait du verre est coupé (images 265 à 321), à la demande du client |
 | Points de la séquence 4 | champ de vecteurs sans divergence, attirés vers des formes cibles |
 | Film d'encre, raclette | couche mince simulée, raclette comme paroi mobile |
 | Caméra, brin de menthe, buée, bulles accrochées, réticule | animés à la main |
@@ -187,3 +187,19 @@ Rapports complets : `out/qc/relecture_image.md` et `out/qc/relecture_son_techniq
   distance (surface lisse, identique à l'origine contre la paroi), le contrôle mesure aussi cette régularité, et une
   image a été rendue en pleine définition avant de relouer. À retenir : vérifier en pleine définition, et dans le
   verre autant qu'au bord, avant tout rendu payant.
+- **Session D (20 h 09, 17,26 crédits)** : les 55 images refaites avec la finition corrigée ; contrôlées en pleine
+  définition dès la première tranche (intérieur du verre identique à l'origine, rien hors du verre). L'image 321 a
+  été rendue sur notre machine.
+
+## Livraison (13 novembre)
+
+`out/livraison/` (hors dépôt, trop lourd) ; fiche : `livraison/LISEZ-MOI.md` ; où retrouver les images finales :
+`livraison/sources_rendus.json`.
+
+| Fichier | Contenu |
+|---|---|
+| `OFFGRIDZ_INSOUMISE_1080x1920.mp4` | diffusion : H.264 High, 600 images, 20,000 s ; AAC 320 kb/s, -14,0 LUFS, -1,5 dBTP |
+| `OFFGRIDZ_INSOUMISE_720x1280_leger.mp4` | version légère ; AAC 192 kb/s, -1,6 dBTP |
+| `OFFGRIDZ_INSOUMISE_master_prores422hq.mov` | maître ProRes 422 HQ 10 bits, son PCM 24 bits (-1,2 dBTP) |
+| `OFFGRIDZ_INSOUMISE_son_master.wav`, `_musique.wav`, `_bruitages.wav` | bande son et pistes séparées, 24 bits 48 kHz |
+| `OFFGRIDZ_INSOUMISE_affiche.png` | image 0 : le logo (identique à l'image 599) |
