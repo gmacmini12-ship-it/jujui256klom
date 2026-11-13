@@ -4,9 +4,6 @@ Corps rigides réellement simulés (Bullet, dans Blender), à 240 pas par second
 Les lâchers sont recalés automatiquement pour que le premier choc de chaque corps tombe sur la grille musicale
 (doubles-croches du film) ; les chocs mesurés sont enregistrés pour le son.
 
-Les corps légers ou minces (feuilles, rondelle, paille) sont figés là où ils se sont posés, une fois au repos, juste avant
-que la glace ne tombe dessus : ils deviennent des appuis fixes pour la suite (plan_de_chute, clé « fige »).
-
 Deux précautions de calcul, sans effet sur la physique :
 - la simulation tourne à dix fois la taille réelle avec une gravité dix fois plus forte (mêmes durées, mêmes
   trajectoires) : le moteur est réglé pour des objets de l'ordre du mètre, pas du centimètre ;
@@ -56,20 +53,16 @@ def plan_de_chute(graine):
                           rot=[rnd.uniform(0, 6.283) for _ in range(3)], **plus))
     ajoute("quartier", 216, 0.008)
     ajoute("quartier", 219, 0.008)
-    ajoute("quartier", 222, 0.008)
+    ajoute("rondelle", 222, 0.006)
     for k, image in enumerate((228, 229, 230, 231.5, 233, 234.5)):
-        ajoute("feuille", image, 0.010, longueur=rnd.uniform(0.024, 0.034), graine=60 + k, fige=238.5)
+        ajoute("feuille", image, 0.010, longueur=rnd.uniform(0.024, 0.034), graine=60 + k)
     # la paille tombe avant la glace, comme au bar : inclinée de 12° vers l'arrière droit, elle se cale contre le bord
     axe = Vector((math.sin(math.radians(12)) * math.cos(math.radians(42)), math.sin(math.radians(12)) * math.sin(math.radians(42)),
                   math.cos(math.radians(12))))
     corps.append(dict(genre="paille", image=237, x=-0.008 + rnd.uniform(-0.002, 0.002), y=-0.007 + rnd.uniform(-0.002, 0.002),
-                      rot=list(axe.to_track_quat("Z", "Y").to_euler()), dz=PAILLE_L / 2, fige=246.5))
+                      rot=list(axe.to_track_quat("Z", "Y").to_euler()), dz=PAILLE_L / 2))
     for image in (240, 243, 246, 249, 252, 255, 258, 261):          # huit glaçons, un par double-croche
         ajoute("glacon", image, 0.007)
-    # la rondelle de citron vert tombe debout contre la paroi avant, entre le troisième et le quatrième glaçon :
-    # elle se cale entre la glace et le verre, face à la caméra, et la suite des glaçons la bloque
-    corps.append(dict(genre="rondelle", image=247.5, x=rnd.uniform(-0.004, 0.004), y=-0.026,
-                      rot=[math.pi / 2 + 0.20, 0.0, rnd.uniform(-0.3, 0.3)], fige=251.0))
     return corps
 
 
@@ -221,22 +214,12 @@ def simuler(plan, lachers, hauteurs):
         rb.kinematic = True; ob.keyframe_insert("rigid_body.kinematic", frame=i_lacher - 1)
         rb.kinematic = False; ob.keyframe_insert("rigid_body.kinematic", frame=i_lacher)
         objets.append(ob)
-    figeages = {int(round((T.tau(c["fige"]) - T_DEBUT) * HZ)) + 1: [] for c in plan if "fige" in c}
-    for k, c in enumerate(plan):
-        if "fige" in c:
-            figeages[int(round((T.tau(c["fige"]) - T_DEBUT) * HZ)) + 1].append(k)
     loc = np.zeros((n_pas, len(objets), 3), np.float32); quat = np.zeros((n_pas, len(objets), 4), np.float32)
     for i in range(n_pas):
         sc.frame_set(i + 1)
         for k, ob in enumerate(objets):
             m = ob.matrix_world
             loc[i, k] = m.to_translation() / ECH; quat[i, k] = m.to_quaternion()
-        for k in figeages.get(i + 1, []):              # le corps posé devient un appui fixe, là où il est
-            ob = objets[k]
-            m = ob.matrix_world.copy()
-            ob.location = m.to_translation(); ob.rotation_euler = m.to_euler()
-            ob.keyframe_insert("location", frame=i + 1); ob.keyframe_insert("rotation_euler", frame=i + 1)
-            ob.rigid_body.kinematic = True; ob.keyframe_insert("rigid_body.kinematic", frame=i + 1)
     t = T_DEBUT + np.arange(n_pas) / HZ
     return t, loc, quat
 
@@ -298,15 +281,8 @@ def fabriquer(graine, tours=8):
                 inclinaison = math.degrees(math.acos(min(axe.z, 1.0)))
                 azimut = math.degrees(math.atan2(axe.y, axe.x))
                 ok = (4.0 < inclinaison < 40.0 and (pied.z - S.Z0) < 0.085 and math.hypot(pied.x, pied.y) < S.r_int(0.03)
-                      and -25.0 < azimut < 115.0)            # jamais penchée vers la caméra : elle masquerait le verre
+                      and -5.0 < azimut < 75.0)              # penchée vers l'arrière droit : elle se lit bien depuis la caméra
                 print(f"CHUTES   paille : pied à {(pied.z - S.Z0) * 1000:.0f} mm, inclinaison {inclinaison:.0f}°, azimut {azimut:.0f}°"
-                      f"{'' if ok else ' (rejetée)'}", flush=True)
-                sain = sain and ok
-            if c["genre"] == "rondelle":             # la rondelle doit rester contre la paroi avant, face à la caméra
-                normale = Quaternion(quat[-1, k]) @ Vector((0, 0, 1))
-                z_r = loc[-1, k][2] - S.Z0
-                ok = abs(normale.y) > 0.72 and loc[-1, k][1] < -0.012 and 0.045 < z_r < 0.120
-                print(f"CHUTES   rondelle : hauteur {z_r * 1000:.0f} mm, y {loc[-1, k][1] * 1000:.0f} mm, face à la caméra {abs(normale.y):.2f}"
                       f"{'' if ok else ' (rejetée)'}", flush=True)
                 sain = sain and ok
         if sain and (meilleur is None or pire < meilleur["pire"]):

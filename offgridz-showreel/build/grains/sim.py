@@ -137,6 +137,7 @@ class Dalle(Horloge, SceneBase):
         sol = BoxC((-0.5, M.BEC_Y, -0.3), (0.5, 0.5, 0.0), mu=0.5)
         avancee_g = BoxC((-0.5, M.SOL_BORD, -0.3), (-M.BEC_DEMI, M.BEC_Y + 1e-4, 0.0), mu=0.5)
         avancee_d = BoxC((M.BEC_DEMI, M.SOL_BORD, -0.3), (0.5, M.BEC_Y + 1e-4, 0.0), mu=0.5)
+        avant = BoxC((-M.BEC_DEMI - 1e-4, M.SOL_BORD, -0.3), (M.BEC_DEMI + 1e-4, M.BEC_AVANT, 0.0), mu=0.5)      # ferme la fente à l'avant
         wall = BoxC((-0.5, M.MUR_Y, -0.3), (0.5, 0.6, 0.6), mu=0.3)
         self.kbox = KinBox(bc="sticky")
         X = lattice(M.DALLE_LO, M.DALLE_HI, sp, rng, jitter=0.3)      # empilement irrégulier : pas de trame visible sur la dalle
@@ -176,7 +177,7 @@ class Dalle(Horloge, SceneBase):
         P = dict(x=X, v=np.zeros((Np, 3), np.float32), q=random_quats(Np, rng), mat=np.zeros(Np, np.int32),
                  state=np.full(Np, PINNED, np.int32), coh0=np.full(Np, self.COH0, np.float32),
                  cohtau=np.full(Np, self.COH_TAU, np.float32), t_ev=t_ev.astype(np.float32))
-        s = MPM(lo, n, dx, Np, sp ** 3, mats, statics=[sol, avancee_g, avancee_d, wall, letters], kins=[self.kbox],
+        s = MPM(lo, n, dx, Np, sp ** 3, mats, statics=[sol, avancee_g, avancee_d, avant, wall, letters], kins=[self.kbox],
                 roi_lo=roi_lo, roi_hi=roi_hi, cfl=0.4, solid_mu=0.3)
         self.info = dict(N=Np, spacing=sp, dx=dx, grid=[int(a) for a in n], chunks=int(nchunk),
                          released_fraction=float(np.mean(t_ev < 1e8)), letters=self.letter_info)
@@ -217,7 +218,7 @@ class Filet(Horloge, SceneBase):
         Z = np.load(os.path.join(self.dalle_dir, "exits.npz"))
         assert abs(float(Z["scale"]) - self.scale) < 1e-9, "filet doit tourner à la même échelle que dalle"
         # grains tombés par le bec (sous le sol, dans l'emprise de la fente), avant l'image de fin
-        ok = ((Z["cause"] == 1) & (np.abs(Z["pos"][:, 0]) < M.BEC_DEMI + 0.004) & (Z["pos"][:, 1] > M.SOL_BORD - 0.004)
+        ok = ((Z["cause"] == 1) & (np.abs(Z["pos"][:, 0]) < M.BEC_DEMI + 0.004) & (Z["pos"][:, 1] > M.BEC_AVANT - 0.004)
               & (Z["pos"][:, 1] < M.BEC_Y + 0.004) & (Z["t"] >= 0) & (Z["t"] < M.t_de(M.IMAGE_FIN_FILET)))
         ex_pos = Z["pos"][ok].astype(np.float64); ex_vel = Z["vel"][ok].astype(np.float64); ex_t = Z["t"][ok].astype(np.float64)
         self.n_exits_total = int(np.sum(Z["cause"] >= 1))
@@ -243,12 +244,13 @@ class Filet(Horloge, SceneBase):
         sol = BoxC((-0.5, M.BEC_Y, -M.SOL_EP), (0.5, 0.5, 0.0), mu=0.5)
         avancee_g = BoxC((-0.5, M.SOL_BORD - 0.1, -M.SOL_EP), (-M.BEC_DEMI, M.BEC_Y + 1e-4, 0.0), mu=0.5)
         avancee_d = BoxC((M.BEC_DEMI, M.SOL_BORD - 0.1, -M.SOL_EP), (0.5, M.BEC_Y + 1e-4, 0.0), mu=0.5)
+        avant = BoxC((-M.BEC_DEMI - 1e-4, M.SOL_BORD - 0.1, -M.SOL_EP), (M.BEC_DEMI + 1e-4, M.BEC_AVANT, 0.0), mu=0.5)
         Ne = len(ex_t)
         P = dict(x=ex_pos.astype(np.float32), v=ex_vel.astype(np.float32), q=random_quats(Ne, rng),
                  mat=np.zeros(Ne, np.int32), state=np.full(Ne, UNBORN, np.int32),
                  coh0=np.zeros(Ne, np.float32), cohtau=np.ones(Ne, np.float32), t_ev=ex_t.astype(np.float32))
         mats = [sand_material(E=SABLE_E, phi_deg=PHI, rho=RHO_BULK)]
-        s = MPM(lo, n, dx, Ne, sp ** 3, mats, statics=[cup, entonnoir, tube, sol, avancee_g, avancee_d], roi_lo=roi_lo, roi_hi=roi_hi, cfl=0.4)
+        s = MPM(lo, n, dx, Ne, sp ** 3, mats, statics=[cup, entonnoir, tube, sol, avancee_g, avancee_d, avant], roi_lo=roi_lo, roi_hi=roi_hi, cfl=0.4)
         f_first = M.image_de(float(ex_t[0]))
         self.f_sim0 = int(math.floor(f_first)) - 1
         self.info = dict(N=Ne, spacing=sp, dx=dx, grid=[int(a) for a in n], axe_verre=[cx, cy],

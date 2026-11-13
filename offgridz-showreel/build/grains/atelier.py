@@ -60,6 +60,7 @@ def faire_sol_et_mur(d):
         boite("sol", (-0.45, M.BEC_Y, -ep), (0.45, 0.45, 0.0), platre()),
         boite("sol_gauche", (-0.45, M.SOL_BORD, -ep), (-M.BEC_DEMI, M.BEC_Y + 0.0002, 0.0), platre()),
         boite("sol_droit", (M.BEC_DEMI, M.SOL_BORD, -ep), (0.45, M.BEC_Y + 0.0002, 0.0), platre()),
+        boite("sol_avant", (-M.BEC_DEMI - 0.0002, M.SOL_BORD, -ep), (M.BEC_DEMI + 0.0002, M.BEC_AVANT, 0.0), platre()),
     ]
     mur = S.materiau("mur_atelier", **{"Base Color": (0.0022, 0.0022, 0.0021, 1), "Roughness": 0.97})
     objets.append(boite("mur", (-0.6, M.MUR_Y, -ep), (0.6, M.MUR_Y + 0.02, 0.9), mur, biseau=0.0))
@@ -246,7 +247,7 @@ class Egares(Grains):
         if self.vide:
             return
         Z = np.load(chemin)
-        bec = (np.abs(Z["pos"][:, 0]) < M.BEC_DEMI + 0.004) & (Z["pos"][:, 1] > M.SOL_BORD - 0.004) & (Z["pos"][:, 1] < M.BEC_Y + 0.004)
+        bec = (np.abs(Z["pos"][:, 0]) < M.BEC_DEMI + 0.004) & (Z["pos"][:, 1] > M.BEC_AVANT - 0.004) & (Z["pos"][:, 1] < M.BEC_Y + 0.004)
         ok = (Z["cause"] == 1) & ~bec & (Z["t"] >= 0)
         p0 = Z["pos"][ok].astype(np.float64); v0 = Z["vel"][ok].astype(np.float64); t0 = Z["t"][ok].astype(np.float64)
         z_sol = -(M.DENIVELE + S.Z0 + S.E_FOND) + self.rayon           # le comptoir, dans le repère de l'atelier
@@ -282,9 +283,9 @@ class Egares(Grains):
 
 def eclairer(d):
     """Une source rasante et chaude à gauche, un remplissage large et faible à droite."""
-    cle = S.lumiere_surface("atelier_cle", Vector((-0.55, -0.30, 0.16)) + d, Vector((0.0, -0.03, 0.06)) + d, 0.10, 7.5,
+    cle = S.lumiere_surface("atelier_cle", Vector((-0.55, -0.30, 0.16)) + d, Vector((0.0, -0.03, 0.06)) + d, 0.10, 4.0,
                             (1.0, 0.86, 0.72), taille_y=0.30)
-    remplissage = S.lumiere_surface("atelier_remplissage", Vector((0.50, -0.55, 0.40)) + d, Vector((0.0, -0.03, 0.08)) + d, 0.70, 0.9,
+    remplissage = S.lumiere_surface("atelier_remplissage", Vector((0.50, -0.55, 0.40)) + d, Vector((0.0, -0.03, 0.08)) + d, 0.70, 0.45,
                                     S.lin(S.CREME))
     return cle, remplissage
 
@@ -294,6 +295,6 @@ CLES_CAMERA = [
     (60, (0.000, -0.860, 0.050), (0.000, -0.006, 0.128), 50.0, 8.0),     # fin de la plongée de la séquence 1 (raccord)
     (72, (0.000, -0.620, 0.035), (0.000, -0.006, 0.118), 50.0, 8.0),
     (119, (0.012, -0.440, 0.030), (0.000, -0.006, 0.105), 50.0, 8.0),
-    (134, (0.020, -0.200, 0.016), (0.000, -0.046, 0.020), 45.0, 5.6),
-    (167, (0.000, -0.235, 0.022), (0.000, -0.050, 0.016), 40.0, 5.6),
+    (134, (0.020, -0.215, 0.034), (0.000, -0.050, 0.022), 45.0, 5.6),
+    (167, (0.000, -0.250, 0.036), (0.000, -0.062, 0.012), 40.0, 5.6),
 ]

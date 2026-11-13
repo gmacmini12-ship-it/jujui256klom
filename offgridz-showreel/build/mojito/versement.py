@@ -28,7 +28,7 @@ import chutes as C         # noqa: E402
 
 DOMAINE = ((-0.055, -0.055, 0.004), (0.055, 0.055, 0.310))
 JET_R, JET_V, JET_Z = 0.0095, 1.8, 0.292        # rayon (m), vitesse initiale (m/s) et hauteur de la bouche du jet
-MARGE = 1.05                                    # part versée en plus du volume utile : ce qui gicle hors du verre est perdu
+MARGE = 0.97                                    # réglage du volume versé : mesuré, 1,05 remplit 12 mm trop haut à la résolution 128
 IMAGE_JET = 264                                 # image où la tête du jet touche la glace : premier temps de la mesure 6
 JEU_PAROI = 0.0010                              # la cavité de l'obstacle « verre » déborde dans la paroi réelle : le liquide la recouvre
 

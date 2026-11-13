@@ -2,7 +2,7 @@
 Python pur : aucun import lourd ici.
 
 Repère de l'atelier (mètres) : le sol est le plan z = 0, la dalle orange est adossée au mur y = 0, la caméra
-regarde vers +y. Le sol s'arrête à y = SOL_BORD ; une fente centrale, le bec, laisse couler un filet de grains
+regarde vers +y. Le sol s'arrête à y = SOL_BORD ; une fente dans le sol, le bec, laisse couler un filet de grains
 vers un entonnoir, puis vers le verre posé DENIVELE plus bas (voir build/mojito).
 """
 import math
@@ -15,12 +15,13 @@ RAMPE = (198, 216)              # retour progressif au temps réel avant la séq
 DALLE_LO = (-0.030, -0.012, 0.0)     # la bande du logo devenue dalle de pigment pressé : 60 x 12 x 240 mm
 DALLE_HI = (0.030, 0.0, 0.240)
 MUR_Y = 0.0005
-SOL_BORD = -0.115               # bord avant du sol
-BEC_Y = -0.068                  # la fente du bec va du bord avant jusqu'ici
+SOL_BORD = -0.150               # bord avant du sol
+BEC_AVANT = -0.115              # la fente du bec, dans le sol, va d'ici...
+BEC_Y = -0.068                  # ... jusqu'ici
 BEC_DEMI = 0.007                # demi-largeur de la fente
 SOL_EP = 0.022                  # épaisseur du sol
 # sous la fente, un entonnoir de plâtre resserre les grains en un filet vertical (col de sablier)
-ENTONNOIR_Y = 0.5 * (SOL_BORD + BEC_Y)       # axe de l'entonnoir, et donc du verre, 80 cm plus bas
+ENTONNOIR_Y = 0.5 * (BEC_AVANT + BEC_Y)      # axe de l'entonnoir, et donc du verre, 80 cm plus bas
 ENTONNOIR_HAUT = (0.034, -0.022)             # rayon et hauteur de la bouche
 ENTONNOIR_BAS = (0.009, -0.080)              # rayon et hauteur du col
 ENTONNOIR_TUBE = -0.130                       # sous le col, un tube vertical redresse le filet
