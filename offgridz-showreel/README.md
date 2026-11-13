@@ -86,6 +86,7 @@ python build/final/apercu.py                # aperçu complet à partir des rend
 | Points de la séquence 4 | champ de vecteurs sans divergence, attirés vers des formes cibles |
 | Film d'encre, raclette | couche mince simulée, raclette comme paroi mobile |
 | Caméra, brin de menthe, buée, bulles accrochées, réticule | animés à la main |
+| Grains tombés du bord de l'atelier (quelques centaines) | chute balistique depuis la position et la vitesse de sortie simulées, plus une dérive latérale aléatoire (écart type 4 cm/s) qui tient lieu de la traînée de l'air : un modèle, pas une simulation |
 | Grains lointains, hors champ ou enfouis (séquence 2) | mêmes positions simulées ; rendus en sphères dont les facettes viennent de la normale, pas d'une géométrie de cristal (niveau de détail de rendu, aucun grain retiré) |
 
 ## Mesures du test GPU (13 novembre, L40S louée 7 min 17 s)

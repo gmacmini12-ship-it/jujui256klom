@@ -311,7 +311,13 @@ def construire(args):
         sucre = A.Grains("grains_filet", filet, A.decalage())
         for nom in ("sucre", "sucre_coeur"):
             bpy.data.objects[nom].hide_render = True
-    return dict(d=d, plantes=plantes, objets=objets, brin=brin, fondus=fondus, cam=cam, liquide=liquide, enseigne=Enseigne(), sucre=sucre)
+    # les grains tombés du bord de l'atelier se sont posés sur le comptoir pendant la séquence précédente : ils y restent
+    egares = None
+    dalle = os.path.join(S.RACINE, "out", "grains", "dalle")
+    if sucre is not None and os.path.exists(os.path.join(dalle, "exits.npz")):
+        egares = A.Egares("grains_egares", dalle, A.decalage())
+    return dict(d=d, plantes=plantes, objets=objets, brin=brin, fondus=fondus, cam=cam, liquide=liquide, enseigne=Enseigne(), sucre=sucre,
+                egares=egares)
 
 
 def poser(scene, f):
@@ -321,6 +327,8 @@ def poser(scene, f):
     scene["enseigne"].poser(f)
     if scene["sucre"] is not None:
         scene["sucre"].poser(f)
+    if scene.get("egares") is not None:
+        scene["egares"].poser(f)
     scene["fondus"]["buee"].default_value = lisse((f - 246) / 60.0)        # la buée se forme dès que la glace arrive
     scene["fondus"]["bulles"].default_value = lisse((f - 298) / 16.0) if a_du_liquide else 0.0
     cam = scene["cam"]

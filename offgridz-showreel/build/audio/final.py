@@ -159,20 +159,31 @@ def load_grains():
     mean_v = np.full(len(frames), np.nan)
     kin = np.full(len(frames), np.nan)
     got = 0
-    for i, f in enumerate(frames):
-        p = ROOT / "out" / "grains" / "dalle" / f"f{f:04d}.npz"
-        if not p.exists():
-            continue
-        try:
-            z = np.load(p)
-            v = np.linalg.norm(z["vel"].astype(np.float32), axis=1)
-        except Exception:
-            continue
-        mov = v > 0.02
-        n_mov[i] = mov.sum()
-        mean_v[i] = float(v[mov].mean()) if mov.any() else 0.0
-        kin[i] = float((v[mov] ** 2).sum())
-        got += 1
+    resume = ROOT / "out" / "grains" / "dalle" / "activite.json"
+    if resume.exists():
+        # Simulation finale : ses images (un million de grains) restent sur la machine de calcul ; elle écrit elle-même,
+        # image par image, le nombre de grains en mouvement (v > 2 cm/s), leur vitesse moyenne et la somme des v².
+        act = json.load(open(resume))["images"]
+        for i, f in enumerate(frames):
+            if str(f) in act:
+                n_mov[i], mean_v[i], kin[i] = act[str(f)]
+                got += 1
+        SRC["grains_activite"] = "out/grains/dalle/activite.json (résumé écrit par la simulation finale)"
+    else:
+        for i, f in enumerate(frames):
+            p = ROOT / "out" / "grains" / "dalle" / f"f{f:04d}.npz"
+            if not p.exists():
+                continue
+            try:
+                z = np.load(p)
+                v = np.linalg.norm(z["vel"].astype(np.float32), axis=1)
+            except Exception:
+                continue
+            mov = v > 0.02
+            n_mov[i] = mov.sum()
+            mean_v[i] = float(v[mov].mean()) if mov.any() else 0.0
+            kin[i] = float((v[mov] ** 2).sum())
+            got += 1
     out = dict(frames=frames, got=got)
     for k, a in (("n_mov", n_mov), ("mean_v", mean_v), ("kin", kin)):
         out[k] = _interp_nan(a)
@@ -849,6 +860,13 @@ def build(S, D):
         fl, vl, xl = land["frame"], land["v"], land["x"]
         buf = np.zeros((2, NS))
         gl = rng("landfinal")
+        # À l'échelle finale, des dizaines de milliers de grains tombent dans le verre : un tic par grain deviendrait
+        # un souffle continu. On en fait entendre 2 500 au plus, tirés au hasard : la densité au fil du temps reste
+        # celle de la simulation.
+        D["land_total"] = int(len(fl))
+        if len(fl) > 2500:
+            choix = np.sort(rng("landchoix").choice(len(fl), 2500, replace=False))
+            fl, vl, xl = fl[choix], vl[choix], xl[choix]
         bank = [v_land_tick(f, tau, i) for i, (f, tau) in enumerate(zip(np.geomspace(2400, 7800, 48), np.linspace(0.0016, 0.0007, 48)))]
         fmin_, fmax_ = None, None
         count = 0

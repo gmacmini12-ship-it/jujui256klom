@@ -344,7 +344,10 @@ class GrainsMixtes:
 class Egares(Grains):
     """Grains tombés du bord avant du sol, hors du bec. Ils ne rencontrent plus rien avant le comptoir du bar : leur chute
     est une trajectoire balistique exacte (position et vitesse de sortie données par la simulation), sans simulation
-    supplémentaire. Ceux qui tomberaient sur le verre ne sont pas suivis."""
+    supplémentaire. Ceux qui tomberaient sur le verre ne sont pas suivis. Une fois posés, ils restent sur le comptoir :
+    la séquence du mojito les montre aussi.
+    Seuls comptent les grains sortis par le bord avant : une sortie ailleurs que par le bec ou ce bord serait une fuite
+    du sol (le défaut de joints corrigé le 13 novembre en produisait), pas une chute."""
 
     def __init__(self, nom, dossier_dalle, d):
         super().__init__(nom, dossier_dalle, d)
@@ -354,8 +357,14 @@ class Egares(Grains):
             return
         Z = np.load(chemin)
         bec = (np.abs(Z["pos"][:, 0]) < M.BEC_DEMI + 0.004) & (Z["pos"][:, 1] > M.BEC_AVANT - 0.004) & (Z["pos"][:, 1] < M.BEC_Y + 0.004)
-        ok = (Z["cause"] == 1) & ~bec & (Z["t"] >= 0)
+        bord = Z["pos"][:, 1] < M.SOL_BORD + 0.004
+        ok = (Z["cause"] == 1) & ~bec & bord & (Z["t"] >= 0)
         p0 = Z["pos"][ok].astype(np.float64); v0 = Z["vel"][ok].astype(np.float64); t0 = Z["t"][ok].astype(np.float64)
+        # Un cristal irrégulier qui tombe de 80 cm dans l'air dérive de côté (sillage, culbute) de 2 à 3 % de sa hauteur
+        # de chute. La chute balistique l'ignore, et les grains partis sans vitesse se poseraient en une rangée tirée au
+        # cordeau sous le bord. On ajoute donc à chacun une vitesse latérale tirée au hasard (écart type 4 cm/s, soit
+        # 1,6 cm à l'arrivée) : c'est un modèle de la traînée, pas une simulation de l'air.
+        v0[:, :2] += np.random.default_rng(9).normal(0.0, 0.04, (len(v0), 2))
         z_sol = -(M.DENIVELE + S.Z0 + S.E_FOND) + self.rayon           # le comptoir, dans le repère de l'atelier
         tl = (v0[:, 2] + np.sqrt(v0[:, 2] ** 2 + 2 * 9.81 * (p0[:, 2] - z_sol))) / 9.81
         chute = p0[:, :2] + v0[:, :2] * tl[:, None]

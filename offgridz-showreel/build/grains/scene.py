@@ -95,8 +95,9 @@ if __name__ == "__main__":
             if ob.type != "CAMERA":
                 bpy.context.scene.collection.objects.unlink(ob); coll_bar.objects.link(ob)
         sucre = bar["sucre"]
-        if sucre is not None:                          # les grains du filet traversent l'atelier : ils restent toujours visibles
-            coll_bar.objects.unlink(sucre.ob); bpy.context.scene.collection.objects.link(sucre.ob)
+        for g in (sucre, bar.get("egares")):           # les grains tombés de l'atelier le traversent : ils restent toujours visibles
+            if g is not None:
+                coll_bar.objects.unlink(g.ob); bpy.context.scene.collection.objects.link(g.ob)
         cam = bar["cam"]
     d = A.decalage()
     A.faire_sol_et_mur(d)
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     # la dalle compte un million de grains à l'échelle finale : en points ; le filet et les égarés, peu nombreux, restent des cristaux
     dossier_dalle = os.path.join(A.SIMS, "dalle")
     dalle = A.GrainsMixtes("grains_dalle", dossier_dalle, d) if args.points == 2 else A.Grains("grains_dalle", dossier_dalle, d, points=bool(args.points))
-    grains = [A.Egares("grains_egares", dossier_dalle, d)]
+    grains = [] if (bar is not None and bar.get("egares") is not None) else [A.Egares("grains_egares", dossier_dalle, d)]
     if sucre is None:
         grains.append(A.Grains("grains_filet", os.path.join(A.SIMS, "filet"), d))
     if not sans_bar:

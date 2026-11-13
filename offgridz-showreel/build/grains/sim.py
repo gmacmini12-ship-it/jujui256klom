@@ -134,10 +134,15 @@ class Dalle(Horloge, SceneBase):
         polys = self.letter_polys()
         letters = ExtrudeC(polys, M.LETTRES_Y - M.LETTRES_EP, M.LETTRES_Y, step=min(1e-4, dx / 6), mu=0.5)
         # le sol : une grande dalle jusqu'au bec, puis deux avancées de part et d'autre de la fente
+        # Les boîtes se recouvrent largement (20 mm) là où elles se touchent. Avec un recouvrement d'un dixième de
+        # millimètre, la distance signée d'un joint désignait la face latérale d'une boîte : rien n'y retenait un grain
+        # vers le bas, et 0,09 % des grains traversaient le sol le long des joints (session du 13 novembre : 790 grains,
+        # tombés en lignes droites sur le comptoir).
+        R = 0.020
         sol = BoxC((-0.5, M.BEC_Y, -0.3), (0.5, 0.5, 0.0), mu=0.5)
-        avancee_g = BoxC((-0.5, M.SOL_BORD, -0.3), (-M.BEC_DEMI, M.BEC_Y + 1e-4, 0.0), mu=0.5)
-        avancee_d = BoxC((M.BEC_DEMI, M.SOL_BORD, -0.3), (0.5, M.BEC_Y + 1e-4, 0.0), mu=0.5)
-        avant = BoxC((-M.BEC_DEMI - 1e-4, M.SOL_BORD, -0.3), (M.BEC_DEMI + 1e-4, M.BEC_AVANT, 0.0), mu=0.5)      # ferme la fente à l'avant
+        avancee_g = BoxC((-0.5, M.SOL_BORD, -0.3), (-M.BEC_DEMI, M.BEC_Y + R, 0.0), mu=0.5)
+        avancee_d = BoxC((M.BEC_DEMI, M.SOL_BORD, -0.3), (0.5, M.BEC_Y + R, 0.0), mu=0.5)
+        avant = BoxC((-M.BEC_DEMI - R, M.SOL_BORD, -0.3), (M.BEC_DEMI + R, M.BEC_AVANT, 0.0), mu=0.5)      # ferme la fente à l'avant
         wall = BoxC((-0.5, M.MUR_Y, -0.3), (0.5, 0.6, 0.6), mu=0.3)
         self.kbox = KinBox(bc="sticky")
         X = lattice(M.DALLE_LO, M.DALLE_HI, sp, rng, jitter=0.3)      # empilement irrégulier : pas de trame visible sur la dalle
@@ -242,9 +247,9 @@ class Filet(Horloge, SceneBase):
         tube = EntonnoirC(cx, cy, M.ENTONNOIR_BAS[0], M.ENTONNOIR_TUBE, M.ENTONNOIR_BAS[0], M.ENTONNOIR_BAS[1], paroi, mu=0.35)
         # les lèvres de la fente, au-dessus de l'entonnoir : mêmes boîtes que dans la simulation de la dalle
         sol = BoxC((-0.5, M.BEC_Y, -M.SOL_EP), (0.5, 0.5, 0.0), mu=0.5)
-        avancee_g = BoxC((-0.5, M.SOL_BORD - 0.1, -M.SOL_EP), (-M.BEC_DEMI, M.BEC_Y + 1e-4, 0.0), mu=0.5)
-        avancee_d = BoxC((M.BEC_DEMI, M.SOL_BORD - 0.1, -M.SOL_EP), (0.5, M.BEC_Y + 1e-4, 0.0), mu=0.5)
-        avant = BoxC((-M.BEC_DEMI - 1e-4, M.SOL_BORD - 0.1, -M.SOL_EP), (M.BEC_DEMI + 1e-4, M.BEC_AVANT, 0.0), mu=0.5)
+        avancee_g = BoxC((-0.5, M.SOL_BORD - 0.1, -M.SOL_EP), (-M.BEC_DEMI, M.BEC_Y + 0.020, 0.0), mu=0.5)      # recouvrements : voir Dalle
+        avancee_d = BoxC((M.BEC_DEMI, M.SOL_BORD - 0.1, -M.SOL_EP), (0.5, M.BEC_Y + 0.020, 0.0), mu=0.5)
+        avant = BoxC((-M.BEC_DEMI - 0.020, M.SOL_BORD - 0.1, -M.SOL_EP), (M.BEC_DEMI + 0.020, M.BEC_AVANT, 0.0), mu=0.5)
         Ne = len(ex_t)
         P = dict(x=ex_pos.astype(np.float32), v=ex_vel.astype(np.float32), q=random_quats(Ne, rng),
                  mat=np.zeros(Ne, np.int32), state=np.full(Ne, UNBORN, np.int32),
