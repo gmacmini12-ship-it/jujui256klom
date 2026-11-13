@@ -74,7 +74,7 @@ terminer() {   # journaux de fin, puis tentative d'arrêt de la machine par elle
 
 el "PILOTE DEBUT arrêt des rendus à t+${LIMITE}s, échelle ${ECH:-0.15}, ${SPP:-128} échantillons"
 etape installer
-if ! venv/bin/python -c "import taichi, scipy" > /dev/null 2>&1; then el "INSTALLATION ECHOUEE"; tail -8 logs/installer.log; terminer echec; exit 1; fi
+if ! venv/bin/python -c "import taichi, scipy, cv2" > /dev/null 2>&1; then el "INSTALLATION ECHOUEE"; tail -8 logs/installer.log; terminer echec; exit 1; fi
 ( etape installer_rendu ) &          # Blender s'installe pendant que la dalle se simule
 INSTALLATION=$!
 etape dalle

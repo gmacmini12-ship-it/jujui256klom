@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Session GPU des grains prête, répétée trois fois sur notre machine : une seule commande, plus aucune ensuite",
+ "etape": "Deuxième location échouée (bibliothèque absente de la machine louée) : corrigé, répété dans un environnement neuf identique",
  "credits": {
-  "depenses": 23.15,
+  "depenses": 29.09,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre présence quelques minutes : deux autorisations à donner coup sur coup dans l'application (location, puis lancement)",
+ "attente": "Votre présence quelques minutes : deux autorisations coup sur coup (location, puis lancement). Reste 34,54 crédits sur le palier 3",
  "action": true
 }

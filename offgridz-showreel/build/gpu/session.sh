@@ -38,16 +38,27 @@ case "$ETAPE" in
       uv venv --python 3.13 venv 2>&1 | tail -1
       . venv/bin/activate
     fi
-    uv pip install -q taichi numpy scipy 2>&1 | tail -2
-    python -c "import taichi, scipy, numpy; print('taichi', taichi.__version__, 'numpy', numpy.__version__)" 2>&1 | tail -1
+    # OpenCV sert à tracer les lettres dans la simulation : son absence a fait échouer la session du 13 novembre à 10 h
+    uv pip install -q taichi numpy scipy opencv-python-headless 2>&1 | tail -2
+    python -c "import taichi, scipy, numpy, cv2; print('taichi', taichi.__version__, 'numpy', numpy.__version__, 'cv2', cv2.__version__)" 2>&1 | tail -1
     ;;
   installer_rendu)   # de quoi rendre : Blender en module et ses bibliothèques système (peut tourner pendant la simulation)
     uv pip install -q bpy==5.3.0 2>&1 | tail -2
     if ! python -c "import bpy" 2>/dev/null; then
       # mesuré le 13 novembre : apt échoue tant que /tmp n'est pas inscriptible par tous, et son bac à sable doit tourner en root
+      # (séquence exacte qui a fonctionné lors du test du 13 novembre, 3 h 37)
+      BIBLIOTHEQUES="libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libsm6 libice6 libgl1 libegl1 libgomp1 xz-utils"
       $SUDO chmod 1777 /tmp
+      $SUDO sed -i 's/ noble-backports//' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null
+      $SUDO sed -i '/noble-backports/d' /etc/apt/sources.list 2>/dev/null
       $SUDO apt-get update -qq -o APT::Sandbox::User=root 2>&1 | tail -1
-      DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y -qq -o APT::Sandbox::User=root libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libsm6 libice6 libgl1 libegl1 libgomp1 xz-utils 2>&1 | tail -1
+      DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y -qq -o APT::Sandbox::User=root $BIBLIOTHEQUES 2>&1 | tail -1
+      if ! python -c "import bpy" 2>/dev/null; then
+        echo "seconde tentative"
+        OPTIONS="-o APT::Sandbox::User=root -o Acquire::AllowInsecureRepositories=true -o APT::Get::AllowUnauthenticated=true"
+        $SUDO apt-get update -qq $OPTIONS 2>&1 | tail -1
+        DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y -qq $OPTIONS $BIBLIOTHEQUES 2>&1 | tail -1
+      fi
     fi
     python -c "import bpy; print('bpy', bpy.app.version_string)" 2>&1 | tail -1
     ;;
