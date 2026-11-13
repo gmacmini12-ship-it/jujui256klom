@@ -210,7 +210,17 @@ def ink_material():
     nt.links.new(att.outputs["Fac"], m1.inputs[0])
     nt.links.new(m1.outputs[0], m2.inputs[0])
     nt.links.new(m2.outputs[0], m3.inputs[1])
-    nt.links.new(m3.outputs[0], b.inputs["Alpha"])
+    # films thinner than ~10-40 um (the residual left behind the blade) are not drawn: the sheet is clean again behind it
+    mr = nt.nodes.new("ShaderNodeMapRange")
+    mr.interpolation_type = "SMOOTHSTEP"
+    mr.inputs["From Min"].default_value = 10e-6
+    mr.inputs["From Max"].default_value = 40e-6
+    nt.links.new(att.outputs["Fac"], mr.inputs["Value"])
+    m4 = nt.nodes.new("ShaderNodeMath")
+    m4.operation = "MULTIPLY"
+    nt.links.new(m3.outputs[0], m4.inputs[0])
+    nt.links.new(mr.outputs["Result"], m4.inputs[1])
+    nt.links.new(m4.outputs[0], b.inputs["Alpha"])
     return m
 
 

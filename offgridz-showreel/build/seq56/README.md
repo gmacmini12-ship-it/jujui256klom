@@ -1,5 +1,8 @@
 # build/seq56 -- Fond perdu + Signature (frames 456-599)
 
+Two renderers for the matter layer share the same solver outputs: `scene.py` (Blender Cycles, path traced: the one to use) and
+`run.py --stages matiere` (2.5D fallback, no Blender). The window layer, meta.json and the solvers are common.
+
 ## One command (from offgridz-showreel/)
 
     # 1. grains (MLS-MPM, variant seq56 of the Deferlement scene). Test scale here; final = GPU run:
@@ -14,6 +17,22 @@
 `run.py --stages grains,film,matiere,fenetre,meta,preview` runs stages separately (work files in cache/seq56/work_<cache name>/).
 The renderer reads spacing and counts from `<cache>/run.json`; nothing depends on the scale. If the cache stops at 479 the
 last frame is reused for 480-503.
+
+## Path-traced matter layer (Blender, build/seq56/scene.py)
+
+    # solvers first (run.py --stages grains,film), then:
+    /opt/og/blender/blender-5.3.0-linux-x64/blender -b -t 2 -P build/seq56/scene.py -- \
+        --frames 456:527 --res 1080x1920 --spp 128 --device CPU|OPTIX --out out/final/seq56 \
+        [--grains cache/seq56/grains_s0.01] [--film cache/seq56/work_<grains>/film_fpx2_mu20_g0.12_lv18] [--list 470,492,514]
+
+Orthographic camera straight above, ortho width 0.108 m (0.1 mm/px at 1080 px), film transparent, Cycles shadow catchers for the sheet
+and tray (shadows = black alpha), 16-bit RGBA PNG straight alpha in <out>/matiere/. Grains: build/grains/atelier.py (faceted pigment
+crystals, unmodified); ink: displaced grid from the film solver's height field (opacity from thickness, clear-coated glossy
+Principled, roughness 0.17); squeegee: 3D model; lights: softbox + long strip + low rake. `run.py --stages film` options that matter
+here: `--film-gain 0.12` (ink volume / bulk volume of the bed), `--level-sigma 18` (heaps larger than 18 mm are levelled at film
+initialisation: removes the launch-column dome).
+`run.py --stages preview --matiere-dir <dir> --tag _pt` builds apercu_pt.mp4 / planche_pt.png from any matter directory;
+`checks.py --matiere-dir <dir> --tag _pt` measures it.
 
 ## Simulation variant `seq56` (build/sim/scenes.py, class Deferlement; `--variant seq56`)
 * the tray (100.8 x 151.2 mm, 4 mm deep) is pre-filled to the brim with a jittered lattice of grains at bulk density
