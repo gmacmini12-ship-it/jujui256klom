@@ -597,7 +597,8 @@ def materiau_menthe():
     if m:
         return m
     couleur, relief = textures_feuille()
-    m = materiau("menthe", **{"Roughness": 0.42, "Subsurface Weight": 0.25, "Sheen Weight": 0.25})
+    # feuille mate (retour du client, 13 novembre : « trop un rendu plastique ») : moins de brillant, reflet plus diffus
+    m = materiau("menthe", **{"Roughness": 0.58, "Specular IOR Level": 0.35, "Subsurface Weight": 0.25, "Sheen Weight": 0.25})
     nt = m.node_tree; b = nt.nodes.get("Principled BSDF")
     b.inputs["Subsurface Radius"].default_value = (0.25, 0.8, 0.12); b.inputs["Subsurface Scale"].default_value = 0.002
     tc = nt.nodes.new("ShaderNodeTexImage"); tc.image = couleur
@@ -657,9 +658,20 @@ def faire_feuille(nom, longueur, graine):
     return ob
 
 
-def faire_brin(nom, base, passage, graine):
+# Retour du client (13 novembre) : le brin faisait trop « plastique » et prenait trop de place. Les quatre feuilles du
+# bas (les deux premiers étages) sont retirées et le bouquet descend le long de sa tige : ses premières feuilles sortent
+# au ras de la glace. Les étages gardés conservent leur forme et leur orientation d'origine.
+BRIN_ETAGES_RETIRES = 2          # étages du bas supprimés (deux feuilles par étage)
+BRIN_ENFONCEMENT = 0.030         # m : descente du bouquet le long de la tige
+BRIN_TORSION = 180.0             # degrés : rotation du bouquet autour de la tige (pour qu'aucune feuille ne traverse la glace)
+
+
+def faire_brin(nom, base, passage, graine, retires=None, enfoncement=None, torsion=None):
     """Brin de menthe planté dans le verre. `base` : pied de la tige (dans le verre) ; `passage` : point (x, y) où la tige
     franchit le plan du bord, forcément à l'intérieur de l'ouverture. Les feuilles ne poussent qu'au-dessus du bord."""
+    retires = BRIN_ETAGES_RETIRES if retires is None else retires
+    enfoncement = BRIN_ENFONCEMENT if enfoncement is None else enfoncement
+    torsion = BRIN_TORSION if torsion is None else torsion
     rnd = random.Random(graine)
     tige_mat = bpy.data.materials.get("tige") or materiau("tige", **{"Base Color": (0.10, 0.26, 0.05, 1), "Roughness": 0.5, "Subsurface Weight": 0.2})
     base = Vector(base)
@@ -667,7 +679,7 @@ def faire_brin(nom, base, passage, graine):
     assert math.hypot(passage[0], passage[1]) < r_int(H_VERRE) - 0.004, "le brin doit sortir par l'ouverture du verre"
     axe = (sortie - base).normalized()
     s_bord = (sortie - base).length
-    hauteur = s_bord + 0.058
+    hauteur = s_bord + 0.058 - enfoncement
     racine = bpy.data.objects.new(nom, None); bpy.context.scene.collection.objects.link(racine)
     racine.location = base
     racine.rotation_euler = axe.to_track_quat("Z", "Y").to_euler()
@@ -678,11 +690,15 @@ def faire_brin(nom, base, passage, graine):
     etages = [(0.006, 0.040), (0.019, 0.037), (0.031, 0.031), (0.041, 0.024), (0.049, 0.017), (0.054, 0.010)]
     for k, (ds, long_) in enumerate(etages):
         for cote in (0, 1):
-            f = faire_feuille(f"{nom}_f{k}{cote}", long_ * rnd.uniform(0.92, 1.08), graine * 31 + k * 2 + cote)
-            azimut = math.radians(90 * k + 180 * cote + rnd.uniform(-16, 16))
+            # les tirages sont faits même pour un étage retiré : les feuilles gardées restent celles d'origine
+            longueur = long_ * rnd.uniform(0.92, 1.08)
+            azimut = math.radians(90 * k + 180 * cote + rnd.uniform(-16, 16) + torsion)
             ouverture = math.radians(rnd.uniform(50, 70) - 7 * k)          # angle avec la tige : étalé en bas, dressé en haut
+            if k < retires:
+                continue
+            f = faire_feuille(f"{nom}_f{k}{cote}", longueur, graine * 31 + k * 2 + cote)
             f.rotation_euler = (Matrix.Rotation(azimut, 4, "Z") @ Matrix.Rotation(math.pi / 2 - ouverture, 4, "X")).to_euler()
-            f.location = (0, 0, s_bord + ds); f.parent = racine
+            f.location = (0, 0, s_bord + ds - enfoncement); f.parent = racine
             feuilles.append(f)
     for f in feuilles:
         poser_sur_le_bord(f)

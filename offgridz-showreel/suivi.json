@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Corrections avant le rendu final. Mojito : le liquide débordait du verre pendant une seconde ; correction prête, avant/après envoyé. Fin du mojito en cours de calcul sur notre machine, sans frais",
+ "etape": "Palier 4, session B en cours sur la machine GPU depuis 17 h 29 UTC : papier, encre, 28 images corrigées du mojito. En parallèle : correction du brin de menthe",
  "credits": {
   "depenses": 79.29,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre avis sur la correction du mojito, et vos autres corrections (papier, encre) ; aucune dépense d'ici là",
- "action": true
+ "attente": "Rien : la machine s'éteint seule à la fin (15 à 22 minutes attendues, 25 au plus)",
+ "action": false
 }

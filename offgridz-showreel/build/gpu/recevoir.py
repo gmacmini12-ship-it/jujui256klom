@@ -26,6 +26,7 @@ PLAN = json.load(open(os.path.join(SESSION, "plan.json")))
 CRENEAUX = json.load(open(os.path.join(SESSION, "resultats.json")))
 RECU = os.path.join(SESSION, "recu")
 os.makedirs(RECU, exist_ok=True)
+ABSENTES = []          # tranches d'images que la machine n'a pas déposées
 
 
 def telecharger(k):
@@ -111,6 +112,7 @@ for e in PLAN["etapes"]:
             z = telecharger(k)
             if z is None:
                 print(f"{e['nom']} : tranche {a}-{b} absente")
+                ABSENTES.append((e["nom"], a, b))
                 continue
             d = deplier(z)
             src = os.path.join(d, e["dossier"])
@@ -171,4 +173,7 @@ for e in PLAN["etapes"]:
     if e["type"] == "rendu":
         manquantes, defauts = controler(e)
         complet = complet and not manquantes and not defauts
-print("RECEPTION COMPLETE" if complet else "RECEPTION INCOMPLETE")
+if ABSENTES:
+    # les images déjà présentes sur place pour ces tranches viennent d'un rendu antérieur, pas de cette session
+    print("tranches non reçues :", ", ".join(f"{nom} {a}-{b}" for nom, a, b in ABSENTES))
+print("RECEPTION COMPLETE" if complet and not ABSENTES else "RECEPTION INCOMPLETE")

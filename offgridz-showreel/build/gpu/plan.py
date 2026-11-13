@@ -97,24 +97,27 @@ def repetition_sim():
     return 256                                     # la répétition lit le même liquide que la session réelle
 
 
-def plan_b(table, caches, repetition, reste3=None, liquide=None, variante3=""):
+def plan_b(table, caches, repetition, reste3=None, liquide=None, variante3="", seulement=None):
     """Papier (séquences 0 et 1) puis encre (séquences 5 et 6). Les caches viennent de notre machine.
     reste3 = [(a, b), ...] : plages d'images du mojito à rendre ensuite (images restantes, images corrigées) ; ce qui
     n'aurait pas le temps de passer se finit sur notre machine (build/mojito/rendu_local.sh).
     liquide : adresses des archives du liquide et du filet de la session a ; variante3 : suffixe du dossier d'images
     du liquide refaites (« c » : confinement)."""
+    veut = lambda nom: not seulement or nom.startswith(tuple(seulement))      # séquences demandées (toutes par défaut)
     etapes = installation()
     etapes += [
         dict(type="telecharger", nom="caches", adresses=caches),
         dict(type="attendre", nom="installer_rendu"),
-        dict(type="rendu", nom="seq01", etape="rendu01", images=[0, 71], dossier="out/final/seq01",
-             tranches=tranches(table, "seq01", 0, 71), requiert=["installer_rendu", "caches"]),
-        # la couche de matière est transparente là où la feuille est nue : une image vide (527) est normale
-        dict(type="rendu", nom="seq56", etape="rendu56", images=[456, 527], dossier="out/final/seq56/matiere",
-             taille=[1080, 1920], noir_permis=True,
-             tranches=tranches(table, "seq56", 456, 527), requiert=["installer_rendu", "caches"]),
     ]
-    if reste3:
+    if veut("seq01"):
+        etapes += [dict(type="rendu", nom="seq01", etape="rendu01", images=[0, 71], dossier="out/final/seq01",
+                        tranches=tranches(table, "seq01", 0, 71), requiert=["installer_rendu", "caches"])]
+    if veut("seq56"):
+        # la couche de matière est transparente là où la feuille est nue : une image vide (527) est normale
+        etapes += [dict(type="rendu", nom="seq56", etape="rendu56", images=[456, 527], dossier="out/final/seq56/matiere",
+                        taille=[1080, 1920], noir_permis=True,
+                        tranches=tranches(table, "seq56", 456, 527), requiert=["installer_rendu", "caches"])]
+    if reste3 and veut("seq3"):
         etapes += [dict(type="telecharger", nom="liquide_filet", adresses=liquide or [])]
         for k, (a, b) in enumerate(reste3):
             etapes += [dict(type="rendu", nom="seq3" + "abcdef"[k], etape="rendu3", images=[a, b], dossier="out/final/seq3",
@@ -140,6 +143,7 @@ if __name__ == "__main__":
     ap.add_argument("--compact", action="store_true", help="session a avec quatre créneaux : voir plan_a_compact")
     ap.add_argument("--reste3", default="", help="session b : plages d'images du mojito à rendre, a:b[,c:d...] (avec --liquide : liquide et filet)")
     ap.add_argument("--variante3", default="", help="session b : suffixe du dossier d'images du liquide refaites (c : confinement)")
+    ap.add_argument("--seulement", default="", help="session b : ne rendre que ces séquences, par exemple seq56,seq3 (les autres étapes de rendu sont retirées)")
     ap.add_argument("--sortie", default="")
     A = ap.parse_args()
     creneaux = json.load(open(A.creneaux))
@@ -152,7 +156,8 @@ if __name__ == "__main__":
     else:
         reste3 = [tuple(int(v) for v in plage.split(":")) for plage in A.reste3.split(",")] if A.reste3 else None
         etapes, env, fichiers = plan_b(table, json.load(open(A.caches)) if A.caches else [], A.repetition, reste3,
-                                       json.load(open(A.liquide)) if A.liquide else [], A.variante3)
+                                       json.load(open(A.liquide)) if A.liquide else [], A.variante3,
+                                       A.seulement.split(",") if A.seulement else None)
     journal = table.prendre("journaux")
     temps = [t for t in A.battements.split(",") if t.strip()]
     battements = [[int(t), table.prendre(f"battement_{k + 1:02d}")] for k, t in enumerate(temps) if int(t) < A.limite + 240]

@@ -15,7 +15,8 @@ A=${1:-348}; B=${2:-359}
 ATTENTE=out/final/seq3_local
 CIBLE=${CIBLE:-out/final/seq3}
 mkdir -p "$ATTENTE" "$CIBLE"
-for f in $(seq "$A" "$B"); do
+if [ "$A" -le "$B" ]; then LISTE=$(seq "$A" "$B"); else LISTE=$(seq "$A" -1 "$B"); fi      # 359 348 : ordre décroissant
+for f in $LISTE; do
   NOM=$(printf "f%04d.png" "$f")
   [ -e "$ATTENTE/STOP" ] && { echo "LOCAL arrêt demandé avant l'image $f"; break; }
   [ -e "$CIBLE/$NOM" ] && continue

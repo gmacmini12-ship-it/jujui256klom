@@ -113,10 +113,9 @@ def setup_render(A):
     cy.use_denoising = bool(A.denoise)
     if A.device != "CPU" and hasattr(cy, "denoising_use_gpu"):
         cy.denoising_use_gpu = True          # the rented machine has one CPU core: denoise on the card
-    try:
-        cy.denoiser = "OPENIMAGEDENOISE" if A.device == "CPU" else "OPTIX"
-    except Exception:
-        pass
+    # OpenImageDenoise partout : le débruiteur OptiX ne démarre pas sur la machine louée (« Failed to create OptiX
+    # denoiser », session B du 13 novembre : l'étape a échoué en 3 s). Sur GPU, il tourne sur la carte (ci-dessus).
+    cy.denoiser = "OPENIMAGEDENOISE"
     cy.max_bounces = 6
     cy.diffuse_bounces = 2
     cy.glossy_bounces = 4
