@@ -385,7 +385,7 @@ def make_squeegee():
         ob.parent = root
     # a small fill light linked to the tool only (Cycles light linking), so that the cream rubber reads cream and not
     # salmon (the scene's orange ink bounces its colour onto it)
-    fill = area_light("remplissage_raclette", (0.0, -0.03, 0.10), (0.0, 0.004, 0.006), 0.30, 0.04, 0.55, (1.0, 0.97, 0.93))
+    fill = area_light("remplissage_raclette", (0.0, -0.03, 0.10), (0.0, 0.004, 0.006), 0.30, 0.04, 0.22, (0.90, 1.0, 1.0))
     fill.parent = root
     coll = bpy.data.collections.new("outil")
     for ob in parts:
