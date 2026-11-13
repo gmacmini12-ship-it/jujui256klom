@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Palier 4, session A en cours sur la machine GPU : sucre rectifié (images 169 à 215) puis mojito (144 images). Lancée à 15 h 29 UTC",
+ "etape": "Palier 4, session A terminée : sucre rectifié (47 images sur 47) et mojito (132 images sur 144), machine éteinte. Contrôle des images et préparation de la session B",
  "credits": {
-  "depenses": 42.45,
+  "depenses": 79.29,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien : la machine s'éteindra seule à la fin (19 à 29 minutes attendues)",
+ "attente": "Rien pour l'instant : le compte rendu de la session A arrive",
  "action": false
 }

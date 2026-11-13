@@ -292,6 +292,12 @@ def load_final56():
     if p.exists():
         try:
             for k, v in json.loads(p.read_text()).items():
+                v = dict(v)
+                if "tip_px" in v:
+                    # le cache final (build/seq56/run.py) ne donne que la pointe de la lame : le bord du caoutchouc et
+                    # l'arrière du support s'en déduisent (RUBBER_LEN = 62 px, HOLDER_LEN = 128 px, build/seq56/common.py)
+                    v.setdefault("rubber_edge_px", v["tip_px"] - 62.0)
+                    v.setdefault("holder_back_px", v["tip_px"] - 190.0)
                 sq[int(k)] = v
         except Exception:
             pass

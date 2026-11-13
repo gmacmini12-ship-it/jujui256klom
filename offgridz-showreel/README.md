@@ -10,16 +10,16 @@ Le film est calculé, pas généré : simulations et rendus sont reproductibles 
 
 ## État
 
-Phase 4 (production) en cours. Crédits Higgsfield : 8,63 dépensés (test GPU) ; aucun autre engagé.
-Cible 200, plafond 345 ; chaque palier payant est soumis au client avant d'être engagé.
+Phase 4 (production) en cours. Crédits Higgsfield dépensés : 79,29 (test GPU 8,63 ; palier 3 : 33,82 ; palier 4,
+session A : 36,84). Cible 200, plafond 345 ; chaque palier payant est soumis au client avant d'être engagé.
 
 | Séquence | Images | État |
 |---|---|---|
-| 0 – 1 Épreuve, déchirure | 0 – 71 | scène en fabrication (`build/seq01`) |
-| 2 Grains | 72 – 215 | simulation et scène prêtes à l'échelle d'essai (`build/grains`) ; finale sur GPU |
-| 3 Mojito | 216 – 359 | chutes et versement simulés, scène animée (`build/mojito`) ; rendu final sur GPU |
+| 0 – 1 Épreuve, déchirure | 0 – 71 | scène prête (`build/seq01`), répétée ; rendu final à faire sur GPU (session B) |
+| 2 Grains | 72 – 215 | rendue en qualité finale (`out/final/seq2`) : 893 319 grains ; images 169 à 215 refaites en session A (aucun grain hors du verre) |
+| 3 Mojito | 216 – 359 | 132 images finales sur 144 (`out/final/seq3`, 216 à 347) ; restent les images 348 à 359 |
 | 4 Données | 360 – 455 | rendue (`build/seq4`, 6 millions de points) |
-| 5 – 6 Fond perdu, signature | 456 – 599 | simulations prêtes à l'échelle d'essai, rendu en reprise (`build/seq56`) |
+| 5 – 6 Fond perdu, signature | 456 – 599 | scène prête (`build/seq56`), répétée ; rendu final de la matière à faire sur GPU (session B) |
 | Assemblage | 0 – 599 | compositeur opérationnel (`build/final`), repli sur l'animatique pour ce qui n'est pas rendu |
 
 ## Arborescence
@@ -128,3 +128,21 @@ Trois locations ont été nécessaires ; deux ont échoué (20,46 crédits sans 
 La machine louée demande deux corrections à l'installation, reprises dans `build/gpu/session.sh` :
 `chmod 1777 /tmp` et l'option `-o APT::Sandbox::User=root` pour installer les bibliothèques système de Blender.
 Le débruiteur OptiX n'y démarre pas ; utiliser OptiX pour le rendu et OpenImageDenoise pour le débruitage.
+
+## Session A du palier 4 (13 novembre, 15 h 28, L40S louée 31 min 08 s, 36,84 crédits)
+
+Conduite par `build/gpu/pilote_film.py` et son plan (`build/gpu/plan.py a`) : une commande, aucun échec d'étape.
+
+| Étape | Durée mesurée |
+|---|---|
+| Installation : Python, Taichi, OpenCV ; Blender ; téléchargement du liquide (236 Mo) | 9 s ; 11 s ; 10 s |
+| Simulation de la dalle (893 319 grains), puis du filet | 88 s ; 36 s |
+| Rendu des images 169 à 215 (sucre rectifié), 128 échantillons | 134 s, soit 2,9 s par image |
+| Mojito sans liquide (images 216 à 263 environ), 256 échantillons | 4,2 à 4,9 s par image |
+| Mojito avec liquide trouble (images suivantes) | 13,6 à 17 s par image |
+| Envois : huit tranches d'images (63 à 132 Mo), le filet (232 Mo) | 10 à 20 s chacun |
+
+Le rendu s'est arrêté à l'échéance fixée (30 minutes) : 132 images du mojito sur 144, les images 348 à 359 restent à
+rendre. L'estimation (8 à 10 s par image avec liquide) venait d'une mesure faite avec un liquide limpide (4,8 s) ; le
+liquide trouble retenu ensuite diffuse la lumière dans son volume et coûte trois fois plus. À retenir : mesurer le
+temps par image sur l'aspect définitif avant de chiffrer une session.

@@ -42,29 +42,39 @@ def agrandir(nom, dossier, a, b):
 
 
 def finales(nom, a, b):
-    """Si la séquence est entièrement rendue en résolution finale (out/final/<nom>), on la relie telle quelle."""
+    """Relie les images rendues en résolution finale (out/final/<nom>) et renvoie leur nombre.
+    Séquence presque complète (les trois quarts au moins) : chaque image manquante répète la dernière image finale
+    et sa cible de réticule, pour ne pas mêler deux qualités d'image. En dessous, on renvoie 0 (aperçus agrandis)."""
     src = RACINE / "out" / "final" / nom
-    if not all((src / f"f{f:04d}.png").exists() for f in range(a, b + 1)):
-        return False
+    presentes = [f for f in range(a, b + 1) if (src / f"f{f:04d}.png").exists()]
+    if 4 * len(presentes) < 3 * (b - a + 1) or a not in presentes:
+        return 0
     sortie = APERCU / nom
     if sortie.is_symlink():
         sortie.unlink()
     sortie.mkdir(parents=True, exist_ok=True)
+    meta = json.load(open(src / "meta.json")) if (src / "meta.json").exists() else {"images": {}}
+    derniere = a
     for f in range(a, b + 1):
         cible = sortie / f"f{f:04d}.png"
         if cible.exists() or cible.is_symlink():
             cible.unlink()
-        os.symlink(src / f"f{f:04d}.png", cible)
-    if (src / "meta.json").exists():
-        shutil.copy(src / "meta.json", sortie / "meta.json")
-    return True
+        if f in presentes:
+            derniere = f
+        elif str(derniere) in meta.get("images", {}):
+            meta["images"][str(f)] = meta["images"][str(derniere)]
+        os.symlink(src / f"f{derniere:04d}.png", cible)
+    json.dump(meta, open(sortie / "meta.json", "w"))
+    return len(presentes)
 
 
 if __name__ == "__main__":
     APERCU.mkdir(parents=True, exist_ok=True)
     for nom, (dossier, a, b) in SOURCES.items():
-        if finales(nom, a, b):
-            print(f"{nom} : images finales reliées ({b - a + 1})")
+        n = finales(nom, a, b)
+        if n:
+            print(f"{nom} : {n} images finales reliées sur {b - a + 1}"
+                  + ("" if n == b - a + 1 else " ; les images manquantes répètent la dernière image finale"))
         elif dossier.exists():
             print(f"{nom} : {agrandir(nom, dossier, a, b)} images d'aperçu agrandies")
     for nom in ("seq01", "seq56"):                     # séquences livrées par ailleurs : reliées telles quelles
