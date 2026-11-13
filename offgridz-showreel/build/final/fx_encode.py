@@ -12,8 +12,10 @@ import fx_common as X
 import fx_draw as D
 import fx_sheet as SH
 
-# bande son : la version finale si elle existe, sinon la maquette
-WAV = next((p for p in (X.ROOT / "out" / "audio" / "insoumise_v1.wav", X.ROOT / "out" / "audio" / "maquette_v0.wav") if p.exists()),
+# bande son : la version « diffusion » si elle existe (plafond de crête abaissé pour l'encodage AAC, voir
+# build/audio/diffusion.py), sinon la version finale, sinon la maquette
+WAV = next((p for p in (X.ROOT / "out" / "audio" / "insoumise_v1_diffusion.wav", X.ROOT / "out" / "audio" / "insoumise_v1.wav",
+                        X.ROOT / "out" / "audio" / "maquette_v0.wav") if p.exists()),
            X.ROOT / "out" / "audio" / "maquette_v0.wav")
 DUR = X.NFRAMES / X.FPS
 CRF = 13
@@ -42,7 +44,7 @@ def ffmpeg_cmd(out, threads):
             "-vf", VF, "-c:v", "libx264", "-profile:v", "high", "-preset", "medium", "-crf", str(CRF),
             "-threads", str(threads), "-pix_fmt", "yuv420p", "-r", str(X.FPS),
             "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
-            "-af", AF, "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2", "-t", f"{DUR}",
+            "-af", AF, "-c:a", "aac", "-aac_pns", "0", "-b:a", "320k", "-ar", "48000", "-ac", "2", "-t", f"{DUR}",
             "-movflags", "+faststart", str(out)]
 
 

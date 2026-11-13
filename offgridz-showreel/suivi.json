@@ -1,6 +1,6 @@
 {
  "projet": "OFFGRIDZ · INSOUMISE",
- "phase": 4,
+ "phase": 5,
  "phases": [
   "Questions",
   "Concept",
@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Toutes les images finales sont rendues (600 sur 600). Machines éteintes. Assemblage du film final en cours, puis contrôle qualité",
+ "etape": "Film complet assemblé (600 images finales, 20 s). Contrôle qualité : mesures faites, crête sonore corrigée, deux relectures critiques indépendantes en cours (image ; son et conformité)",
  "credits": {
   "depenses": 113.44,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien pour l'instant : le film final arrive",
+ "attente": "Rien : je vous présente le bilan des relectures dès qu'elles sont terminées",
  "action": false
 }
