@@ -42,7 +42,7 @@ E_PAROI = 0.0022                # épaisseur de paroi
 E_FOND = 0.012                  # épaisseur du fond
 NIVEAU = 0.121                  # hauteur du liquide au repos (depuis le dessous du verre)
 TROUBLE = 3.0                   # densité de diffusion du liquide (0 = parfaitement limpide)
-T_GLACON = 0.025                # côté d'un glaçon
+T_GLACON = 0.027                # côté d'un glaçon
 R_CITRON = (0.023, 0.023, 0.027)  # demi-axes du citron vert
 
 

@@ -312,11 +312,29 @@ class Deferlement(SceneBase):
     PHI = 28.0
     EMIT_FRAMES = 10
 
+    # --- variant "seq56" (final film, sequences 5-6) -------------------------------------------------
+    # The tray is brim-full at frame 456 (settled by a short pre-roll, f_sim0 = 456 - PREROLL), then the
+    # central column of the bed is launched and a vent at the tray floor keeps feeding grains: the bed is
+    # pushed over the four edges of the window and floods the margins.  Emitted volume is expressed as a
+    # layer thickness over the whole sheet (SURGE_MM), so it is the same physical volume at every --scale.
+    PREROLL = 6
+    SURGE_MM = 16.0
+    SURGE_V = (1.5, 2.3)
+    SURGE_CONE = 42.0
+    LAUNCH_V = (1.2, 1.8)
+
     def __init__(self, scale=0.01, variant="spec", ts=None, seed=5, vol_factor=None):
         self.scale = scale
         self.variant = variant
         self.seed = seed
-        if variant == "spec":
+        self.launched = False
+        self.vent_idx = None
+        if variant == "seq56":
+            self.ts = 0.5 if ts is None else ts
+            self.v_lo, self.v_hi, self.cone = self.SURGE_V[0], self.SURGE_V[1], self.SURGE_CONE
+            self.vol_factor = 1.0 if vol_factor is None else vol_factor      # multiplies the surge volume
+            self.f_sim0 = self.f_ref - self.PREROLL
+        elif variant == "spec":
             self.ts = 0.5 if ts is None else ts
             self.v_lo, self.v_hi, self.cone = 2.0, 2.6, 25.0
             self.vol_factor = 1.0 if vol_factor is None else vol_factor
@@ -324,6 +342,31 @@ class Deferlement(SceneBase):
             self.ts = 0.5 if ts is None else ts
             self.v_lo, self.v_hi, self.cone = 0.9, 1.2, 25.0
             self.vol_factor = 1.6 if vol_factor is None else vol_factor
+
+    # checkpoint state (seq56: the launch of the central column happens once, at frame 456)
+    def get_state(self):
+        return {"launched": bool(self.launched)}
+
+    def set_state(self, d):
+        self.launched = bool(d.get("launched", False))
+
+    def reset_state(self):
+        self.launched = False
+
+    def begin_frame(self, s, f, t0, t1):
+        if self.variant != "seq56" or self.launched or f < self.f_ref + 1 or self.vent_idx is None:
+            return
+        self.launched = True
+        rng = np.random.default_rng(self.seed + 1)
+        v = s.v.to_numpy()
+        idx = self.vent_idx
+        n = len(idx)
+        cth = 1 - rng.random(n) * (1 - math.cos(math.radians(self.cone)))
+        sth = np.sqrt(1 - cth ** 2)
+        ph = rng.random(n) * 2 * np.pi
+        spd = self.LAUNCH_V[0] + rng.random(n) * (self.LAUNCH_V[1] - self.LAUNCH_V[0])
+        v[idx] = np.stack([spd * sth * np.cos(ph), spd * sth * np.sin(ph), spd * cth], 1).astype(np.float32)
+        s.v.from_numpy(v)
 
     def volumes(self):
         tray = 2 * self.TRAY[0] * 2 * self.TRAY[1] * self.DEPTH
@@ -353,6 +396,8 @@ class Deferlement(SceneBase):
         ]
         tray_v, sheet_v = self.volumes()
         V = (tray_v + sheet_v) * self.vol_factor
+        if self.variant == "seq56":
+            V = 2 * self.VIS[0] * 2 * self.VIS[1] * self.SURGE_MM * 1e-3 * self.vol_factor
         Ne = int(round(V / sp ** 3))
         T_emit = self.EMIT_FRAMES / 30.0 * self.ts
         # emission times uniform over [0, T_emit], positions uniform in the vent disc (area-uniform)
@@ -369,9 +414,28 @@ class Deferlement(SceneBase):
         P = dict(x=pos.astype(np.float32), v=vel.astype(np.float32), q=random_quats(Ne, rng), mat=np.zeros(Ne, np.int32),
                  state=np.full(Ne, UNBORN, np.int32), coh0=np.zeros(Ne, np.float32), cohtau=np.ones(Ne, np.float32),
                  t_ev=te.astype(np.float32))
+        n_bed = 0
+        if self.variant == "seq56":
+            # brim-full tray: jittered lattice at bulk density, from the floor to the sheet plane z = 0
+            rb = np.random.default_rng(self.seed + 2)
+            bed = lattice((-tx, -ty, -dp), (tx, ty, 0.0), sp, rb, jitter=0.7)
+            m_ = 0.3 * sp
+            bed[:, 0] = np.clip(bed[:, 0], -tx + m_, tx - m_)
+            bed[:, 1] = np.clip(bed[:, 1], -ty + m_, ty - m_)
+            bed[:, 2] = np.clip(bed[:, 2], -dp + m_, -0.2 * sp)
+            n_bed = len(bed)
+            self.vent_idx = np.nonzero(np.hypot(bed[:, 0], bed[:, 1]) < self.VENT_R)[0]
+            # surge grains are born from t = 0 (film frame 456) over EMIT_FRAMES
+            def cat(a, b):
+                return np.concatenate([a, b], 0)
+            P = dict(x=cat(bed, P["x"]), v=cat(np.zeros((n_bed, 3), np.float32), P["v"]),
+                     q=cat(random_quats(n_bed, rb), P["q"]), mat=np.zeros(n_bed + Ne, np.int32),
+                     state=cat(np.full(n_bed, FREE, np.int32), P["state"]), coh0=np.zeros(n_bed + Ne, np.float32),
+                     cohtau=np.ones(n_bed + Ne, np.float32), t_ev=cat(np.full(n_bed, -1.0, np.float32), P["t_ev"]))
+        Ntot = n_bed + Ne
         mats = [sand_material(E=SAND_E, phi_deg=self.PHI, rho=RHO_BULK)]
-        s = MPM(lo, n, dx, Ne, sp ** 3, mats, statics=statics, roi_lo=roi_lo, roi_hi=roi_hi, cfl=0.4)
-        self.info = dict(N=Ne, spacing=sp, dx=dx, grid=[int(a) for a in n], variant=self.variant, volume_emitted=Ne * sp ** 3,
+        s = MPM(lo, n, dx, Ntot, sp ** 3, mats, statics=statics, roi_lo=roi_lo, roi_hi=roi_hi, cfl=0.4)
+        self.info = dict(N=Ntot, n_bed=n_bed, n_surge=Ne, spacing=sp, dx=dx, grid=[int(a) for a in n], variant=self.variant, volume_emitted=Ne * sp ** 3,
                          volume_tray=tray_v, volume_sheet_3mm=sheet_v, v_range=[self.v_lo, self.v_hi], cone=self.cone,
                          time_scale=self.ts)
         return s, P
@@ -396,7 +460,7 @@ def main(argv=None):
     ap.add_argument("--frames", default=None, help="a:b (film frames, inclusive)")
     ap.add_argument("--threads", type=int, default=1, help="CPU threads (1 = bitwise deterministic)")
     ap.add_argument("--fresh", action="store_true", help="ignore checkpoint")
-    ap.add_argument("--variant", default="spec", choices=["spec", "adj"])
+    ap.add_argument("--variant", default="spec", choices=["spec", "adj", "seq56"])
     ap.add_argument("--vol-factor", type=float, default=None, help="deferlement: emitted volume / (tray + 3 mm sheet)")
     ap.add_argument("--out", default=None)
     ap.add_argument("--ckpt-every", type=int, default=1)

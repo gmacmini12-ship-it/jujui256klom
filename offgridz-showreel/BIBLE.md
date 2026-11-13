@@ -101,7 +101,10 @@ La mesure n (1 à 12) commence à t = 0,8 + 1,6 × (n − 1) s, soit l'image 24 
   `taichi` 1.7.4, `numpy`, `scipy`, `cv2`, `fontTools`, `brotli`, `soundfile`, `PIL`.
 - Ajouter un paquet : `uv pip install --python /opt/og/venv/bin/python <paquet>`.
 - Machine : 4 cœurs, 15 Go de RAM, pas de GPU. `ffmpeg` 6.1, Node 22, Chromium/Playwright disponibles.
-- Le solveur de liquide intégré à Blender ne fonctionne pas dans ce module : le liquide passe par notre propre solveur.
+- Blender officiel 5.3 (solveur de liquide compris) : `/opt/og/blender/blender-5.3.0-linux-x64/blender -b -P script.py -- arguments`.
+  Le module `bpy` du venv n'a pas de solveur de liquide ; pour le reste les deux se valent. Toujours importer `bpy` avant `bmesh`.
+- Le rendu final des scènes 3D se fera sur un GPU loué, avec le même script et `--device OPTIX` : chaque script de scène accepte
+  `--frames a:b --res LxH --spp N --device CPU|OPTIX --out dossier` et donne le même résultat d'une machine à l'autre.
 - Taichi doit être lancé depuis un fichier `.py` (pas depuis l'entrée standard).
 
 ## 9. Règles de travail
@@ -111,3 +114,31 @@ La mesure n (1 à 12) commence à t = 0,8 + 1,6 × (n − 1) s, soit l'image 24 
 - Aucune dépense : aucun appel à un service payant (Higgsfield ou autre) sans l'accord explicite du client,
   donné palier par palier. Les agents n'appellent jamais d'outil Higgsfield.
 - Ne pas faire de commit ni de push : l'intégration est centralisée.
+- Machine partagée : les 4 cœurs servent à tout le monde en même temps. Un seul calcul lourd à la fois par agent, limité à 2 fils
+  (`OMP_NUM_THREADS=2`, Blender `-t 2`, `--threads 2`). Tester d'abord en petit ; pas de boucle d'attente active.
+
+## 10. Interfaces de fabrication du film final
+
+Toutes les images finales vont dans `out/final/`, nommées `f%04d.png` où le numéro est l'image du film (0 à 599).
+
+| Dossier | Contenu | Format |
+|---|---|---|
+| `out/final/seq01/` | fenêtre, images 0 à 71 | 1008 × 1512, PNG 16 bits sRGB, opaque |
+| `out/final/seq2/` | fenêtre, images 72 à 215 | idem |
+| `out/final/seq3/` | fenêtre, images 216 à 359 | idem |
+| `out/final/seq4/` | fenêtre, images 360 à 455 | idem |
+| `out/final/seq56/fenetre/` | fenêtre, images 456 à 599 | idem |
+| `out/final/seq56/matiere/` | matière orange posée sur la feuille entière, images 456 à 527 | 1080 × 1920, PNG 16 bits RGBA, alpha droit (non prémultiplié) |
+| `out/final/<séquence>/meta.json` | données par image pour le compositeur | voir ci-dessous |
+| `out/final/master/` | feuille entière assemblée, images 0 à 599 | 1080 × 1920, PNG 16 bits sRGB |
+
+Empilement du compositeur, du fond vers le dessus : feuille noire → fenêtre de la séquence → traits de coupe et annotations
+de marge → matière (`seq56/matiere`) → réticule. Images 0 à 5 et 594 à 599 : le compositeur pose le logo source à plat,
+quoi que contienne la séquence.
+
+`meta.json` : `{"images": {"72": {"cible": {"x": 504.0, "y": 700.0, "r": 310.0}, "n": 58450}, ...}}`
+
+- `cible` : cercle que le réticule épouse quand il tente un verrouillage ou qu'il le tient, en pixels de la fenêtre
+  (origine en haut à gauche de la fenêtre). Absent : le réticule est libre.
+- `n` : nombre de particules libres à afficher au compteur de marge. Absent : pas de compteur.
+

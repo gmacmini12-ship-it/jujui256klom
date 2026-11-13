@@ -1,9 +1,19 @@
 {
-  "projet": "OFFGRIDZ · INSOUMISE",
-  "phase": 4,
-  "phases": ["Questions", "Concept", "Préproduction", "Production", "Contrôle qualité"],
-  "etape": "Mojito réaliste en cours (image de référence en calcul) ; grains et points en fabrication",
-  "credits": { "depenses": 8.63, "vise": 200, "plafond": 345 },
-  "attente": "Rien à valider pour l'instant",
-  "action": false
+ "projet": "OFFGRIDZ · INSOUMISE",
+ "phase": 4,
+ "phases": [
+  "Questions",
+  "Concept",
+  "Préproduction",
+  "Production",
+  "Contrôle qualité"
+ ],
+ "etape": "Mojito corrigé (verre = limite physique) ; points rendus ; grains, papier et encre en fabrication",
+ "credits": {
+  "depenses": 8.63,
+  "vise": 200,
+  "plafond": 345
+ },
+ "attente": "Votre avis sur la nouvelle image du mojito (facultatif)",
+ "action": false
 }
