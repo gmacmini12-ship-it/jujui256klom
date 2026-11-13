@@ -10,18 +10,17 @@ Le film est calculé, pas généré : simulations et rendus sont reproductibles 
 
 ## État
 
-Phase 4 (production) en cours. Crédits Higgsfield dépensés : 92,09 avant la session B2 (test GPU 8,63 ; palier 3 :
-33,82 ; palier 4 : session A 36,84, session B 12,80). Cible 200, plafond 345 ; chaque palier payant est soumis au
-client avant d'être engagé.
+Phase 5 (contrôle qualité). Crédits Higgsfield dépensés : 130,42 avant la session D (test GPU 8,63 ; palier 3 : 33,82 ;
+palier 4 : 70,99 ; session C : 16,98). Cible 200, plafond 345 ; chaque dépense est soumise au client avant d'être engagée.
 
 | Séquence | Images | État |
 |---|---|---|
-| 0 – 1 Épreuve, déchirure | 0 – 71 | rendue en qualité finale (`out/final/seq01`, session B) |
-| 2 Grains | 72 – 215 | rendue en qualité finale (`out/final/seq2`) : 893 319 grains ; images 169 à 215 refaites en session A (aucun grain hors du verre) |
-| 3 Mojito | 216 – 359 | 216 à 308 finales ; 281 à 308 refaites avec le liquide confiné (session B) ; 309 à 359 refaites avec le brin de menthe corrigé (session B2) |
-| 4 Données | 360 – 455 | rendue (`build/seq4`, 6 millions de points) |
-| 5 – 6 Fond perdu, signature | 456 – 599 | matière rendue en session B2 (`out/final/seq56/matiere`) |
-| Assemblage | 0 – 599 | compositeur opérationnel (`build/final`), repli sur l'animatique pour ce qui n'est pas rendu |
+| 0 – 1 Épreuve, déchirure | 0 – 71 | finale (`out/final/seq01`, session B) ; images 57 et 58 refaites en local sans les fibres |
+| 2 Grains | 72 – 215 | finale (`out/final/seq2`) : 893 319 grains ; aucun grain hors du verre |
+| 3 Mojito | 216 – 359 | finale ; liquide confiné, brin de menthe corrigé ; images 265 à 321 refaites pour que rien ne sorte du verre (session D) |
+| 4 Données | 360 – 455 | finale (`build/seq4`, 6 millions de points), gardée telle quelle par le client |
+| 5 – 6 Fond perdu, signature | 456 – 599 | finale (`out/final/seq56/matiere`, session B2) |
+| Assemblage | 0 – 599 | `build/final/compose.py` ; contrôle `build/final/qc.py` |
 
 ## Arborescence
 
@@ -166,3 +165,25 @@ temps par image sur l'aspect définitif avant de chiffrer une session.
   sur la machine louée. La répétition locale ne pouvait pas le voir (elle tourne sur processeur, où ce réglage n'est pas
   pris). À retenir : relire dans chaque scène les branches réservées au GPU, que la répétition n'exécute pas.
 - **Session B2** (17 h 50) : encre avec OpenImageDenoise, 5 s par image avec les grains ; puis mojito 309 à 359.
+
+
+## Contrôle qualité (13 novembre) : deux relectures indépendantes, et ce qu'elles ont changé
+
+Rapports complets : `out/qc/relecture_image.md` et `out/qc/relecture_son_technique.md` ; mesures : `build/final/qc.py`.
+
+- **Son et conformité : livrable.** 282 événements sonores mesurés, tous à moins d'une image ; -14,0 LUFS. Corrections
+  faites : crête après encodage AAC ramenée de +0,1 à -1,5 dBTP (`build/audio/diffusion.py`) ; déchirement de papier
+  sur la traversée de la feuille (image 56, jusque-là muette) ; plateau de -4 dB au-dessus de 6 kHz sur les grains.
+- **Image.** Corrigé : liquide hors du verre (ci-dessous) ; éclats anguleux de la plongée dans le O (fibres masquées
+  après la traversée, images 57 et 58). Laissé tel quel par décision du client : la séquence des points, où le
+  relecteur voit trois effets d'explosion. Non modifié car validé par le client : allure du filet de sucre, front des
+  grains, coupe sur le quartier de citron, teinte du mojito, filet de versement.
+- **Liquide hors du verre.** Après la première correction, il restait une collerette de liquide sur la face extérieure
+  du verre (images 281 à 321) et la première gerbe en projetait dehors (265 à 280) : 56 images sur 98.
+  `surface.py --confiner 1` ne laisse plus rien hors de la cavité ; `build/mojito/controle_liquide.py` le vérifie.
+- **Session C (19 h 01, 16,98 crédits) : 55 images à refaire, par notre faute.** La coupe était un seuil net posé à une
+  demi-maille de la paroi ; il déplaçait la surface du liquide par marches et, vu à travers le verre, tout ondulait.
+  Les essais en petite définition ne le montraient pas. La coupe se fait désormais par intersection de champs de
+  distance (surface lisse, identique à l'origine contre la paroi), le contrôle mesure aussi cette régularité, et une
+  image a été rendue en pleine définition avant de relouer. À retenir : vérifier en pleine définition, et dans le
+  verre autant qu'au bord, avant tout rendu payant.

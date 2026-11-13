@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Contrôle qualité : la finition du liquide est corrigée et vérifiée en pleine définition (rien hors du verre, intérieur net). Les 55 images du versement sont à refaire ; leur calcul a commencé sur notre machine, sans frais",
+ "etape": "Contrôle qualité : les 55 images du versement se refont sur la machine louée avec la finition corrigée et vérifiée en pleine définition (session D lancée à 20 h 09 UTC)",
  "credits": {
   "depenses": 130.42,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre choix pour refaire les 55 images : machine louée (environ 17 crédits, film complet ce soir) ou notre machine (gratuit, film complet demain)",
- "action": true
+ "attente": "Rien : la machine s'éteint seule à la fin (15 minutes environ)",
+ "action": false
 }
