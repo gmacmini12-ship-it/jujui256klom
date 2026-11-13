@@ -15,7 +15,7 @@ J_WAVES = 16
 DT = 1.0 / 120.0            # pas de simulation (s) : 4 pas par image
 FPS = 30.0
 KF = 7.5                    # relaxation de la vitesse vers le champ (1/s)
-KS_W, KS_R, KS_S = 250.0, 420.0, 520.0
+KS_W, KS_R, KS_S = 480.0, 420.0, 520.0
 BIRTH0 = 360.0
 LC = 7.5                    # traînée du lancement (1/s)
 FLOW_RMS = 22.0
@@ -30,9 +30,9 @@ K_LOGO = LOGO / LOGO_PX     # unités monde par pixel du calque
 POP_G, POP_L, POP_M = 6e-6, 1.4e-5, 1.3e-4
 P_G, P_L, P_M = 1.2, 0.8, 0.5
 G_SMALL = 1.2
-END_PARAMS = [7.0, 1.0]     # gain de la brume orange, échelle des pics des grands disques
+END_PARAMS = [5.0, 1.0]     # gain de la brume orange, échelle des pics des grands disques
 # poussière du champ : fraction allumée, intensité allumée, intensité éteinte, surcroît net, gain bokeh, plafond bokeh
-DUST_PARAMS = [0.0015, 50.0, 0.02, 0.8, 0.08, 40.0]
+DUST_PARAMS = [0.001, 50.0, 0.02, 0.8, 0.08, 40.0]
 
 
 @ti.data_oriented
@@ -144,12 +144,12 @@ class Engine:
     @ti.func
     def word_ramp(self, ii: ti.u32, t: ti.f32) -> ti.f32:
         dw = 5.0 * self.hash01(ii, ti.u32(11)); dd = 5.0 * self.hash01(ii, ti.u32(12))
-        return self.sm((t - (376.0 + dw)) / 9.0) * (1.0 - self.sm((t - (407.0 + dd)) / 6.0))
+        return self.sm((t - (373.0 + 0.8 * dw)) / 8.0) * (1.0 - self.sm((t - (407.0 + dd)) / 6.0))
 
     @ti.func
     def relief_ramp(self, ii: ti.u32, t: ti.f32, orange: ti.i32, ty: ti.f32) -> ti.f32:
-        dr = 6.0 * self.hash01(ii, ti.u32(13))
-        up = self.sm((t - (406.0 + dr)) / 10.0)
+        dr = 4.0 * self.hash01(ii, ti.u32(13))
+        up = self.sm((t - (405.0 + dr)) / 9.0)
         yn = ti.min(ti.max((ty + 504.0) / 1008.0, 0.0), 1.0)
         h = self.hash01(ii, ti.u32(14))
         rel = 0.0
@@ -342,16 +342,17 @@ class Engine:
                             wq = 1.0 + rw * (q * q - 1.0)       # luminance de surface constante quand la pastille gonfle
                         up = 0.0
                         if ((kd >> 1) & 1) == 1:
-                            up = self.sm((tt - (406.0 + 6.0 * self.hash01(ii, ti.u32(13)))) / 10.0)
+                            up = self.sm((tt - (405.0 + 4.0 * self.hash01(ii, ti.u32(13)))) / 9.0)
                             up *= 0.12 + 0.88 * (1.0 - self.sm((p - self.trel[i]).norm() / 500.0))
                         if rw > 0.0:
                             rw *= 0.12 + 0.88 * (1.0 - self.sm((p - self.word_target(i, tt)).norm() / 500.0))
                         sb = ti.max(rw, up)                       # fondu champ -> forme
-                        amp = ti.max(rw, 0.3 * up)                # amplitude en forme (le relief est plus sage que le mot)
+                        amp = ti.max(1.4 * rw, 0.15 * up)                # amplitude en forme (le relief est plus sage que le mot)
                         bn = b / self.scale
                         dust = self.dp[2]
                         if self.hash01(ii, ti.u32(22)) < self.dp[0]:
                             dust = self.dp[1] * (1.0 + self.dp[3] * ti.exp(-bn / 3.0) + ti.min(self.dp[4] * bn * bn, self.dp[5]))
+                        dust *= 1.0 - 0.65 * self.sm((tt - 380.0) / 8.0) * (1.0 - 0.5 * self.sm((tt - 408.0) / 6.0))
                         haze = ti.exp(-ti.max(zc - zf, 0.0) / 4200.0)
                         fin = self.sm((tt - birth) / 1.5)
                         bk = 1.0

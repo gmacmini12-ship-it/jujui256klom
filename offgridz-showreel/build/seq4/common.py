@@ -17,7 +17,7 @@ D = 1800.0                     # distance caméra-plan z=0 ; focale en px = D (�
 FOCAL = 1800.0
 LOGO = 1008.0                  # côté du logo dans la fenêtre (px)
 LOGO_PX = 1254                 # côté du calque
-ZH = 130.0                     # demi-profondeur du bas-relief
+ZH = 100.0                     # demi-profondeur du bas-relief
 VP = np.array([0.0, 450.0, D - 9000.0], np.float32)   # point source (point de fuite, un peu au-dessus du centre)
 VP_RADIUS = 350.0
 
@@ -78,6 +78,6 @@ def camera(tf):
     # ouverture : mot (net, fond flou) -> relief (net) -> grandes bokehs à la fin
     A = 20.0
     A = lerp(A, 12.0, smooth((tf - 402.0) / 10.0))
-    A = lerp(A, 230.0, smooth((tf - 436.0) / 19.0) ** 1.3)
+    A = lerp(A, 190.0, smooth((tf - 436.0) / 19.0) ** 1.3)
     return dict(C=C.astype(np.float32), right=right.astype(np.float32), up=up.astype(np.float32),
                 fwd=fwd.astype(np.float32), zf=float(R), aperture=float(A), focal=FOCAL)

@@ -384,7 +384,7 @@ def make_scene(name, scale, **kw):
     if name == "filet":
         return Filet(scale=scale)
     if name == "deferlement":
-        return Deferlement(scale=scale, variant=kw.get("variant", "spec"))
+        return Deferlement(scale=scale, variant=kw.get("variant", "spec"), vol_factor=kw.get("vol_factor"))
     raise SystemExit(f"unknown scene {name}")
 
 
@@ -397,11 +397,12 @@ def main(argv=None):
     ap.add_argument("--threads", type=int, default=1, help="CPU threads (1 = bitwise deterministic)")
     ap.add_argument("--fresh", action="store_true", help="ignore checkpoint")
     ap.add_argument("--variant", default="spec", choices=["spec", "adj"])
+    ap.add_argument("--vol-factor", type=float, default=None, help="deferlement: emitted volume / (tray + 3 mm sheet)")
     ap.add_argument("--out", default=None)
     ap.add_argument("--ckpt-every", type=int, default=1)
     ap.add_argument("--export-dead", action="store_true")
     A = ap.parse_args(argv)
-    sc = make_scene(A.scene, A.scale, variant=A.variant)
+    sc = make_scene(A.scene, A.scale, variant=A.variant, vol_factor=A.vol_factor)
     outdir = A.out or os.path.join(OUT, A.scene if not (A.scene == "deferlement" and A.variant != "spec") else A.scene + "_" + A.variant)
     runner = Runner(sc, outdir, arch=A.arch, threads=A.threads, export_dead=A.export_dead, ckpt_every=A.ckpt_every)
     fa, fb = sc.export_range

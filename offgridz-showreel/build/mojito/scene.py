@@ -159,6 +159,102 @@ def nuage(nom, proto, positions, normales, echelles, mat):
     return lier(nom, me, mat)
 
 
+# --- le verre est une limite physique ---------------------------------------------------------------
+JEU = 0.0006                    # distance minimale entre un objet et le verre
+
+
+def depassement(points):
+    """Pour des points (N, 3) en repère monde : de combien chacun traverse la paroi intérieure ou le fond du verre.
+    Valeur positive = le point est dans le verre (matière) ou au-delà. Les points au-dessus du bord sont libres."""
+    z = points[:, 2] - Z0
+    r = np.hypot(points[:, 0], points[:, 1])
+    sous_le_bord = z < H_VERRE
+    paroi = np.where(sous_le_bord, r - (r_int(np.clip(z, 0.0, H_VERRE)) - JEU), -1.0)
+    fond = np.where(sous_le_bord, (E_FOND + JEU) - z, -1.0)
+    return paroi, fond
+
+
+def contenir_pose(sommets, origine, rot, iterations=200):
+    """Déplace une pose rigide (origine, rotation) jusqu'à ce que tous ses sommets soient à l'intérieur du verre."""
+    origine = np.array(origine, dtype=np.float64); R = np.array(rot)
+    for _ in range(iterations):
+        monde = sommets @ R.T + origine
+        paroi, fond = depassement(monde)
+        i, j = int(np.argmax(paroi)), int(np.argmax(fond))
+        if paroi[i] <= 0 and fond[j] <= 0:
+            return Vector(origine)
+        if fond[j] > 0:
+            origine[2] += fond[j] + 1e-5
+        if paroi[i] > 0:
+            d = monde[i, :2] / max(np.hypot(*monde[i, :2]), 1e-9)
+            origine[:2] -= d * (paroi[i] + 1e-5)
+    raise RuntimeError("contenir_pose : impossible de faire tenir l'objet dans le verre")
+
+
+def sommets_de(mesh):
+    co = np.empty(len(mesh.vertices) * 3, dtype=np.float64); mesh.vertices.foreach_get("co", co)
+    return co.reshape(-1, 3)
+
+
+def figer(ob):
+    """Applique la transformation monde de l'objet à ses sommets et le détache de son parent."""
+    bpy.context.view_layer.update()
+    M = np.array(ob.matrix_world)
+    monde = sommets_de(ob.data) @ M[:3, :3].T + M[:3, 3]
+    ob.parent = None
+    ob.matrix_world = Matrix.Identity(4)
+    return monde
+
+
+def plaquer_dans_le_verre(ob):
+    """Feuille souple à l'intérieur du verre : chaque sommet est ramené en deçà de la paroi et au-dessus du fond."""
+    monde = figer(ob)
+    paroi, fond = depassement(monde)
+    r = np.hypot(monde[:, 0], monde[:, 1])
+    k = np.where(paroi > 0, (r - paroi) / np.maximum(r, 1e-9), 1.0)
+    monde[:, 0] *= k; monde[:, 1] *= k
+    monde[:, 2] += np.maximum(fond, 0.0)
+    ob.data.vertices.foreach_set("co", monde.ravel()); ob.data.update()
+
+
+def poser_sur_le_bord(ob):
+    """Feuille d'un brin qui sort du verre : rien ne pend à l'extérieur sous le niveau du bord (elle repose dessus),
+    et rien ne traverse la paroi."""
+    monde = figer(ob)
+    z = monde[:, 2] - Z0
+    r = np.hypot(monde[:, 0], monde[:, 1])
+    dehors = r > r_int(H_VERRE) - 0.0015
+    haut = H_VERRE + 0.0014
+    monde[:, 2] = np.where(dehors & (z < haut), Z0 + haut + 0.25 * (haut - z), monde[:, 2])
+    ob.data.vertices.foreach_set("co", monde.ravel()); ob.data.update()
+
+
+def verifier_limites():
+    """Contrôle final : aucun objet ne traverse le verre. Lève une erreur sinon."""
+    exclus = {"verre", "liquide", "comptoir", "sous_verre", "buee", "enseigne", "barre_orange", "carton_fond", "camera"}
+    dg = bpy.context.evaluated_depsgraph_get()
+    fautes = []
+    for ob in bpy.context.scene.objects:
+        if ob.type != "MESH" or ob.name in exclus:
+            continue
+        ev = ob.evaluated_get(dg); me = ev.to_mesh()
+        M = np.array(ev.matrix_world)
+        monde = sommets_de(me) @ M[:3, :3].T + M[:3, 3]
+        ev.to_mesh_clear()
+        z = monde[:, 2] - Z0; r = np.hypot(monde[:, 0], monde[:, 1])
+        dans = (z > 0) & (z < H_VERRE)
+        zc = np.clip(z, 0.0, H_VERRE)
+        mur = dans & (r > r_int(zc) - 0.00005) & (r < r_ext(zc) + 0.00005)
+        socle = (z > 0) & (z < E_FOND - 0.00005) & (r < r_ext(zc))
+        n = int(mur.sum() + socle.sum())
+        if n:
+            prof = float(np.max(np.where(mur, r - r_int(zc), 0.0))) if mur.any() else 0.0
+            fautes.append(f"{ob.name} : {n} sommets dans le verre (jusqu'à {prof * 1000:.2f} mm dans la paroi)")
+    if fautes:
+        raise RuntimeError("LIMITES : des objets traversent le verre\n  " + "\n  ".join(fautes))
+    print("LIMITES : aucun objet ne traverse le verre", flush=True)
+
+
 # --- verre, liquide, décor ------------------------------------------------------------------------
 def faire_verre():
     verre = materiau("verre", **{"Transmission Weight": 1.0, "IOR": 1.5, "Roughness": 0.0, "Base Color": (1, 1, 1, 1)})
@@ -383,6 +479,86 @@ def materiaux_citron():
     return ecorce, pulpe
 
 
+def materiau_rondelle():
+    """Tranche de citron vert : écorce, liseré blanc, dix quartiers séparés par leurs membranes, vésicules rayonnantes."""
+    m = bpy.data.materials.get("rondelle")
+    if m:
+        return m
+    m = materiau("rondelle", **{"Roughness": 0.18, "Subsurface Weight": 0.55, "Transmission Weight": 0.25, "IOR": 1.34,
+                              "Coat Weight": 0.5, "Coat Roughness": 0.1})
+    nt = m.node_tree; b = nt.nodes.get("Principled BSDF")
+    b.inputs["Subsurface Radius"].default_value = (0.6, 0.9, 0.25); b.inputs["Subsurface Scale"].default_value = 0.003
+    coord = nt.nodes.new("ShaderNodeTexCoord"); sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(coord.outputs["Object"], sep.inputs["Vector"])
+
+    def math_(op, a, bb=None, val=None):
+        n = nt.nodes.new("ShaderNodeMath"); n.operation = op
+        nt.links.new(a, n.inputs[0])
+        if bb is not None:
+            nt.links.new(bb, n.inputs[1])
+        elif val is not None:
+            n.inputs[1].default_value = val
+        return n.outputs[0]
+
+    def plage(v, a0, a1, lisse=True):
+        n = nt.nodes.new("ShaderNodeMapRange"); n.interpolation_type = "SMOOTHSTEP" if lisse else "LINEAR"
+        n.inputs["From Min"].default_value = a0; n.inputs["From Max"].default_value = a1
+        nt.links.new(v, n.inputs["Value"])
+        return n.outputs["Result"]
+
+    def melange(fac, a, bcol):
+        n = nt.nodes.new("ShaderNodeMix"); n.data_type = "RGBA"
+        nt.links.new(fac, n.inputs["Factor"])
+        for entree, v in (("A", a), ("B", bcol)):
+            if isinstance(v, tuple):
+                n.inputs[entree].default_value = v
+            else:
+                nt.links.new(v, n.inputs[entree])
+        return n.outputs["Result"]
+    x, y = sep.outputs["X"], sep.outputs["Y"]
+    rho = math_("DIVIDE", math_("SQRT", math_("ADD", math_("MULTIPLY", x, x), math_("MULTIPLY", y, y))), val=R_CITRON[0])
+    theta = math_("ARCTAN2", y, x)
+    quartiers = math_("ABSOLUTE", math_("SINE", math_("MULTIPLY", theta, val=5.0)))          # 10 membranes
+    comb = nt.nodes.new("ShaderNodeCombineXYZ")
+    nt.links.new(math_("MULTIPLY", rho, val=1.1), comb.inputs["X"]); nt.links.new(math_("MULTIPLY", theta, val=7.0), comb.inputs["Y"])
+    vor = nt.nodes.new("ShaderNodeTexVoronoi"); vor.inputs["Scale"].default_value = 9.0
+    nt.links.new(comb.outputs["Vector"], vor.inputs["Vector"])
+    pulpe = melange(vor.outputs["Distance"], (0.40, 0.60, 0.09, 1), (0.68, 0.82, 0.25, 1))
+    blanc = (0.82, 0.88, 0.66, 1)
+    c = melange(plage(quartiers, 0.13, 0.04), pulpe, blanc)                               # membranes
+    c = melange(plage(rho, 0.13, 0.06), c, blanc)                                         # cœur
+    c = melange(plage(rho, 0.83, 0.88), c, blanc)                                         # liseré sous l'écorce
+    c = melange(plage(rho, 0.93, 0.955), c, (0.05, 0.19, 0.012, 1))                       # écorce
+    nt.links.new(c, b.inputs["Base Color"])
+    bump = nt.nodes.new("ShaderNodeBump"); bump.inputs["Strength"].default_value = 0.45; bump.inputs["Distance"].default_value = 0.0004
+    nt.links.new(vor.outputs["Distance"], bump.inputs["Height"]); nt.links.new(bump.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
+def maillage_rondelle(epaisseur=0.0048):
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=96, radius1=R_CITRON[0], radius2=R_CITRON[0], depth=epaisseur)
+    me = bpy.data.meshes.new("rondelle"); bm.to_mesh(me); bm.free()
+    return me
+
+
+def pose_rondelle():
+    """Contre la paroi, face à la caméra, à mi-hauteur."""
+    az, z = math.radians(262), 0.083
+    rad = Vector((math.cos(az), math.sin(az), 0.0)); tan = Vector((-math.sin(az), math.cos(az), 0.0))
+    rot = repere(tan + Vector((0, 0, 0.25)), rad + Vector((0, 0, -0.10)))
+    origine = rad * (r_int(z) - 0.0105) + Vector((0, 0, Z0 + z))
+    me = maillage_rondelle(); sommets = sommets_de(me); bpy.data.meshes.remove(me)
+    return contenir_pose(sommets, origine, rot), rot
+
+
+def faire_rondelle(nom):
+    ob = lier(nom, maillage_rondelle(), materiau_rondelle(), lisse=False)
+    origine, rot = pose_rondelle()
+    ob.location = origine; ob.rotation_euler = rot.to_euler()
+    return ob
+
+
 def faire_quartier(nom):
     ecorce, pulpe = materiaux_citron()
     ob = lier(nom, maillage_quartier(), None, lisse=True)
@@ -444,19 +620,19 @@ def materiau_menthe():
 def maillage_feuille(longueur, graine, nu=30, nv=15):
     """Feuille de menthe : ovale pointue, bord denté, pli central, gaufrage entre nervures, courbure propre."""
     rnd = random.Random(graine)
-    largeur = longueur * rnd.uniform(0.25, 0.30)
+    largeur = longueur * rnd.uniform(0.27, 0.32)
     courbe = rnd.uniform(0.25, 0.7); pli = rnd.uniform(0.12, 0.30); vrille = rnd.uniform(-0.5, 0.5)
     verts, uvs = [], []
     for i in range(nu + 1):
         u = i / nu
-        w = largeur * 2.05 * (u ** 0.62) * ((1 - u) ** 0.58)
-        dent = 1.0 + 0.085 * (1.0 - abs(((u * 13.0) % 1.0) * 2 - 1)) * min(1.0, 6 * u * (1 - u) + 0.2)
+        w = largeur * 2.09 * (u ** 0.50) * ((1 - u) ** 0.75)          # ovale : le plus large au premier tiers
+        dent = 1.0 + 0.060 * (1.0 - abs(((u * 17.0) % 1.0) * 2 - 1)) * min(1.0, 6 * u * (1 - u) + 0.2)
         for j in range(nv + 1):
             v = j / nv * 2 - 1
             x = v * w * (dent if abs(v) > 0.86 else 1.0)
             s = u - 0.42 * abs(v)
             gaufre = 0.0011 * (0.5 + 0.5 * math.cos(2 * math.pi * s * 11.0)) * (1 - abs(v)) * (abs(v) > 0.05)
-            gondole = 0.0016 * (longueur / 0.04) * math.sin(u * 19.0 + graine) * abs(v) ** 2.2
+            gondole = 0.0009 * (longueur / 0.04) * math.sin(u * 19.0 + graine) * abs(v) ** 2.2
             z = (pli * abs(x) - courbe * longueur * u * u * 0.35 + 1.7 * gaufre * (longueur / 0.04) + gondole
                  - 0.0009 * math.exp(-(v / 0.06) ** 2))
             a = vrille * u
@@ -481,25 +657,35 @@ def faire_feuille(nom, longueur, graine):
     return ob
 
 
-def faire_brin(nom, base, direction, graine):
-    """Brin de menthe : tige et paires de feuilles opposées, de plus en plus petites vers le sommet."""
+def faire_brin(nom, base, passage, graine):
+    """Brin de menthe planté dans le verre. `base` : pied de la tige (dans le verre) ; `passage` : point (x, y) où la tige
+    franchit le plan du bord, forcément à l'intérieur de l'ouverture. Les feuilles ne poussent qu'au-dessus du bord."""
     rnd = random.Random(graine)
     tige_mat = bpy.data.materials.get("tige") or materiau("tige", **{"Base Color": (0.10, 0.26, 0.05, 1), "Roughness": 0.5, "Subsurface Weight": 0.2})
+    base = Vector(base)
+    sortie = Vector((passage[0], passage[1], Z0 + H_VERRE))
+    assert math.hypot(passage[0], passage[1]) < r_int(H_VERRE) - 0.004, "le brin doit sortir par l'ouverture du verre"
+    axe = (sortie - base).normalized()
+    s_bord = (sortie - base).length
+    hauteur = s_bord + 0.058
     racine = bpy.data.objects.new(nom, None); bpy.context.scene.collection.objects.link(racine)
     racine.location = base
-    racine.rotation_euler = Vector(direction).to_track_quat("Z", "Y").to_euler()
-    hauteur = 0.105
+    racine.rotation_euler = axe.to_track_quat("Z", "Y").to_euler()
     tige = depuis_bmesh(nom + "_tige", lambda bm: bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.0013,
                                                                        radius2=0.0007, depth=hauteur), tige_mat)
     tige.location = (0, 0, hauteur / 2); tige.parent = racine
-    etages = [(0.036, 0.050), (0.058, 0.045), (0.077, 0.036), (0.091, 0.026), (0.100, 0.017), (0.104, 0.011)]
-    for k, (z, long_) in enumerate(etages):
+    feuilles = []
+    etages = [(0.006, 0.040), (0.019, 0.037), (0.031, 0.031), (0.041, 0.024), (0.049, 0.017), (0.054, 0.010)]
+    for k, (ds, long_) in enumerate(etages):
         for cote in (0, 1):
             f = faire_feuille(f"{nom}_f{k}{cote}", long_ * rnd.uniform(0.92, 1.08), graine * 31 + k * 2 + cote)
             azimut = math.radians(90 * k + 180 * cote + rnd.uniform(-16, 16))
-            ouverture = math.radians(rnd.uniform(62, 84) - 9 * k)          # angle avec la tige : étalé en bas, dressé en haut
+            ouverture = math.radians(rnd.uniform(50, 70) - 7 * k)          # angle avec la tige : étalé en bas, dressé en haut
             f.rotation_euler = (Matrix.Rotation(azimut, 4, "Z") @ Matrix.Rotation(math.pi / 2 - ouverture, 4, "X")).to_euler()
-            f.location = (0, 0, z); f.parent = racine
+            f.location = (0, 0, s_bord + ds); f.parent = racine
+            feuilles.append(f)
+    for f in feuilles:
+        poser_sur_le_bord(f)
     return racine
 
 
@@ -549,9 +735,10 @@ def faire_sucre(graine=5):
     sucre = materiau("sucre", **{"Base Color": (0.80, 0.36, 0.07, 1), "Roughness": 0.3, "Subsurface Weight": 0.5,
                                 "Transmission Weight": 0.3, "IOR": 1.5})
     k = 2600
-    a = rng.uniform(0, 2 * np.pi, k); r = 0.029 * np.sqrt(rng.random(k))
+    a = rng.uniform(0, 2 * np.pi, k); r = (r_int(E_FOND) - 0.0045) * np.sqrt(rng.random(k))
     tas = 0.0035 * np.exp(-((r - 0.012) / 0.012) ** 2) * rng.random(k)
-    pos = np.stack([r * np.cos(a), r * np.sin(a), Z0 + E_FOND + 0.0004 + tas], 1)
+    # le plus gros cristal a une demi-diagonale de 1,2 mm : on le pose au-dessus du fond, jamais dedans
+    pos = np.stack([r * np.cos(a), r * np.sin(a), Z0 + E_FOND + 0.0013 + tas], 1)
     nor = rng.normal(size=(k, 3))
     ech = rng.uniform(0.00028, 0.00052, (k, 1)) * rng.uniform(0.7, 1.3, (k, 3))
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=2.0)
@@ -563,8 +750,17 @@ def faire_sucre(graine=5):
 
 
 # --- poses choisies ----------------------------------------------------------------------------------
-PAILLE_POS = (0.013, 0.014, Z0 + 0.012 + 0.103)
-PAILLE_ROT = (math.radians(-7), math.radians(8), 0.0)
+def pose_paille(longueur=0.215, rayon=0.0031):
+    """La paille repose sur le fond du verre et s'appuie contre le bord intérieur, sans rien traverser."""
+    bas = Vector((-0.012, -0.004, Z0 + E_FOND + rayon + 0.0012))
+    az = math.radians(42)
+    appui = Vector((math.cos(az), math.sin(az), 0.0)) * (r_int(H_VERRE) - rayon - 0.0012) + Vector((0, 0, Z0 + H_VERRE - 0.001))
+    axe = (appui - bas).normalized()
+    centre = bas + axe * (longueur / 2 - 0.002)
+    return centre, axe.to_track_quat("Z", "Y").to_euler()
+
+
+PAILLE_POS, PAILLE_ROT = pose_paille()
 
 
 def repere(x, z):
@@ -582,7 +778,8 @@ def poses_quartiers():
     face = Matrix.Rotation(math.radians(-26), 3, "Z")                      # ramène une face de coupe sur le plan local XZ
     rot = repere(tan, Vector((0.10, 0.0, 1.0)) + 0.30 * tan) @ Matrix.Rotation(math.radians(90), 3, "X") @ face
     origine = rad * (r_int(z) - 0.0030) - tan * 0.0115 + Vector((0, 0, Z0 + z))
-    poses.append((origine, rot))
+    me = maillage_quartier(); sommets = sommets_de(me); bpy.data.meshes.remove(me)
+    poses.append((contenir_pose(sommets, origine, rot), rot))
     return poses
 
 
@@ -594,7 +791,7 @@ def tasser(nombre=8, graine=11, images=230):
     Un tube de guidage invisible prolonge le verre vers le haut pendant la chute : rien ne peut rebondir dehors.
     Les glaçons qui finissent au-dessus du bord sont écartés.
     """
-    cache = os.path.join(SORTIE, f"tassement_v5_{nombre}_{graine}_{int(T_GLACON * 1000)}.json")
+    cache = os.path.join(SORTIE, f"tassement_v8_{nombre}_{graine}_{int(T_GLACON * 1000)}.json")
     if os.path.exists(cache):
         return json.load(open(cache))
     sc = bpy.context.scene
@@ -618,10 +815,20 @@ def tasser(nombre=8, graine=11, images=230):
     guide.location = (0, 0, Z0 + H_VERRE - 0.004 + 0.7); passif(guide); provisoires.append(guide)
     tige = depuis_bmesh("guide_paille", lambda bm: bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=0.0036,
                                                                         radius2=0.0036, depth=0.215))
-    tige.location = PAILLE_POS; tige.rotation_euler = Euler(PAILLE_ROT); passif(tige, "CONVEX_HULL"); provisoires.append(tige)
+    # La paille est enfoncée après les premiers glaçons, comme au bar : elle descend le long de son axe
+    # entre les images 95 et 150 et écarte la glace sur son passage (corps passif animé).
+    tige.rotation_euler = PAILLE_ROT; passif(tige, "CONVEX_HULL"); provisoires.append(tige)
+    tige.rigid_body.kinematic = True
+    axe_paille = Vector((0.0, 0.0, 1.0)); axe_paille.rotate(PAILLE_ROT)
+    tige.location = Vector(PAILLE_POS) + axe_paille * 0.24
+    tige.keyframe_insert("location", frame=1); tige.keyframe_insert("location", frame=95)
+    tige.location = PAILLE_POS; tige.keyframe_insert("location", frame=150)
     for k, (origine, rot) in enumerate(poses_quartiers()):
         q = lier(f"guide_quartier{k}", maillage_quartier(), None)
         q.location = origine; q.rotation_euler = rot.to_euler(); passif(q, "CONVEX_HULL"); provisoires.append(q)
+    rondelle = lier("guide_rondelle", maillage_rondelle(), None)
+    origine, rot = pose_rondelle()
+    rondelle.location = origine; rondelle.rotation_euler = rot.to_euler(); passif(rondelle, "CONVEX_HULL"); provisoires.append(rondelle)
     rnd = random.Random(graine)
     corps = []
     for k in range(nombre + 1):
@@ -711,8 +918,12 @@ def faire_enseigne(caractere, force):
     mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY"; mul.inputs[1].default_value = force
     sortie = nt.nodes.new("ShaderNodeOutputMaterial")
     nt.links.new(tex.outputs["Color"], mul.inputs[0]); nt.links.new(mul.outputs["Value"], em.inputs["Strength"])
-    nt.links.new(em.outputs["Emission"], sortie.inputs["Surface"])
-    largeur, hauteur = 0.40, 0.10
+    # hors des lettres le panneau est transparent : la barre orange passe derrière le mot, comme dans le logo
+    vide = nt.nodes.new("ShaderNodeBsdfTransparent"); mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(tex.outputs["Color"], mix.inputs["Fac"])
+    nt.links.new(vide.outputs["BSDF"], mix.inputs[1]); nt.links.new(em.outputs["Emission"], mix.inputs[2])
+    nt.links.new(mix.outputs["Shader"], sortie.inputs["Surface"])
+    largeur, hauteur = 0.234, 0.0585
 
     def plan(bm):
         uv = bm.loops.layers.uv.new("uv")
@@ -722,7 +933,7 @@ def faire_enseigne(caractere, force):
         for boucle, c in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
             boucle[uv].uv = c
     ob = depuis_bmesh("enseigne", plan, m, lisse=False)
-    ob.location = (-0.01, 0.78, 0.335)
+    ob.location = (0.006, 0.33, 0.2415)
     return ob
 
 
@@ -779,8 +990,10 @@ def eclairer(args):
         panneau_lumineux("carton_fond", (-0.20, 0.34, 0.11), 0.70, 0.34, lin(CREME), args.fond, camera=False, reflets=False,
                          degrade=(0.02, 0.26))
     if args.aretes > 0:
-        lumiere_surface("arete_gauche", (-0.30, 0.22, 0.15), (0, 0, 0.09), 0.04, 2.2 * args.aretes, lin(CREME), taille_y=0.45)
-        lumiere_surface("arete_droite", (0.33, 0.14, 0.15), (0, 0, 0.09), 0.04, 1.4 * args.aretes, lin(CREME), taille_y=0.45)
+        # boîtes à lumière larges, de trois quarts arrière : leur reflet sur le cylindre est une plage en dégradé,
+        # pas un filet blanc uniforme (qui se lisait comme un contour dessiné)
+        lumiere_surface("arete_gauche", (-0.34, 0.20, 0.16), (0, 0, 0.09), 0.15, 4.4 * args.aretes, lin(CREME), taille_y=0.50)
+        lumiere_surface("arete_droite", (0.36, 0.12, 0.16), (0, 0, 0.09), 0.11, 2.6 * args.aretes, lin(CREME), taille_y=0.50)
     if args.dessus > 0:
         lumiere_surface("dessus", (-0.05, -0.10, 0.60), (0, 0, 0.12), 0.40, 6.0 * args.dessus, lin(CREME))
     if args.eclat > 0:        # petite source dure : elle fait scintiller les arêtes de la glace et les gouttes
@@ -850,19 +1063,23 @@ def construire(args):
             ob = faire_glacon(f"glacon{k}", T_GLACON, 100 + k) if p["genre"] == "glacon" else faire_quartier("quartier_tombe")
             ob.location = p["loc"]; ob.rotation_euler = Euler(p["rot"])
             if p["genre"] == "glacon":
+                ob.scale = (0.94, 0.94, 0.94)          # la fonte déplace la surface : on reste en deçà de la boîte simulée
+            if p["genre"] == "glacon":
                 glacons.append(ob)
     for k, (origine, rot) in enumerate(poses_quartiers()):
         q = faire_quartier(f"quartier{k}")
         q.location = origine; q.rotation_euler = rot.to_euler()
+    faire_rondelle("rondelle")
     faire_liquide()
     paille = faire_paille()
     paille.location = PAILLE_POS
-    paille.rotation_euler = Euler(PAILLE_ROT)
+    paille.rotation_euler = PAILLE_ROT
     if args.garniture:
         faire_sucre()
         faire_bulles(glacons)
         faire_buee()
-        faire_brin("brin", (-0.012, 0.012, Z0 + 0.078), (-0.22, 0.10, 1.0), 7)
+        faire_brin("brin", (-0.010, 0.010, Z0 + 0.082), (-0.023, 0.016), 7)
+        faire_brin("brin2", (-0.005, -0.010, Z0 + 0.092), (-0.016, -0.022), 12)
         rnd = random.Random(3)
         for k, (az, z) in enumerate(((205, 0.086), (268, 0.074), (322, 0.044), (286, 0.112), (232, 0.108), (150, 0.060))):   # feuilles plaquées contre la paroi
             f = faire_feuille(f"feuille_paroi{k}", rnd.uniform(0.024, 0.034), 60 + k)
@@ -870,7 +1087,9 @@ def construire(args):
             f.location = (r * math.cos(a), r * math.sin(a), Z0 + z)
             f.rotation_euler = (Matrix.Rotation(a + math.pi / 2, 4, "Z") @ Matrix.Rotation(math.radians(90 + rnd.uniform(-25, 25)), 4, "X")
                                 @ Matrix.Rotation(rnd.uniform(-0.6, 0.6), 4, "Y")).to_euler()
+            plaquer_dans_le_verre(f)
     eclairer(args); cadrer(args)
+    verifier_limites()
 
 
 if __name__ == "__main__":
@@ -886,12 +1105,12 @@ if __name__ == "__main__":
     ap.add_argument("--barre", type=float, default=1.3, help="luminance de la barre orange")
     ap.add_argument("--caustiques", type=float, default=0.0, help="puissance de la lumière de caustiques (W), 0 = aucune")
     ap.add_argument("--fond", type=float, default=0.0, help="luminance du carton caché derrière le verre")
-    ap.add_argument("--tente", type=float, default=1.15, help="luminance de la tente vue à travers le verre")
+    ap.add_argument("--tente", type=float, default=1.4, help="luminance de la tente vue à travers le verre")
     ap.add_argument("--aretes", type=float, default=0.5)
-    ap.add_argument("--dessus", type=float, default=1.0)
+    ap.add_argument("--dessus", type=float, default=1.25)
     ap.add_argument("--eclat", type=float, default=1.0, help="petite source dure pour les reflets vifs")
     ap.add_argument("--enseigne", default="instrument-serif-italic", help="caractère de l'enseigne floue ('' = aucune)")
-    ap.add_argument("--force_enseigne", type=float, default=0.55)
+    ap.add_argument("--force_enseigne", type=float, default=0.42)
     ap.add_argument("--vue", default="Standard", choices=["AgX", "Standard", "Filmic", "Khronos PBR Neutral"])
     ap.add_argument("--exposition", type=float, default=0.0)
     ap.add_argument("--blend", default="")

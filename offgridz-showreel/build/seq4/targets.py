@@ -87,16 +87,16 @@ def field_positions(n, rng):
     chunk = int(min(4_000_000, max(200_000, n * 2)))
     while got < n:
         u = rng.random((chunk, 3), dtype=np.float32)
-        acc = map_coordinates(rho, [u[:, 0] * 19, u[:, 1] * 25, u[:, 2] * 25], order=1, mode="wrap")
+        ang = u[:, 0] * 2 * np.pi; rad = 1050.0 * np.sqrt(u[:, 1])      # disque écran de 1050 px de rayon (jaillissement circulaire)
+        sx, sy = rad * np.cos(ang), rad * np.sin(ang)
+        gi = np.clip((sx / 2100.0 + 0.5) * 25, 0, 25); gj = np.clip((sy / 2100.0 + 0.5) * 25, 0, 25)
+        acc = map_coordinates(rho, [u[:, 2] * 19, gi, gj], order=1, mode="wrap")
         keep = rng.random(chunk) < acc
-        u = u[keep]
-        m = min(len(u), n - got)
-        u = u[:m]
-        zc = (a + u[:, 2] * (b - a)) ** 2
-        sx = (u[:, 0] - 0.5) * 1400.0
-        sy = (u[:, 1] - 0.5) * 1900.0
-        out[got:got + m, 0] = sx * zc / FOCAL
-        out[got:got + m, 1] = sy * zc / FOCAL
+        m = min(int(keep.sum()), n - got)
+        idx = np.nonzero(keep)[0][:m]
+        zc = (a + u[idx, 2] * (b - a)) ** 2
+        out[got:got + m, 0] = sx[idx] * zc / FOCAL
+        out[got:got + m, 1] = sy[idx] * zc / FOCAL
         out[got:got + m, 2] = D - zc
         got += m
     return out

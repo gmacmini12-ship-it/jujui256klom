@@ -339,19 +339,63 @@ def micro_bench():
     return out
 
 
-def full_scale(scene, run, rep, bench):
-    """Extrapolate to full scale.  Substeps per film frame: dt = cfl*dx/(c + vmax); particle cost on GPU from the
-    measured reference (2.15 ns/particle/substep, fluid, 192^3) times sand/fluid ratio measured here; grid cost
-    assumed 0.2 ns/node/substep (bandwidth bound estimate -- an assumption, not measured)."""
-    info = run["info"]
-    sc = run["scale"]
-    N_full = (info["N"] if scene != "filet" else None)
-    return None
+def write_throughput(bench):
+    """Throughput table + extrapolation to full scale.
+    Assumptions (stated in the report): substeps per frame scale as 1/dx at CFL 0.4 with c = 16.3 m/s (sand, E=3e5) plus the measured peak
+    speed; GPU particle cost = 8.6 ms / 4e6 = 2.15 ns per particle per substep (reference fluid benchmark; measured sand/fluid cost ratio
+    on this CPU = %.2f); GPU grid cost = 0.2 ns per node per substep (bandwidth-bound ESTIMATE, not measured; dense grid; a sparse grid
+    would remove most of it)."""
+    ratio = bench["sand_over_fluid"]
+    t_p = GPU_REF_MS * 1e-3 / GPU_REF_N * ratio
+    t_n = 0.2e-9
+    scenes = [("dalle", "dalle", 131, 7.6e6, 0.3e-3), ("filet", "filet", 54, None, 0.3e-3), ("deferlement", "deferlement", 24, None, 0.4e-3),
+              ("deferlement_adj", "deferlement (adj variant)", 24, None, 0.4e-3), ("deferlement_adj3", "deferlement (adj, 3x volume)", 24, None, 0.4e-3)]
+    spf = 2 * 0.9565
+    rows = []
+    for d, label, nframes, nfull, dgrain in scenes:
+        p = os.path.join(OUT, d, "run.json")
+        if not os.path.exists(p):
+            continue
+        r = json.load(open(p))
+        info = r["info"]
+        N, dx = info["N"], info["dx"]
+        nodes = int(np.prod(info["grid"]))
+        scale = r["scale"]
+        msub = 1000 * r["wall_in_substeps"] / max(r["substeps"], 1)
+        sub_frame = r["substeps"] / nframes
+        dx_full = spf * dgrain
+        Nf = N / scale
+        nodes_full = nodes * (dx / dx_full) ** 3
+        vpk = r["vmax_peak"]
+        dt_full = 0.4 * dx_full / (16.3 + vpk)
+        ts = 0.5 if "deferl" in d else 0.35
+        sub_frame_full = ts / 30 / dt_full
+        t_sub = Nf * t_p + nodes_full * t_n
+        total_sub = sub_frame_full * nframes
+        rows.append((label, scale, N, nodes, msub, sub_frame, r["wall_in_substeps"], Nf, nodes_full, sub_frame_full, total_sub, t_sub * 1e3, total_sub * t_sub / 60,
+                     Nf * t_p * total_sub / 60))
+    L = ["## 6. Throughput (CPU, 1 thread, shared machine) and extrapolation to the GPU\n",
+         f"Micro-benchmark, same solver, 1 thread: sand {bench['sand']['us_per_particle']:.2f} us/particle/substep, fluid {bench['fluid']['us_per_particle']:.2f} us/particle/substep "
+         f"(ratio sand/fluid {ratio:.2f}); grid-only cost {bench['grid_only']['ns_per_node']:.1f} ns/node/substep. "
+         f"Reference fluid benchmark (400k particles, 96^3, 129 ms/substep) is 0.32 us/particle, i.e. ~3.5x faster than 1 thread here, consistent with 4 threads.\n",
+         "| scene | scale | particles (test) | grid nodes (test) | ms / substep | substeps / film frame | wall in substeps (s) |",
+         "|---|---|---|---|---|---|---|"]
+    for r in rows:
+        L.append(f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]:.1f} | {r[5]:.0f} | {r[6]:.0f} |")
+    L += ["", "Full-scale extrapolation on the GPU (assumptions in the docstring of `write_throughput`; this is an estimate, not a measurement):\n",
+          "| scene | particles (full) | dense grid nodes (full) | substeps / film frame | total substeps | ms / substep (est.) | GPU wall, dense grid (min) | GPU wall, particles only / sparse grid (min) |",
+          "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        L.append(f"| {r[0]} | {r[7]/1e6:.2f} M | {r[8]/1e6:.0f} M | {r[9]:.0f} | {r[10]/1e3:.0f} k | {r[11]:.1f} | {r[12]:.0f} | {r[13]:.0f} |")
+    L.append("")
+    open(os.path.join(TESTS, "throughput.md"), "w").write("\n".join(L) + "\n")
+    return rows
 
 
 def test_throughput():
     bench = micro_bench()
     save("microbench", bench)
+    write_throughput(bench)
     print(json.dumps(bench, default=float))
 
 

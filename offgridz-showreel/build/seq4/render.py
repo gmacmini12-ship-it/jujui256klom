@@ -25,7 +25,7 @@ def tonemap(rad, exposure=EXPOSURE):
     """radiance linéaire -> image linéaire affichable.  Bloom léger (halation de l'objectif), puis courbe de
     Reinhard sur le canal maximal (teinte conservée, plafond CEIL : jamais de blanc écrêté)."""
     x = rad.astype(np.float32) * exposure
-    glow = 0.10 * cv2.GaussianBlur(x, (0, 0), 6) + 0.06 * cv2.GaussianBlur(x, (0, 0), 28)
+    glow = 0.07 * cv2.GaussianBlur(x, (0, 0), 6) + 0.04 * cv2.GaussianBlur(x, (0, 0), 28)
     x = x + glow
     m = x.max(axis=2, keepdims=True)
     t = CEIL * m / (m + HALF)
