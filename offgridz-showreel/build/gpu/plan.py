@@ -44,6 +44,30 @@ def installation():
     ]
 
 
+def plan_a_compact(table, repetition):
+    """Session a avec quatre créneaux seulement (secours quand on ne peut pas en réserver de nouveaux) : le liquide
+    voyage dans l'archive de départ, les images partent en trois gros paquets, le filet est joint au journal de fin."""
+    fin3 = 263 if repetition else 359
+    etapes = installation()
+    etapes += [
+        dict(type="session", nom="dalle", etape="dalle", requiert=["installer"], duree_max=600, existe=["out/grains/dalle/exits.npz"]),
+        dict(type="session", nom="filet", etape="filet", requiert=["dalle"], duree_max=420),
+        dict(type="attendre", nom="installer_rendu"),
+        dict(type="rendu", nom="seq2", etape="rendu2", images=[169, 215], dossier="out/final/seq2",
+             tranches=tranches(table, "seq2", 169, 215, taille=47), joindre=["out/final/seq2/meta.json"],
+             requiert=["installer_rendu", "dalle", "filet"]),
+        dict(type="rendu", nom="seq3", etape="rendu3", images=[216, fin3], dossier="out/final/seq3",
+             tranches=tranches(table, "seq3", 216, fin3, taille=(fin3 - 215 + 1) // 2), joindre=["out/final/seq3/meta.json"],
+             requiert=["installer_rendu", "filet"]),
+    ]
+    env = dict(ECH=0.12, SPP=128, SPP3=256, SIM=256)
+    if repetition:
+        env.update(ECH=0.002, SPP=4, SPP3=4, SIM=repetition_sim(), ARCH="cpu", DEVICE="CPU", RES="126x189")
+    fichiers = ["out/grains/dalle/run.json", "out/grains/dalle/activite.json", "out/grains/dalle/exits.npz",
+                "out/final/seq2/meta.json", "out/final/seq3/meta.json"]
+    return etapes, env, fichiers, ["out/grains/filet"]
+
+
 def plan_a(table, liquide, repetition):
     """Sucre rectifié (séquence 2, images 169 à 215) puis mojito (séquence 3)."""
     etapes = installation()
@@ -101,18 +125,24 @@ if __name__ == "__main__":
     ap.add_argument("--limite", type=int, default=1500, help="secondes après le départ au-delà desquelles on n'entame plus d'image")
     ap.add_argument("--battements", default="120,300,480,660,840,1020,1200,1380,1560,1740")
     ap.add_argument("--repetition", action="store_true")
+    ap.add_argument("--compact", action="store_true", help="session a avec quatre créneaux : voir plan_a_compact")
     ap.add_argument("--sortie", default="")
     A = ap.parse_args()
     creneaux = json.load(open(A.creneaux))
     table = Table(creneaux)
-    if A.session == "a":
+    dossiers = []
+    if A.session == "a" and A.compact:
+        etapes, env, fichiers, dossiers = plan_a_compact(table, A.repetition)
+    elif A.session == "a":
         etapes, env, fichiers = plan_a(table, json.load(open(A.liquide)) if A.liquide else [], A.repetition)
     else:
         etapes, env, fichiers = plan_b(table, json.load(open(A.caches)) if A.caches else [], A.repetition)
     journal = table.prendre("journaux")
-    battements = [[int(t), table.prendre(f"battement_{k + 1:02d}")] for k, t in enumerate(A.battements.split(",")) if int(t) < A.limite + 240]
-    plan = dict(session=A.session, limite=A.limite, env=env, battements=battements, journal=journal, journal_fichiers=fichiers, etapes=etapes)
-    sortie = A.sortie or os.path.join(RACINE, "out", "gpu", f"session_{A.session}" + ("_repetition" if A.repetition else ""))
+    temps = [t for t in A.battements.split(",") if t.strip()]
+    battements = [[int(t), table.prendre(f"battement_{k + 1:02d}")] for k, t in enumerate(temps) if int(t) < A.limite + 240]
+    plan = dict(session=A.session, limite=A.limite, env=env, battements=battements, journal=journal, journal_fichiers=fichiers,
+                journal_dossiers=dossiers, etapes=etapes)
+    sortie = A.sortie or os.path.join(RACINE, "out", "gpu", f"session_{A.session}" + ("_compact" if A.compact else "") + ("_repetition" if A.repetition else ""))
     os.makedirs(sortie, exist_ok=True)
     json.dump(plan, open(os.path.join(sortie, "plan.json"), "w"), indent=1, ensure_ascii=False)
     with open(os.path.join(sortie, "creneaux.txt"), "w") as fh:

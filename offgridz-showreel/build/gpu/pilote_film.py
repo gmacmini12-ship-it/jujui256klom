@@ -222,7 +222,7 @@ def terminer():
     dire("bilan : " + ", ".join(f"{k} {v}" for k, v in ETAT.items()))
     dire("PILOTE FIN")
     FINI.set()
-    envoyer("journaux", PLAN["journal"], ["logs"])
+    envoyer("journaux", PLAN["journal"], ["logs"] + [d for d in PLAN.get("journal_dossiers", []) if os.path.isdir(d)])
     if os.environ.get("AUTO_ARRET") == "1" and os.path.exists("/tmp/.higgs-gpu-log-relay.py"):
         # Tout est envoyé : on termine le processus d'accueil de la machine louée, qui s'éteint dans la minute
         # (vérifié le 13 novembre). Jamais ailleurs que sur cette machine.

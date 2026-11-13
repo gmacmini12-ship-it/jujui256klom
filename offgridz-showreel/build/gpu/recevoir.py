@@ -153,6 +153,13 @@ if z:
                 fusionner_meta(os.path.join(logs, nom), cible)
             else:
                 shutil.copy2(os.path.join(logs, nom), cible)
+    for chemin in PLAN.get("journal_dossiers", []):       # dossiers joints au journal (le filet, en session compacte)
+        src, cible = os.path.join(d, chemin), os.path.join(RACINE, chemin)
+        if os.path.isdir(src):
+            if os.path.exists(cible):
+                shutil.rmtree(cible)
+            shutil.copytree(src, cible)
+            print(f"{chemin} remplacé ({len(os.listdir(cible))} fichiers)")
     shutil.rmtree(d); os.remove(z)
     etat = os.path.join(logs, "etat.json")
     print("journaux reçus ;", json.load(open(etat))["etat"] if os.path.exists(etat) else "pas de bilan")

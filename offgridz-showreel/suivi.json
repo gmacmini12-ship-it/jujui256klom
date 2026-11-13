@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Palier 4 prêt (sessions répétées, caches empaquetés) ; bloqué par une panne du service de connexion aux connecteurs : Higgsfield ne se charge dans aucune nouvelle session",
+ "etape": "Palier 4 prêt ; le connecteur Higgsfield est en panne chez eux (erreur 502, y compris dans une session neuve à 14 h 41 UTC) : aucune location possible pour l'instant",
  "credits": {
   "depenses": 42.45,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre accord sur le palier 4 (34 à 54 crédits attendus, 75 au maximum). Rien à faire pour le connecteur : je réessaie automatiquement à 15 h UTC",
+ "attente": "Votre accord sur le palier 4 (34 à 54 crédits attendus, 75 au maximum). Pour le connecteur, rien à faire de votre côté : nouvelle vérification automatique à 15 h UTC",
  "action": true
 }

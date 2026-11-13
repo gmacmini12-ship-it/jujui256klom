@@ -118,6 +118,13 @@ Trois locations ont été nécessaires ; deux ont échoué (20,46 crédits sans 
 - Le test de vitesse d'origine rendait des points, pas des cristaux instanciés : un million d'instances demandent 10 s de
   préparation par image sur un cœur. D'où le niveau de détail automatique (`GrainsMixtes`).
 
+- Les adresses de dépôt des résultats annoncent 24 heures de validité, mais le jeton qu'elles portent expire bien avant :
+  des adresses réservées à 8 h 39 et 9 h 35 UTC étaient refusées à 14 h 50 (`ExpiredToken`), alors qu'elles
+  fonctionnaient 1 h 40 après leur réservation. Les réserver au plus une heure avant la session.
+- Sans le connecteur Higgsfield, on ne peut ni louer ni réserver de dépôts : il n'y a pas de voie de secours. Les
+  connecteurs ne sont lus qu'au démarrage d'une session ; si le processus de la conversation redémarre pendant une panne
+  du connecteur, les appels passent par une session auxiliaire créée ensuite.
+
 La machine louée demande deux corrections à l'installation, reprises dans `build/gpu/session.sh` :
 `chmod 1777 /tmp` et l'option `-o APT::Sandbox::User=root` pour installer les bibliothèques système de Blender.
 Le débruiteur OptiX n'y démarre pas ; utiliser OptiX pour le rendu et OpenImageDenoise pour le débruitage.

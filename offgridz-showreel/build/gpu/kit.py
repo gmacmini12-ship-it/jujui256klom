@@ -54,7 +54,7 @@ if __name__ == "__main__":
     if quoi == "code":
         # kit.py code [dossier de session] : le plan et les adresses de dépôt de la session sont joints à l'archive
         session = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None
-        liste = list(fichiers(CODE))
+        liste = list(fichiers(CODE + sys.argv[3:]))       # chemins supplémentaires : caches à emporter dans la même archive
         archiver("kit_code.zip", liste)
         joints = {"creneaux.txt": (session or SORTIE) / "creneaux.txt"}
         if session:
