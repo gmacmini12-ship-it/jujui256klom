@@ -775,6 +775,11 @@ def build(S, D):
     air = P.one("bruitage", "souffle de caméra")
     put(TXS, M.v_air((air["fin"] + 1 - air["debut"]) * SPF), air["debut"] * SPF, "souffle de caméra", "partition.json (bruitage 48-71)",
         gain_db=-31, family="texture")
+    # Traversée du papier (contrôle qualité du 13 novembre) : à l'image 56 la caméra crève la feuille dans le O, le plus
+    # fort changement d'image du film, et aucun son ne le marquait. Un court déchirement, du même timbre que la déchirure
+    # de la levée, posé sur cette image.
+    put(EV, M.v_tear(int(0.14 * SR)), 56 * SPF, "traversée du papier", "plongée dans le O : la caméra traverse la feuille (image 56)",
+        gain_db=-10, pan_pos=0.05, send={"room": 0.10}, family="papier")
 
     # ======================================================= groove A (72-209)
     ga = P.one("musique", "groove A")
@@ -838,6 +843,9 @@ def build(S, D):
     brg = per_sample(fr_, bright_f, f_a, f_b)
     lvl = per_sample(fr_, level_f, f_a, f_b)
     sand = granular(nn, rate, brg, lvl, rng("sandfinal"))
+    # Contrôle qualité du 13 novembre : entre 3,4 et 5,0 s la bande 8-16 kHz dépassait les médiums (-22 dBFS RMS,
+    # crêtes à -1,2 dBFS). Plateau de -4 dB au-dessus de 6 kHz sur le nuage de grains : le crépitement reste, sans dureté.
+    sand = np.stack([sy.shelf(c, 6000.0, -4.0, high=True) for c in sand])
     put(TXS, sand, f_a * SPF, "grains secs (nuage piloté par la dalle)", "out/grains/dalle/f####.npz (grains en mouvement, vitesse)",
         gain_db=-15.5, send={"room": 0.08}, family="grains")
     rumble = sy.bp(rng("rumblef").standard_normal(nn), 380.0, 0.8)

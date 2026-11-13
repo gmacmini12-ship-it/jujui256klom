@@ -261,10 +261,15 @@ def finir(g, brut, obst, phi_verre, ri, jeu, niveau=None, confiner=False):
     if confiner:
         # Rien hors de la cavité du verre, à aucune hauteur : ni pellicule sur la face extérieure (l'ancienne tolérance
         # de 0,6 mm laissait une collerette dentelée sous le bord), ni liquide dans l'épaisseur de la paroi.
-        dehors = (g.r > ri + RECOUVREMENT + 0.5 * g.h) & (g.zz < S.H_VERRE - 0.0002)
+        # La coupe se fait par intersection de champs de distance, donc sur une surface lisse : r - (ri + RECOUVREMENT)
+        # prolonge exactement le champ du verre au-delà de la mi-paroi. (Un seuil net posé à une demi-maille de la paroi
+        # déplaçait la surface du liquide de 0,03 mm en moyenne, par marches : vu à travers le verre, tout ondulait.
+        # 55 images rendues ainsi le 13 novembre ont dû être refaites.)
+        cavite = (g.r - (ri + RECOUVREMENT)).astype(np.float32)
+        phi = np.where(g.zz < S.H_VERRE - 0.0002, np.maximum(phi, cavite), phi).astype(np.float32)
     else:
         dehors = (g.r > S.R_BAS + (S.R_HAUT - S.R_BAS) * zz / S.H_VERRE + 0.0006) & (g.zz < S.H_VERRE - 0.002)
-    phi = np.where(dehors, np.float32(3 * g.h), phi)
+        phi = np.where(dehors, np.float32(3 * g.h), phi)
     return g.mailler(phi), int(noye.sum()), int(etendu.sum())
 
 

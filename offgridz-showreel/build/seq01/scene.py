@@ -1063,7 +1063,9 @@ def set_state(f):
     d = tl.sheet_drift(f)
     SHEET.location = d
     FIBRES.location = d
-    FIBRES.hide_render = f < 12
+    # Les fibres de la déchirure ne se voient plus une fois la feuille traversée (image 56) ; aux images 57 et 58 elles
+    # passaient tout près de la caméra, par derrière, en éclats anguleux (contrôle qualité du 13 novembre).
+    FIBRES.hide_render = f < 12 or f >= 57
     DECAL.hide_render = f > 12
     update_pocket(f)
     update_strip(f)

@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Contrôle qualité : les deux relectures sont faites. Il reste du liquide hors du verre dans 56 images du versement ; la correction est prête et vérifiée (zéro image fautive), il faut refaire 57 images en qualité finale. Autres retouches sans crédits en cours",
+ "etape": "Contrôle qualité : la session C (16,98 crédits) a bien retiré le liquide hors du verre, mais ma correction a fait onduler sa surface contre la paroi ; ces 55 images sont à refaire. Cause corrigée et vérifiée par mesure ; vérification en pleine définition en cours",
  "credits": {
-  "depenses": 113.44,
+  "depenses": 130.42,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre choix pour refaire les 57 images du versement : machine louée (environ 18 crédits) ou notre machine (gratuit, environ 19 heures)",
- "action": true
+ "attente": "Rien pour l'instant : je vous montre l'image de contrôle en pleine définition, puis vous choisirez comment refaire les 55 images",
+ "action": false
 }
