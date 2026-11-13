@@ -225,8 +225,11 @@ def render_grains(npz_path, spacing, ss=2, threads=2, r_rel=0.64, return_ids=Fal
     """-> dict(pm=(H,W,4) premultiplied linear RGBA, zh=(H,W) height m (nan where no grain), n_free)"""
     sp, sh = get_tools(ss, threads)
     d = np.load(npz_path)
-    st = d["state"]
-    keep = (st == 0) | (st == 1)
+    if "state" in d.files:                      # full frames; lean frames (Runner light=True) hold free grains only
+        st = d["state"]
+        keep = (st == 0) | (st == 1)
+    else:
+        keep = np.ones(len(d["pos"]), bool)
     pos = d["pos"][keep].astype(np.float32)
     ids = d["id"][keep]
     n_free = int(d["n_free"])
@@ -310,3 +313,27 @@ def render_grains(npz_path, spacing, ss=2, threads=2, r_rel=0.64, return_ids=Fal
     if return_ids:
         out["pos"], out["ids"] = pos, ids
     return out
+
+
+def height_only(npz_path, spacing, ss=1, threads=2, r_rel=0.64):
+    """Height field of the grain bed without any shading (what the film solver reads): zh (m, nan where empty), cover."""
+    sp, _ = get_tools(ss, threads)
+    d = np.load(npz_path)
+    if "state" in d.files:
+        keep = (d["state"] == 0) | (d["state"] == 1)
+    else:
+        keep = np.ones(len(d["pos"]), bool)
+    pos = d["pos"][keep].astype(np.float32)
+    ids = d["id"][keep]
+    m = (np.abs(pos[:, 0]) < 0.054 + 3 * spacing) & (np.abs(pos[:, 1]) < 0.096 + 3 * spacing)
+    pos, ids = pos[m], ids[m]
+    rng_h = ((ids.astype(np.uint64) * np.uint64(1103515245) + np.uint64(12345)) & np.uint64(0xFFFF)).astype(np.float32) / 65535.0
+    rad = (spacing * r_rel * (0.92 + 0.16 * rng_h)).astype(np.float32)
+    Z, G = sp.height_and_ids(pos, rad, zl=0.3 * spacing)
+    Zs = Z.T
+    e0 = (G < 0).T
+    k = ss
+    zc = np.where(e0, 0.0, Zs).reshape(H, k, W, k).sum(axis=(1, 3))
+    cn = (~e0).reshape(H, k, W, k).sum(axis=(1, 3))
+    zh = np.where(cn > 0, zc / np.maximum(cn, 1), np.nan).astype(np.float32)
+    return dict(zh=zh, cover=(cn / (k * k)).astype(np.float32), n_free=int(d["n_free"]))

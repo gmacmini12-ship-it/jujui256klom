@@ -43,16 +43,21 @@ def stage_grains(A, run, work, frames_avail):
         if os.path.exists(p) and not A.force:
             continue
         t = time.time()
-        o = grains.render_grains(os.path.join(A.grains, "f%04d.npz" % f), run["spacing"], ss=A.ss, threads=A.threads)
-        zh = (np.nan_to_num(o["zh"], nan=0.0) * 1e3).astype(np.float16)
-        np.savez(p + ".tmp.npz", pm=o["pm"].astype(np.float16), zh=zh, cover=(o["cover"] * 255).astype(np.uint8), n_free=o["n_free"])
+        if A.height_only:
+            o = grains.height_only(os.path.join(A.grains, "f%04d.npz" % f), run["spacing"], ss=1, threads=A.threads)
+            zh = (np.nan_to_num(o["zh"], nan=0.0) * 1e3).astype(np.float16)
+            np.savez(p + ".tmp.npz", zh=zh, cover=(o["cover"] * 255).astype(np.uint8), n_free=o["n_free"])
+        else:
+            o = grains.render_grains(os.path.join(A.grains, "f%04d.npz" % f), run["spacing"], ss=A.ss, threads=A.threads)
+            zh = (np.nan_to_num(o["zh"], nan=0.0) * 1e3).astype(np.float16)
+            np.savez(p + ".tmp.npz", pm=o["pm"].astype(np.float16), zh=zh, cover=(o["cover"] * 255).astype(np.uint8), n_free=o["n_free"])
         os.replace(p + ".tmp.npz", p)
-        log("grains f%d rendered in %.1fs (n_free=%d)" % (f, time.time() - t, o["n_free"]))
+        log("grains f%d %s in %.1fs (n_free=%d)" % (f, "height field" if A.height_only else "rendered", time.time() - t, o["n_free"]))
 
 
 def load_dry(work, f, last):
     d = np.load(work_path(work, min(f, last)))
-    return d["pm"].astype(np.float32), (d["zh"].astype(np.float32) * 1e-3), d["cover"].astype(np.float32) / 255.0, int(d["n_free"])
+    return (d["pm"].astype(np.float32) if "pm" in d.files else None), (d["zh"].astype(np.float32) * 1e-3), d["cover"].astype(np.float32) / 255.0, int(d["n_free"])
 
 
 def stage_film(A, run, work, frames_avail):
@@ -68,7 +73,7 @@ def stage_film(A, run, work, frames_avail):
             cache[k] = dict(zh=zh, cover=cov)
         return cache[k]
     out = os.path.join(work, "film_fpx%d_mu%g_g%g_lv%g" % (A.fpx, A.mu, A.film_gain, A.level_sigma))
-    film.run_film(A.grains, out, gf, fpx=A.fpx, mu=A.mu, ts_film=A.ts_film, threads=A.threads, spacing=run["spacing"], log=log, film_gain=A.film_gain, fpx_sq=A.fpx_sq, resume=A.resume, level_sigma_mm=A.level_sigma)
+    film.run_film(A.grains, out, gf, fpx=A.fpx, mu=A.mu, ts_film=A.ts_film, threads=A.threads, spacing=run["spacing"], log=log, film_gain=A.film_gain, fpx_sq=A.fpx_sq, resume=A.resume, level_sigma_mm=A.level_sigma, h_pin=A.h_pin * 1e-3)
     return out
 
 
@@ -207,6 +212,8 @@ def main():
     ap.add_argument("--mu", type=float, default=20.0)
     ap.add_argument("--ts-film", type=float, default=1.0)
     ap.add_argument("--film-gain", type=float, default=0.25, help="ink volume / bulk volume of the grain bed")
+    ap.add_argument("--height-only", type=int, default=0, help="grains stage: height field only (no 2.5D shading; enough for the film solver and the path-traced render)")
+    ap.add_argument("--h-pin", type=float, default=2.5, help="film: pinning height (mm) above which ink spills over the sheet edges")
     ap.add_argument("--fpx-sq", type=int, default=4, help="film cell (px) during the squeegee stage")
     ap.add_argument("--resume", action="store_true", help="film: reuse frames 480-503 if present")
     ap.add_argument("--level-sigma", type=float, default=18.0, help="film init: level heaps larger than this (mm); 0 = raw bed height")

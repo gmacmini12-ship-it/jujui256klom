@@ -318,6 +318,7 @@ class Deferlement(SceneBase):
     # pushed over the four edges of the window and floods the margins.  Emitted volume is expressed as a
     # layer thickness over the whole sheet (SURGE_MM), so it is the same physical volume at every --scale.
     PREROLL = 6
+    EMIT_FRAMES_SEQ56 = 10         # frames over which the vent delivers the surge
     SURGE_MM = 16.0
     SURGE_V = (1.5, 2.3)
     SURGE_CONE = 42.0
@@ -330,7 +331,7 @@ class Deferlement(SceneBase):
         self.launched = False
         self.vent_idx = None
         if variant == "seq56":
-            self.ts = 0.5 if ts is None else ts
+            self.ts = 0.6 if ts is None else ts      # 0.6 s of real time per film second (0.5 reached the sheet edges one frame late)
             self.v_lo, self.v_hi, self.cone = self.SURGE_V[0], self.SURGE_V[1], self.SURGE_CONE
             self.vol_factor = 1.0 if vol_factor is None else vol_factor      # multiplies the surge volume
             self.f_sim0 = self.f_ref - self.PREROLL
@@ -399,7 +400,7 @@ class Deferlement(SceneBase):
         if self.variant == "seq56":
             V = 2 * self.VIS[0] * 2 * self.VIS[1] * self.SURGE_MM * 1e-3 * self.vol_factor
         Ne = int(round(V / sp ** 3))
-        T_emit = self.EMIT_FRAMES / 30.0 * self.ts
+        T_emit = (self.EMIT_FRAMES_SEQ56 if self.variant == "seq56" else self.EMIT_FRAMES) / 30.0 * self.ts
         # emission times uniform over [0, T_emit], positions uniform in the vent disc (area-uniform)
         te = np.sort(rng.random(Ne) * T_emit)
         r = self.VENT_R * np.sqrt(rng.random(Ne))
@@ -465,10 +466,11 @@ def main(argv=None):
     ap.add_argument("--out", default=None)
     ap.add_argument("--ckpt-every", type=int, default=1)
     ap.add_argument("--export-dead", action="store_true")
+    ap.add_argument("--leger", type=int, default=0, help="1: lean frames (pos float32, quat float16, id) + activite.json")
     A = ap.parse_args(argv)
     sc = make_scene(A.scene, A.scale, variant=A.variant, vol_factor=A.vol_factor)
     outdir = A.out or os.path.join(OUT, A.scene if not (A.scene == "deferlement" and A.variant != "spec") else A.scene + "_" + A.variant)
-    runner = Runner(sc, outdir, arch=A.arch, threads=A.threads, export_dead=A.export_dead, ckpt_every=A.ckpt_every)
+    runner = Runner(sc, outdir, arch=A.arch, threads=A.threads, export_dead=A.export_dead, ckpt_every=A.ckpt_every, light=bool(A.leger))
     fa, fb = sc.export_range
     if A.frames:
         fa, fb = [int(v) for v in A.frames.split(":")]

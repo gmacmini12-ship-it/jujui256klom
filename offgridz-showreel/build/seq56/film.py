@@ -37,17 +37,13 @@ def arrival_field(nx, ny, fpx, seed=4):
     X, Y = np.meshgrid(xs, ys)           # (ny, nx)
     r = np.hypot(X, Y) / math.hypot(0.054, 0.096)
     rng = np.random.default_rng(seed)
-    n = np.zeros((ny, nx), np.float32)
-    amp = 1.0
-    for o, L in enumerate((0.030, 0.014)):         # correlation lengths in metres
-        g = rng.standard_normal((int(ny * fpx * PX_M / L) + 4, int(nx * fpx * PX_M / L) + 4)).astype(np.float32)
-        g = cv2.GaussianBlur(g, (0, 0), 1.0)
-        g = cv2.resize(g, (nx, ny), interpolation=cv2.INTER_CUBIC)
-        g = g / max(g.std(), 1e-6)
-        n += amp * g
-        amp *= 0.5
-    n /= 1.5
-    Ta = F_WET0 + 21.0 * np.clip(r, 0, 1) ** 0.9 + 1.4 * n * (0.35 + np.clip(r, 0, 1))
+    # one low-frequency octave only: a clean advancing line (the earlier two-octave noise gave a ragged front)
+    L = 0.045
+    g = rng.standard_normal((int(ny * fpx * PX_M / L) + 4, int(nx * fpx * PX_M / L) + 4)).astype(np.float32)
+    g = cv2.GaussianBlur(g, (0, 0), 1.0)
+    g = cv2.resize(g, (nx, ny), interpolation=cv2.INTER_CUBIC)
+    n = (g / max(g.std(), 1e-6)).astype(np.float32)
+    Ta = F_WET0 + 20.5 * np.clip(r, 0, 1) ** 0.9 + 0.55 * n
     Ta = np.clip(Ta, F_WET0, F_WET1 - 0.5)
     return Ta.astype(np.float32)
 
@@ -73,11 +69,12 @@ def grain_height_film(zh, cover, fpx, sigma_px):
 
 
 class Film:
-    def __init__(self, fpx=2, mu=20.0, h_res=3e-6, tau_drain=0.10, ts_film=1.0, K=6, lc_px=40.0, threads=2, Tcg=8e-3):
+    def __init__(self, fpx=2, mu=20.0, h_res=3e-6, tau_drain=0.10, ts_film=1.0, K=6, lc_px=40.0, threads=2, Tcg=8e-3, h_pin=2.5e-3):
         ti = init_taichi(threads)
         self.ti = ti
         self.fpx = fpx
         self.Tcg = Tcg
+        self.h_pin = h_pin
         self.nx, self.ny = W // fpx, H // fpx
         self.dx = fpx * PX_M
         self.mu, self.h_res, self.tau, self.ts_film = mu, h_res, tau_drain, ts_film
@@ -159,6 +156,19 @@ class Film:
                 lost[None] += qy[i, ny - 1] * dt * dx
 
         @ti.kernel
+        def spill(dt: ti.f32, hpin: ti.f32):
+            # ink thicker than the pinning height h_pin runs over the sheet edges (left, right, top); bottom edge handled by the open boundary
+            for i, j in s:
+                if act[i, j] > 0 and (i == 0 or i == nx - 1 or j == 0):
+                    T = s[i, j] - b[i, j]
+                    if T > hpin:
+                        mg = ti.min(T, Tcg) ** 3 / (3.0 * mu)
+                        rate = mg * rho * 9.81 * (T - hpin) / (dx * dx)
+                        dT = ti.min(rate * dt, T - hpin)
+                        s[i, j] -= dT
+                        ti.atomic_add(lost[None], dT * dx * dx)
+
+        @ti.kernel
         def sweep(j_old: ti.i32, j_new: ti.i32, hres: ti.f32, K: ti.i32):
             # cells j_old+1 .. j_new swept by the blade: thickness -> hres, excess to the K cells ahead
             for i in range(nx):
@@ -206,7 +216,7 @@ class Film:
                     ti.atomic_max(tm[None], s[i, j] - b[i, j])
             return tm[None]
 
-        self.k_flux, self.k_update, self.k_sweep, self.k_drain, self.k_vol, self.k_tmax = fluxes, update, sweep, drain, vol, tmax
+        self.k_flux, self.k_update, self.k_sweep, self.k_drain, self.k_vol, self.k_tmax, self.k_spill = fluxes, update, sweep, drain, vol, tmax, spill
 
     def volume(self):
         return float(self.k_vol()) + 0.0
@@ -234,6 +244,7 @@ class Film:
             tipc = tip_y(ff) / self.fpx if blade else -1e9
             self.k_flux(float(tipc), float(self.Lc), 1 if blade else 0, 1 if blade else 0)
             self.k_update(float(dt))
+            self.k_spill(float(dt), float(self.h_pin))
             if blade:
                 ffe = f - 1.0 + (self.t + dt - (t_end - dtf)) / dtf
                 tipe = tip_y(ffe) / self.fpx
@@ -251,10 +262,10 @@ class Film:
 
 
 def run_film(cache, out_dir, grain_frames, fpx=2, mu=20.0, ts_film=1.0, threads=2, hsigma_rel=0.9, spacing=None, log=print, film_gain=0.25,
-             render_grain_fn=None, f_last=F_SQ1, fpx_sq=4, Tcg_sq=30e-3, resume=False, level_sigma_mm=18.0):
+             render_grain_fn=None, f_last=F_SQ1, fpx_sq=4, Tcg_sq=20e-3, resume=False, level_sigma_mm=18.0, h_pin=2.5e-3):
     """Run frames 480..527.  `grain_frames(f)` -> dict(zh, cover) for the grain cache frame to use at film frame f (clamped)."""
     os.makedirs(out_dir, exist_ok=True)
-    fl = Film(fpx=fpx, mu=mu, ts_film=ts_film, threads=threads)
+    fl = Film(fpx=fpx, mu=mu, ts_film=ts_film, threads=threads, h_pin=h_pin)
     fl._tip_prev = None
     nx, ny = fl.nx, fl.ny
     b = tray_base(nx, ny, fpx)
@@ -314,7 +325,7 @@ def run_film(cache, out_dir, grain_frames, fpx=2, mu=20.0, ts_film=1.0, threads=
             # squeegee stage on a coarser grid with a much higher gravity-mobility clamp (the bead is thick)
             s_prev = fl.s.to_numpy().T.copy()
             lost_prev = float(fl.lost[None])
-            fl = Film(fpx=fpx_sq, mu=mu, ts_film=ts_film, threads=threads, Tcg=Tcg_sq)
+            fl = Film(fpx=fpx_sq, mu=mu, ts_film=ts_film, threads=threads, Tcg=Tcg_sq, h_pin=h_pin)
             fl._tip_prev = None
             nx, ny = fl.nx, fl.ny
             b = tray_base(nx, ny, fpx_sq)
@@ -333,6 +344,6 @@ def run_film(cache, out_dir, grain_frames, fpx=2, mu=20.0, ts_film=1.0, threads=
                            tip_px=float(tip_y(f)) if f >= F_SQ0 else None, wall_s=time.time() - t0))
         log("film f%d  substeps=%d  V=%.2f cm3  lost=%.2f cm3  Tmax=%.2f mm  wall=%.0fs" % (f, nsub, v1 * 1e6, lost * 1e6, budget[-1]["tmax_mm"], time.time() - t0))
     with open(os.path.join(out_dir, "film_log.json"), "w") as fo:
-        json.dump(dict(level_sigma_mm=level_sigma_mm, T_bar_mm=(T_bar * 1e3 if T_bar else None), fpx=fpx, fpx_squeegee=fpx_sq, Tcg_squeegee_mm=Tcg_sq * 1e3, mu=mu, film_gain=film_gain, ts_film=ts_film, grid=[nx, ny], dx_mm=fl.dx * 1e3, budget=budget), fo, indent=1)
+        json.dump(dict(h_pin_mm=h_pin * 1e3, level_sigma_mm=level_sigma_mm, T_bar_mm=(T_bar * 1e3 if T_bar else None), fpx=fpx, fpx_squeegee=fpx_sq, Tcg_squeegee_mm=Tcg_sq * 1e3, mu=mu, film_gain=film_gain, ts_film=ts_film, grid=[nx, ny], dx_mm=fl.dx * 1e3, budget=budget), fo, indent=1)
     np.save(os.path.join(out_dir, "Ta.npy"), Ta)
     return budget

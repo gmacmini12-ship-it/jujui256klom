@@ -110,7 +110,9 @@ def setup_render(A):
     cy.use_adaptive_sampling = True
     cy.adaptive_threshold = 0.02
     cy.adaptive_min_samples = max(A.spp // 8, 8)
-    cy.use_denoising = A.denoise
+    cy.use_denoising = bool(A.denoise)
+    if A.device != "CPU" and hasattr(cy, "denoising_use_gpu"):
+        cy.denoising_use_gpu = True          # the rented machine has one CPU core: denoise on the card
     try:
         cy.denoiser = "OPENIMAGEDENOISE" if A.device == "CPU" else "OPTIX"
     except Exception:
@@ -306,7 +308,7 @@ def make_squeegee():
     ALPHA = math.radians(60.0)
     d = np.array([math.cos(ALPHA), math.sin(ALPHA)])           # along the blade, going up and back
     nrm = np.array([math.sin(ALPHA), -math.cos(ALPHA)])        # behind the front face (back, down)
-    rubber = principled("caoutchouc", **{"Base Color": (*lin(CREAM), 1), "Roughness": 0.52})
+    rubber = principled("caoutchouc", **{"Base Color": (*lin(CREAM), 1), "Roughness": 0.55})
     try:
         rubber.node_tree.nodes["Principled BSDF"].inputs["Subsurface Weight"].default_value = 0.06
         rubber.node_tree.nodes["Principled BSDF"].inputs["Subsurface Radius"].default_value = (0.6, 0.35, 0.25)
@@ -379,7 +381,18 @@ def make_squeegee():
     bpy.context.scene.collection.objects.link(root)
     for ob in parts:
         ob.parent = root
-    return root, parts, dict(plan_extent_m=float(max(P2[0], P1[0], P3[0], C[0])), height_m=float(max(P1[1], P2[1])))
+    # a small fill light linked to the tool only (Cycles light linking), so that the cream rubber reads cream and not
+    # salmon (the scene's orange ink bounces its colour onto it)
+    fill = area_light("remplissage_raclette", (0.0, -0.03, 0.10), (0.0, 0.004, 0.006), 0.30, 0.04, 0.55, (1.0, 0.97, 0.93))
+    fill.parent = root
+    coll = bpy.data.collections.new("outil")
+    for ob in parts:
+        coll.objects.link(ob)
+    try:
+        fill.light_linking.receiver_collection = coll
+    except Exception as e:                    # pragma: no cover
+        print("light linking unavailable:", e)
+    return root, parts, dict(plan_extent_m=float(max(P2[0], P1[0], P3[0], C[0])), height_m=float(max(P1[1], P2[1]))), fill
 
 
 # ------------------------------------------------------------------------------------------------ grains
@@ -388,61 +401,92 @@ def smooth01(x):
     return x * x * (3 - 2 * x)
 
 
+class GrainsHaut(ATL.GrainsMixtes):
+    """Top-down version of atelier.GrainsMixtes: faceted crystals (instances) only for the grains of the visible top layer,
+    shader-faceted points for every other grain (buried or tiny).  Orthographic selection instead of the perspective one."""
+
+    def _choisir_haut(self, pos, ech, res_x):
+        pas = self.pas
+        px_m = 2 * SHEET[0] / res_x
+        diam_px = 2 * ech / px_m
+        inview = (np.abs(pos[:, 0]) < SHEET[0] + 2 * pas) & (np.abs(pos[:, 1]) < SHEET[1] + 2 * pas)
+        c = 1.5 * pas
+        nx_, ny_ = int(2 * (SHEET[0] + 3 * pas) / c) + 2, int(2 * (SHEET[1] + 3 * pas) / c) + 2
+        i = np.clip(((pos[:, 0] + SHEET[0] + 3 * pas) / c).astype(np.int32), 0, nx_ - 1)
+        j = np.clip(((pos[:, 1] + SHEET[1] + 3 * pas) / c).astype(np.int32), 0, ny_ - 1)
+        top = np.full((nx_, ny_), -1e9, np.float32)
+        np.maximum.at(top, (i, j), pos[:, 2])
+        near = pos[:, 2] >= top[i, j] - 1.7 * pas              # the two top layers; deeper grains are hidden by them
+        return inview & near & (diam_px >= self.taille_min)
+
+    def poser_haut(self, d, res_x):
+        """d: dict(pos, rot, ech, alea) already edited.  Returns number of crystals."""
+        pres = self._choisir_haut(d["pos"], d["ech"], res_x)
+        for objet, masque in ((self.loin, ~pres), (self.pres, pres)):
+            objet._maillage(d["pos"][masque], d["rot"][masque], d["ech"][masque], d["alea"][masque])
+        self.n_cristaux = int(pres.sum())
+        self.cacher(False)
+
+
 class GrainLayer:
-    def __init__(self, cache, Ta):
-        self.g = ATL.Grains("grains", cache, (0.0, 0.0, 0.0), rayon_par_pas=0.70, sucre=False)
-        self.spacing = self.g.rayon / 0.70
+    def __init__(self, cache, Ta, res_x):
+        self.g = GrainsHaut("grains", cache, (0.0, 0.0, 0.0), rayon_par_pas=0.70, sucre=False)
+        self.spacing = self.g.pas
         self.Ta = Ta
+        self.res_x = res_x
         self.outside = 0
         self.cache = cache
         self.last = max(int(p[1:5]) for p in os.listdir(cache) if p.startswith("f") and p.endswith(".npz") and len(p) == 9)
+        self.n_cristaux = 0
 
-    def pose(self, f):
+    def hide(self):
+        self.g.cacher(True)
+
+    def pose(self, f, film_s=None):
         g = self.g
-        g.dernier = None                       # always reload: positions and scales are edited below
-        n = g.poser(min(f, self.last))
-        if n is None:
+        g.loin.dernier = None                  # always reload: positions are edited below (copies, never in place)
+        d0 = g.loin._lire(min(f, self.last))
+        if d0 is None:
             self.outside = 1
+            self.hide()
             return None
-        me = g.ob.data
-        nv = len(me.vertices)
-        co = np.empty(nv * 3, np.float32)
-        me.vertices.foreach_get("co", co)
-        co = co.reshape(-1, 3)
-        ech = np.empty(nv, np.float32)
-        me.attributes["ech"].data.foreach_get("value", ech)
+        n_free = g.loin.n_libres
+        pos = d0["pos"].copy()
+        rot, ech, alea = d0["rot"], d0["ech"].copy(), d0["alea"]
         sp = self.spacing
         # grains lying in the recessed tray cannot overhang its walls
-        inside = (np.abs(co[:, 0]) < TX) & (np.abs(co[:, 1]) < TY) & (co[:, 2] < 0.3 * sp)
+        inside = (np.abs(pos[:, 0]) < TX) & (np.abs(pos[:, 1]) < TY) & (pos[:, 2] < 0.3 * sp)
         m = 0.85 * sp
-        co[inside, 0] = np.clip(co[inside, 0], -TX + m, TX - m)
-        co[inside, 1] = np.clip(co[inside, 1], -TY + m, TY - m)
-        if f >= 480 and self.Ta is not None:
+        pos[inside, 0] = np.clip(pos[inside, 0], -TX + m, TX - m)
+        pos[inside, 1] = np.clip(pos[inside, 1], -TY + m, TY - m)
+        self.outside = int(np.sum((np.abs(pos[:, 0]) > TX) | (np.abs(pos[:, 1]) > TY)))
+        keep = (np.abs(pos[:, 0]) < SHEET[0] + 3 * sp) & (np.abs(pos[:, 1]) < SHEET[1] + 3 * sp)
+        if f >= 480 and self.Ta is not None and film_s is not None:
+            # the ink wets the pigment: behind the front the grains SINK into the film (they are swallowed, not shrunk);
+            # once fully under the opaque ink (3 frames after the front) they are no longer visible and are dropped
             ny, nx = self.Ta.shape
             fpx = W // nx
-            u = np.clip(((co[:, 0] / PX_M + W / 2) / fpx).astype(int), 0, nx - 1)
-            v = np.clip(((H / 2 - co[:, 1] / PX_M) / fpx).astype(int), 0, ny - 1)
-            wet = smooth01((f - self.Ta[v, u]) / 3.5)
-            ech = ech * (1.0 - wet)
-        self.outside = int(np.sum((np.abs(co[:, 0]) > TX) | (np.abs(co[:, 1]) > TY)))
-        keep = ech > 0.02 * self.g.rayon
-        # drop the melted grains and the ones off the sheet
-        keep &= (np.abs(co[:, 0]) < SHEET[0] + 3 * sp) & (np.abs(co[:, 1]) < SHEET[1] + 3 * sp)
-        rot = np.empty(nv * 3, np.float32)
-        me.attributes["rot"].data.foreach_get("vector", rot)
-        rot = rot.reshape(-1, 3)
+            u = np.clip(((pos[:, 0] / PX_M + W / 2) / fpx).astype(int), 0, nx - 1)
+            v = np.clip(((H / 2 - pos[:, 1] / PX_M) / fpx).astype(int), 0, ny - 1)
+            age = f - self.Ta[v, u]
+            w = smooth01(age / 1.2)
+            top = np.full((ny, nx), -1e9, np.float32)
+            np.maximum.at(top, (v, u), pos[:, 2])
+            ny2, nx2 = film_s.shape
+            if (ny2, nx2) != (ny, nx):
+                # film solver grid differs from the arrival grid (squeegee stage): sample by nearest cell
+                vv = np.clip((v * ny2) // ny, 0, ny2 - 1)
+                uu = np.clip((u * nx2) // nx, 0, nx2 - 1)
+                s_here = film_s[vv, uu]
+            else:
+                s_here = film_s[v, u]
+            target = s_here - 1.2 * ech                      # grain centre ends 0.8 radius under the ink surface
+            drop = np.maximum(top[v, u] - target, 0.0)
+            pos[:, 2] -= w * np.maximum(drop - 0.0, 0.0) * 1.0
+            keep &= ~(age > 4.0)
         k = int(keep.sum())
-        nm = bpy.data.meshes.new("grains")
-        nm.vertices.add(k)
-        nm.vertices.foreach_set("co", co[keep].ravel())
-        a = nm.attributes.new("rot", "FLOAT_VECTOR", "POINT")
-        a.data.foreach_set("vector", rot[keep].ravel())
-        a = nm.attributes.new("ech", "FLOAT", "POINT")
-        a.data.foreach_set("value", ech[keep])
-        old = g.ob.data
-        g.ob.data = nm
-        bpy.data.meshes.remove(old)
-        g.ob.hide_render = k == 0
+        self.g.poser_haut(dict(pos=pos[keep], rot=rot[keep], ech=ech[keep], alea=alea[keep]), self.res_x)
+        self.n_cristaux = self.g.n_cristaux
         return k
 
 
@@ -457,9 +501,11 @@ def main():
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--denoise", type=int, default=1)
     ap.add_argument("--out", default=os.path.join(ROOT, "out", "final", "seq56"))
-    ap.add_argument("--grains", default=os.path.join(ROOT, "cache", "seq56", "grains_s0.01"))
+    ap.add_argument("--grains", default=os.path.join(ROOT, "cache", "seq56", "grains_final"))
     ap.add_argument("--film", default=None)
     ap.add_argument("--list", default=None, help="comma separated frames instead of --frames (stills)")
+    ap.add_argument("--arret", type=float, default=0.0, help="unix time after which no new frame is started")
+    ap.add_argument("--reprise", type=int, default=0, help="1: skip frames already on disk")
     A = ap.parse_args(argv)
     if A.film is None:
         w = os.path.join(ROOT, "cache", "seq56", "work_" + os.path.basename(os.path.abspath(A.grains).rstrip("/")))
@@ -472,8 +518,9 @@ def main():
     setup_lights()
     Ta = np.load(os.path.join(A.film, "Ta.npy")) if os.path.exists(os.path.join(A.film, "Ta.npy")) else None
     film = Film()
-    grains = GrainLayer(A.grains, Ta)
-    root, parts, tool_info = make_squeegee()
+    res_x = int(A.res.split("x")[0])
+    grains = GrainLayer(A.grains, Ta, res_x)
+    root, parts, tool_info, fill = make_squeegee()
     outdir = os.path.join(A.out, "matiere")
     os.makedirs(outdir, exist_ok=True)
     if A.list:
@@ -486,41 +533,47 @@ def main():
     if os.path.exists(lp):
         log = json.load(open(lp))
     sc = bpy.context.scene
+    extent_px = tool_info["plan_extent_m"] / PX_M
     for f in frames:
+        if A.arret and time.time() > A.arret:
+            print("SEQ56 arret avant l'image %d : delai atteint" % f, flush=True)
+            break
+        dest = os.path.join(outdir, "f%04d.png" % f)
+        if A.reprise and os.path.exists(dest):
+            continue
         t0 = time.time()
-        # grains 456-503
-        if f <= 503:
-            n = grains.pose(f)
-        else:
-            grains.g.ob.hide_render = True
-            n = 0
-        # ink 480-527
+        s = None
         if f >= 480:
             s = np.load(os.path.join(A.film, "s%04d.npz" % f))["s"]
+        if f <= 503:
+            n = grains.pose(f, s)
+        else:
+            grains.hide()
+            n = 0
+        if f >= 480:
             film.set(s)
         else:
             film.hide()
-        # squeegee 504-527 (tip at row tip_y(f) of the sheet; world Y of the tip = (H/2 - row) * 1e-4)
+        # squeegee 504-527 (tip at row tip_y(f); world Y of the tip = (H/2 - row) * 1e-4); once the whole tool is below the sheet it is gone
+        tip = None
+        show_tool = False
         if f >= 504:
             tip = float(tip_y(f))
+            show_tool = (tip - extent_px) < H
             root.location = (0.0, (H / 2 - tip) * PX_M, 0.0)
-            for ob in [root] + parts:
-                ob.hide_render = False
-        else:
-            tip = None
-            for ob in parts:
-                ob.hide_render = True
+        for ob in parts + [root, fill]:
+            ob.hide_render = not show_tool
         floor_deep.hide_render = f > 503
         # until a grain crosses the rim the margins carry nothing at all (no catcher, hence no shadow alpha either)
         for ob in sheet_obs[:4]:
             ob.hide_render = (f <= 503 and grains.outside == 0)
         t1 = time.time()
-        sc.render.filepath = os.path.join(outdir, "f%04d.png" % f)
+        sc.render.filepath = dest
         bpy.ops.render.render(write_still=True)
         t2 = time.time()
-        log[str(f)] = dict(n_instances=n, tip_px=tip, prep_s=round(t1 - t0, 2), render_s=round(t2 - t1, 2), res=A.res, spp=A.spp,
-                           device=A.device, threads=A.threads)
-        print("FRAME %d  grains=%s  prep %.1fs  render %.1fs" % (f, n, t1 - t0, t2 - t1), flush=True)
+        log[str(f)] = dict(n_grains=n, n_cristaux=grains.n_cristaux if f <= 503 else 0, tip_px=tip, prep_s=round(t1 - t0, 2),
+                           render_s=round(t2 - t1, 2), res=A.res, spp=A.spp, device=A.device, threads=A.threads)
+        print("SEQ56 image %d : %.1f s (preparation %.1f s), grains %s dont cristaux %s" % (f, t2 - t0, t1 - t0, n, grains.n_cristaux if f <= 503 else 0), flush=True)
         json.dump(log, open(lp, "w"), indent=1)
     json.dump(dict(tool=tool_info), open(os.path.join(A.out, "tool_info.json"), "w"))
 

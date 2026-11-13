@@ -35,7 +35,8 @@ VENV_PY = "/opt/og/venv/bin/python"
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     a = dict(frames="0:71", res="1008x1512", spp=96, device="CPU", out=os.path.join(ROOT, "out", "final", "seq01"),
-             denoise="auto", only=None, tag="", filter="0.05", uvshift="0,0")
+             denoise="auto", only=None, tag="", filter="0.05", uvshift="0,0",
+             arret="0", reprise="0", threads="2")
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")
@@ -48,6 +49,9 @@ def parse_args():
     a["f0"], a["f1"] = f0, f1
     a["w"], a["h"] = [int(v) for v in str(a["res"]).lower().split("x")]
     a["spp"] = int(a["spp"])
+    a["arret"] = float(a["arret"])
+    a["reprise"] = int(a["reprise"])
+    a["threads"] = int(a["threads"])
     if a["only"]:
         a["only"] = [int(v) for v in str(a["only"]).split(",")]
     return a
@@ -57,12 +61,19 @@ ARGS = parse_args()
 
 
 def ensure_cache():
-    need = [os.path.join(CACHE, n) for n in ("geo.npz", "strip.npz", "tex_base.png")]
+    """cache/seq01 est fabriqué une fois (prep.py, sim_strip.py : Python de production avec PIL, skimage, shapely, fontTools)
+    et livré dans l'archive « papier » : le rendu, lui, n'a besoin que de bpy, numpy et scipy."""
+    need = [os.path.join(CACHE, n) for n in ("geo.npz", "strip.npz", "tex_base.png", "tex_photo.png", "tex_strip.png",
+                                             "tex_wordmark.png", "tex_edge.png", "tex_rim.png")]
     if all(os.path.exists(p) for p in need):
         return
-    for script in ("prep.py", "sim_strip.py"):
-        print("fabrication du cache :", script, flush=True)
-        subprocess.check_call([VENV_PY, os.path.join(HERE, script)])
+    if os.path.exists(VENV_PY):
+        for script in ("prep.py", "sim_strip.py"):
+            print("fabrication du cache :", script, flush=True)
+            subprocess.check_call([VENV_PY, os.path.join(HERE, script)])
+        return
+    raise SystemExit("cache/seq01 incomplet : déplier l'archive kit_papier.zip (build/gpu/kit.py papier). Absent : "
+                     + ", ".join(os.path.basename(p) for p in need if not os.path.exists(p)))
 
 
 ensure_cache()
@@ -104,7 +115,7 @@ _cen = (Vector(MON.DALLE_LO) + Vector(MON.DALLE_HI)) / 2.0 + D_ATELIER
 tl.SLAB_F = (OX + (_cen.x - _P60.x) / S_M, (_cen.z - ZC_W) / S_M, (YC_W - _cen.y) / S_M)
 tl.FLOOR_Y = (D_ATELIER.z - ZC_W) / S_M
 _v = (_P61.y - _P60.y) / S_M                 # vitesse de la caméra de l'atelier en px/image au point de jonction
-tl._ZK = [(24, 1800.0), (47, 1580.0), (50, 1210.0), (53, 780.0), (55, 420.0), (57, -56.0 + 3 * _v), (58, -56.0 + 2 * _v),
+tl._ZK = [(24, 1800.0), (47, 1700.0), (50, 1210.0), (53, 780.0), (55, 420.0), (57, -56.0 + 3 * _v), (58, -56.0 + 2 * _v),
           (59, -56.0 + _v), (60, -56.0)]
 BUMP_D = S_M                                 # distance de relief : 1 px local, exprimé en mètres
 STRIP = np.load(os.path.join(CACHE, "strip.npz"))
@@ -159,36 +170,47 @@ im.compression = 15
 im.color_management = "FOLLOW_SCENE"
 SC.render.use_file_extension = True
 
-cy.samples = ARGS["spp"]
-cy.use_adaptive_sampling = False
-cy.film_exposure = 1.0
-cy.max_bounces = 6
-cy.diffuse_bounces = 3
-cy.glossy_bounces = 2
-cy.transmission_bounces = 2
-cy.transparent_max_bounces = 8
-cy.sample_clamp_direct = 0.0
-cy.sample_clamp_indirect = 6.0
-cy.caustics_reflective = False
-cy.caustics_refractive = False
-cy.use_light_tree = True
-SC.render.filter_size = float(ARGS['filter'])
-cy.filter_width = float(ARGS['filter'])
-cy.pixel_filter_type = 'BLACKMAN_HARRIS'
+# réglages communs du film (build/mojito/scene.py : appareil, échantillons, débruitage sur la carte, rebonds) puis, pour les
+# images de papier (0-55), une version plus légère ; les images d'atelier (56-71) gardent exactement les réglages communs
+import types  # noqa: E402
+A.S.regler_rendu(types.SimpleNamespace(device=ARGS["device"].upper(), res=ARGS["res"], spp=ARGS["spp"], vue="Standard", exposition=0.0))
+SC.render.pixel_aspect_x = SC.render.pixel_aspect_y = 1.0
+SC.render.film_transparent = False
+SC.render.dither_intensity = 0.0
+SC.render.use_motion_blur = False
+SC.render.threads_mode = "FIXED"
+SC.render.threads = ARGS["threads"]
+SC.display_settings.display_device = "sRGB"
+SC.view_settings.view_transform = "Standard"
+SC.view_settings.look = "None"
+SC.sequencer_colorspace_settings.name = "sRGB"
+SC.render.image_settings.color_mode = "RGB"
+SC.render.image_settings.compression = 15
+SC.render.use_file_extension = True
 cy.use_animated_seed = False
+cy.pixel_filter_type = "BLACKMAN_HARRIS"
+cy.use_light_tree = True
+SHARED = dict(adaptive=cy.use_adaptive_sampling, max=cy.max_bounces, diffuse=cy.diffuse_bounces, glossy=cy.glossy_bounces,
+              trans=cy.transmission_bounces, vol=cy.volume_bounces, tmax=cy.transparent_max_bounces, cr=cy.caustics_reflective,
+              cf=cy.caustics_refractive, blur=cy.blur_glossy, clamp=cy.sample_clamp_indirect)
 
-if ARGS["device"].upper() == "OPTIX":
-    prefs = bpy.context.preferences.addons["cycles"].preferences
-    prefs.compute_device_type = "OPTIX"
-    try:
-        prefs.refresh_devices()
-    except Exception:
-        pass
-    for d in prefs.devices:
-        d.use = d.type in ("OPTIX", "CUDA")
-    cy.device = "GPU"
-else:
-    cy.device = "CPU"
+
+def apply_look(f):
+    """Images 0-55 : réglages légers (papier) ; 56-71 : exactement ceux du film (raccord avec la séquence 2)."""
+    if f >= 56:
+        cy.use_adaptive_sampling = SHARED["adaptive"]; cy.max_bounces = SHARED["max"]; cy.diffuse_bounces = SHARED["diffuse"]
+        cy.glossy_bounces = SHARED["glossy"]; cy.transmission_bounces = SHARED["trans"]; cy.volume_bounces = SHARED["vol"]
+        cy.transparent_max_bounces = SHARED["tmax"]; cy.caustics_reflective = SHARED["cr"]; cy.caustics_refractive = SHARED["cf"]
+        cy.blur_glossy = SHARED["blur"]; cy.sample_clamp_indirect = SHARED["clamp"]
+        cy.filter_width = 1.5
+    else:
+        cy.use_adaptive_sampling = False
+        cy.max_bounces = 6; cy.diffuse_bounces = 3; cy.glossy_bounces = 2; cy.transmission_bounces = 2
+        cy.volume_bounces = 0; cy.transparent_max_bounces = 8
+        cy.caustics_reflective = False; cy.caustics_refractive = False; cy.blur_glossy = 0.0
+        cy.sample_clamp_indirect = 6.0
+        cy.filter_width = float(ARGS["filter"]) if f <= 11 else 1.0
+
 
 world = bpy.data.worlds.new("w")
 world.use_nodes = True
@@ -196,6 +218,7 @@ bg = world.node_tree.nodes["Background"]
 bg.inputs[0].default_value = (*C_BLACK, 1)
 bg.inputs[1].default_value = 0.0
 SC.world = world
+WORLD_BG = bg
 
 # ============================================================================ matériaux
 M_NODES = []          # valeurs « à plat -> éclairé » à mettre à jour image par image
@@ -246,7 +269,7 @@ def out_node(nt, shader_out):
     link(nt, shader_out, o.inputs["Surface"])
 
 
-def flat_lit(nt, color_socket_or_rgb, rough=1.0, flat_color=None, m_node=None):
+def flat_lit(nt, color_socket_or_rgb, rough=1.0, flat_color=None, m_node=None, normal=None):
     """Mix(Émission « à plat », Diffuse éclairé ; facteur M). Renvoie la sortie shader."""
     em = N(nt, "ShaderNodeEmission")
     df = N(nt, "ShaderNodeBsdfDiffuse")
@@ -258,6 +281,8 @@ def flat_lit(nt, color_socket_or_rgb, rough=1.0, flat_color=None, m_node=None):
         else:
             link(nt, src, node.inputs[key])
     em.inputs["Strength"].default_value = 1.0
+    if normal is not None:
+        link(nt, normal, df.inputs["Normal"])
     mx = N(nt, "ShaderNodeMixShader")
     link(nt, m_node.outputs[0], mx.inputs[0])
     link(nt, em.outputs[0], mx.inputs[1])
@@ -349,10 +374,10 @@ def mat_wall():
     link(nt, tc.outputs["Object"], mp.inputs["Vector"])
     link(nt, mp.outputs["Vector"], nz2.inputs["Vector"])
     ramp = N(nt, "ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].position = 0.46
+    ramp.color_ramp.elements[0].position = 0.36
     ramp.color_ramp.elements[0].color = (*C_BLACK, 1)
-    ramp.color_ramp.elements[1].position = 0.70
-    ramp.color_ramp.elements[1].color = (0.46, 0.40, 0.34, 1)
+    ramp.color_ramp.elements[1].position = 0.58
+    ramp.color_ramp.elements[1].color = (0.62, 0.57, 0.50, 1)
     link(nt, nz2.outputs["Fac"], ramp.inputs["Fac"])
     df = N(nt, "ShaderNodeBsdfDiffuse")
     df.inputs["Roughness"].default_value = 1.0
@@ -369,13 +394,82 @@ def mat_wall():
     return m
 
 
+PK_NODES = []
+
+
+def mat_pocket():
+    m, nt = new_mat("pocket")
+    vec, _ = window_uv(nt)
+    t1 = tex_node(nt, "tex_base.png", vec)
+    pk = mval(nt, PK_NODES, 0.0)
+    mix = N(nt, "ShaderNodeMix", data_type="RGBA")
+    link(nt, pk.outputs[0], mix.inputs["Factor"])
+    link(nt, t1.outputs["Color"], mix.inputs["A"])
+    mix.inputs["B"].default_value = (0.006, 0.0055, 0.005, 1)
+    nrm, nz = noise_bump(nt, 0.7, 0.5, detail=6.0)
+    mm = mval(nt, M_NODES)
+    out_node(nt, flat_lit(nt, mix.outputs["Result"], rough=1.0, m_node=mm, normal=nrm))
+    return m
+
+
+RIM_NODES = []
+
+
 def mat_strip():
     m, nt = new_mat("strip")
     vec = uv_attr(nt)
     t = tex_node(nt, "tex_strip.png", vec, ext="CLIP")
     ed = tex_node(nt, "tex_edge.png", vec, data=True, ext="CLIP")
+    rim = tex_node(nt, "tex_rim.png", vec, data=True, ext="CLIP")
     mm = mval(nt, M_NODES)
-    body = flat_lit(nt, t.outputs["Color"], rough=1.0, m_node=mm)
+    # face imprimée : noire à plat ; orange une fois arrachée (attribut « age » par sommet) ; l'envers est toujours orange
+    age = N(nt, "ShaderNodeAttribute", attribute_type="GEOMETRY", attribute_name="age")
+    geo = N(nt, "ShaderNodeNewGeometry")
+    ow = N(nt, "ShaderNodeMath", operation="MAXIMUM")
+    link(nt, age.outputs["Fac"], ow.inputs[0])
+    link(nt, geo.outputs["Backfacing"], ow.inputs[1])
+    tc = N(nt, "ShaderNodeTexCoord")
+    nzp = N(nt, "ShaderNodeTexNoise")
+    nzp.inputs["Scale"].default_value = 0.9
+    nzp.inputs["Detail"].default_value = 8.0
+    mp = N(nt, "ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (1.0, 1.0, 1.0)
+    link(nt, tc.outputs["UV"], mp.inputs["Vector"])
+    mp.inputs["Scale"].default_value = (1008.0, 1512.0, 1.0)
+    link(nt, mp.outputs["Vector"], nzp.inputs["Vector"])
+    ro = N(nt, "ShaderNodeValToRGB")
+    ro.color_ramp.elements[0].position = 0.35
+    ro.color_ramp.elements[0].color = (*[c * 0.9 for c in C_ORANGE], 1)
+    ro.color_ramp.elements[1].position = 0.65
+    ro.color_ramp.elements[1].color = (*[min(c * 1.1, 1.0) for c in C_ORANGE], 1)
+    link(nt, nzp.outputs["Fac"], ro.inputs["Fac"])
+    c1 = N(nt, "ShaderNodeMix", data_type="RGBA")
+    link(nt, ow.outputs[0], c1.inputs["Factor"])
+    link(nt, t.outputs["Color"], c1.inputs["A"])
+    link(nt, ro.outputs["Color"], c1.inputs["B"])
+    # tranche claire et fibreuse du papier déchiré, sur tout le pourtour
+    nz2 = N(nt, "ShaderNodeTexNoise")
+    nz2.inputs["Scale"].default_value = 0.55
+    nz2.inputs["Detail"].default_value = 9.0
+    mp2 = N(nt, "ShaderNodeMapping")
+    mp2.inputs["Scale"].default_value = (1008.0, 1512.0, 1.0)
+    link(nt, tc.outputs["UV"], mp2.inputs["Vector"])
+    link(nt, mp2.outputs["Vector"], nz2.inputs["Vector"])
+    fr = N(nt, "ShaderNodeValToRGB")
+    fr.color_ramp.elements[0].position = 0.30
+    fr.color_ramp.elements[0].color = (0.30, 0.27, 0.23, 1)
+    fr.color_ramp.elements[1].position = 0.62
+    fr.color_ramp.elements[1].color = (0.80, 0.75, 0.68, 1)
+    link(nt, nz2.outputs["Fac"], fr.inputs["Fac"])
+    ra = mval(nt, RIM_NODES, 0.0)
+    rf = N(nt, "ShaderNodeMath", operation="MULTIPLY")
+    link(nt, rim.outputs["Color"], rf.inputs[0])
+    link(nt, ra.outputs[0], rf.inputs[1])
+    c2 = N(nt, "ShaderNodeMix", data_type="RGBA")
+    link(nt, rf.outputs[0], c2.inputs["Factor"])
+    link(nt, c1.outputs["Result"], c2.inputs["A"])
+    link(nt, fr.outputs["Color"], c2.inputs["B"])
+    body = flat_lit(nt, c2.outputs["Result"], rough=1.0, flat_color=c2.outputs["Result"], m_node=mm)
     # lueur du bord supérieur (images 6-11) : bande gaussienne en x, masquée par le liseré du bord
     sep = N(nt, "ShaderNodeSeparateXYZ")
     link(nt, vec, sep.inputs["Vector"])
@@ -431,6 +525,59 @@ def mat_decal():
     link(nt, tr.outputs[0], mx.inputs[1])
     link(nt, em.outputs[0], mx.inputs[2])
     out_node(nt, mx.outputs[0])
+    return m
+
+
+def mat_card():
+    """Lettres en carton : face crème mate à fibres fines, tranche plus grise, feuilletée (épaisseur visible)."""
+    m, nt = new_mat("card")
+    nrm, nz = noise_bump(nt, 2.2, 0.10, detail=8.0, aniso=(1.0, 2.5, 1.0))
+    tc = N(nt, "ShaderNodeTexCoord")
+    mp = N(nt, "ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (2.4, 0.9, 0.9)
+    link(nt, tc.outputs["Object"], mp.inputs["Vector"])
+    fib = N(nt, "ShaderNodeTexNoise")
+    fib.inputs["Scale"].default_value = 1.6
+    fib.inputs["Detail"].default_value = 10.0
+    link(nt, mp.outputs["Vector"], fib.inputs["Vector"])
+    face = N(nt, "ShaderNodeValToRGB")
+    face.color_ramp.elements[0].position = 0.35
+    face.color_ramp.elements[0].color = (*[c * 0.90 for c in C_CREAM], 1)
+    face.color_ramp.elements[1].position = 0.70
+    face.color_ramp.elements[1].color = (*[min(c * 1.0, 1.0) for c in C_CREAM], 1)
+    link(nt, fib.outputs["Fac"], face.inputs["Fac"])
+    # tranche : feuilletage le long de l'épaisseur (z local)
+    mp2 = N(nt, "ShaderNodeMapping")
+    mp2.inputs["Scale"].default_value = (0.25, 0.25, 1.4)
+    link(nt, tc.outputs["Object"], mp2.inputs["Vector"])
+    lam = N(nt, "ShaderNodeTexNoise")
+    lam.inputs["Scale"].default_value = 1.0
+    lam.inputs["Detail"].default_value = 3.0
+    link(nt, mp2.outputs["Vector"], lam.inputs["Vector"])
+    edge = N(nt, "ShaderNodeValToRGB")
+    edge.color_ramp.elements[0].position = 0.35
+    edge.color_ramp.elements[0].color = (0.30, 0.27, 0.24, 1)
+    edge.color_ramp.elements[1].position = 0.65
+    edge.color_ramp.elements[1].color = (0.60, 0.55, 0.49, 1)
+    link(nt, lam.outputs["Fac"], edge.inputs["Fac"])
+    # normale locale : |n.z| grand = face, petit = tranche
+    ng = N(nt, "ShaderNodeNewGeometry")
+    vt = N(nt, "ShaderNodeVectorTransform", vector_type="NORMAL", convert_from="WORLD", convert_to="OBJECT")
+    link(nt, ng.outputs["Normal"], vt.inputs["Vector"])
+    sp = N(nt, "ShaderNodeSeparateXYZ")
+    link(nt, vt.outputs["Vector"], sp.inputs["Vector"])
+    ab = N(nt, "ShaderNodeMath", operation="ABSOLUTE")
+    link(nt, sp.outputs["Z"], ab.inputs[0])
+    sm = N(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
+    link(nt, ab.outputs[0], sm.inputs["Value"])
+    sm.inputs["From Min"].default_value = 0.35
+    sm.inputs["From Max"].default_value = 0.85
+    cm = N(nt, "ShaderNodeMix", data_type="RGBA")
+    link(nt, sm.outputs["Result"], cm.inputs["Factor"])
+    link(nt, edge.outputs["Color"], cm.inputs["A"])
+    link(nt, face.outputs["Color"], cm.inputs["B"])
+    mm = mval(nt, M_NODES)
+    out_node(nt, flat_lit(nt, cm.outputs["Result"], rough=1.0, flat_color=C_CREAM, m_node=mm, normal=nrm))
     return m
 
 
@@ -512,7 +659,7 @@ def mat_fibre():
 
 
 MAT = dict(front=mat_sheet_front(), black=mat_sheet_black(), wall=mat_wall(), strip=mat_strip(), decal=mat_decal(),
-           plaster=mat_plaster("plaster", C_CREAM, 0.25, 0.7), slab=mat_slab(),
+           plaster=mat_card(), pocket=mat_pocket(), slab=mat_slab(),
            floor=mat_plaster("floor", C_GREY_L, 0.4, 0.45), fibre=mat_fibre())
 
 # ============================================================================ géométrie
@@ -542,9 +689,26 @@ def set_uv_from_xy(ob, scale=(1 / tl.WIN_W, 1 / tl.WIN_H), off=(0.5, 0.5), vsrc=
 
 
 # ---- feuille épaisse trouée
-SHEET = mesh_obj("sheet", GEO["sheet_v"], GEO["sheet_f"], [MAT["front"], MAT["black"], MAT["wall"]], GEO["sheet_m"])
+SHEET = mesh_obj("sheet", GEO["sheet_v"], GEO["sheet_f"], [MAT["front"], MAT["black"], MAT["wall"], MAT["pocket"]], GEO["sheet_m"])
 for p in SHEET.data.polygons:
     p.use_smooth = False
+# alvéole de la bande : sa profondeur croît de presque rien (image 12, impression à plat) à 6 px (image 15), sans décalage de parallaxe à plat
+_sv = GEO["sheet_v"]
+POCKET_IDX = np.nonzero((np.abs(_sv[:, 2] + 6.0) < 1e-3) | (np.abs(_sv[:, 2] + 3.0) < 1e-3))[0]
+POCKET_Z0 = _sv[POCKET_IDX, 2].copy()
+_pk_last = [None]
+
+
+def update_pocket(f):
+    k = 0.05 + 0.95 * tl.ss((f - 12.0) / 3.0)
+    if _pk_last[0] == k:
+        return
+    _pk_last[0] = k
+    co = np.empty((len(SHEET.data.vertices), 3), np.float32)
+    SHEET.data.vertices.foreach_get("co", co.ravel())
+    co[POCKET_IDX, 2] = POCKET_Z0 * k
+    SHEET.data.vertices.foreach_set("co", co.ravel())
+    SHEET.data.update()
 
 # ---- fibres de la déchirure
 fib = GEO["fibres"]
@@ -567,6 +731,11 @@ strip_v0 = GEO["strip_v"].copy()
 strip_v0[:, 2] = 0.03          # presque au contact de la feuille : pas de décalage de parallaxe à plat
 STRIP_OB = mesh_obj("strip", strip_v0, GEO["strip_f"], [MAT["strip"]])
 set_uv_from_xy(STRIP_OB, vsrc=strip_v0)
+STRIP_AGE = STRIP_OB.data.attributes.new("age", "FLOAT", "POINT")
+import sim_strip as _SS  # noqa: E402  (constantes de la libération : pas de simulation ici)
+_u = GEO["strip_u"].astype(np.float64)
+STRIP_TREL = _SS.T_PEEL[0] + (_SS.T_PEEL[1] - _SS.T_PEEL[0]) * (1 - _u)
+STRIP_TREL[_u < 0.035] = _SS.T_LEFT
 for p in STRIP_OB.data.polygons:
     p.use_smooth = True
 
@@ -605,14 +774,14 @@ def build_letters(key):
     verts[:n, 2] = 0.5
     verts[n:, 2] = -0.5
     ob = mesh_obj("let_" + key, verts, faces, [MAT["plaster"]])
-    for p in ob.data.polygons:
-        p.use_smooth = True
+    for p in ob.data.polygons:                                  # cartes à plat (pas d'éventail de triangles), parois lisses
+        p.use_smooth = abs(p.normal.z) < 0.5
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     for e in bm.edges:                                          # arêtes carte/paroi vives
         if len(e.link_faces) == 2:
             f0, f1 = e.link_faces
-            if abs(f0.normal.z) > 0.99 != abs(f1.normal.z) > 0.99:
+            if (abs(f0.normal.z) > 0.99) != (abs(f1.normal.z) > 0.99):
                 e.smooth = False
         else:
             e.smooth = False
@@ -687,8 +856,8 @@ ATELIER_OBJ = A.faire_sol_et_mur(D_ATELIER)
 LETTRES_AT = A.faire_lettres(D_ATELIER)
 A.poser_lettres(LETTRES_AT, 72)
 ATELIER_LIGHTS = list(A.eclairer(D_ATELIER))
-GRAINS = A.Grains("grains_dalle", os.path.join(A.SIMS, "dalle"), D_ATELIER)
-GRAINS.poser(72)
+GRAINS = A.GrainsMixtes("grains_dalle", os.path.join(A.SIMS, "dalle"), D_ATELIER)
+GRAINS.cacher(True)
 
 # ============================================================================ lumières
 KEY_FRONT_L = Vector((-0.85, 0.38, 0.36)).normalized()
@@ -713,11 +882,17 @@ def add_light(name, kind, **kw):
 
 LIGHT_STRENGTH = dict(key_front=11.0, fill_front=3200.0 * S_M ** 2)
 _Lw = lambda v: Vector((v.x, -v.z, v.y))           # direction px -> monde (x->X, y->Z, z->-Y)
-key_f = add_light("key_front", "SUN", energy=LIGHT_STRENGTH["key_front"], angle=math.radians(2.5), color=(1.0, 0.88, 0.74))
+key_f = add_light("key_front", "SUN", energy=LIGHT_STRENGTH["key_front"], angle=math.radians(5.0), color=(1.0, 0.88, 0.74))
 aim(key_f, _Lw(KEY_FRONT_L))
 fill_f = add_light("fill_front", "AREA", energy=LIGHT_STRENGTH["fill_front"], shape="SQUARE", size=2600.0 * S_M, color=(1.0, 0.95, 0.9))
 fill_f.location = pw((150.0, 500.0, 2300.0))
 aim(fill_f, (0.0, -1.0, 0.0))
+# les lumières de l'avant n'éclairent que l'avant (feuille, bande, lettres, dalle de passage) : l'atelier a ses propres lumières
+FRONT_COLL = bpy.data.collections.new("recepteurs_avant")
+for _o in [SHEET, FIBRES, STRIP_OB, DECAL, SLAB] + [v[0] for v in LET.values()]:
+    FRONT_COLL.objects.link(_o)
+for _l in (key_f, fill_f):
+    _l.light_linking.receiver_collection = FRONT_COLL
 
 # ============================================================================ caméra
 CAMD = bpy.data.cameras.new("cam")
@@ -865,6 +1040,7 @@ def update_strip(f):
     k = min(max(f, STRIP_F0), STRIP_F0 + len(STRIP_FR) - 1) - STRIP_F0
     P = STRIP_FR[k] if f >= 12 else strip_v0
     STRIP_OB.data.vertices.foreach_set("co", np.ascontiguousarray(P, np.float32).ravel())
+    STRIP_OB.data.attributes["age"].data.foreach_set("value", np.clip((f - STRIP_TREL) / 4.0, 0, 1).astype(np.float32))
     STRIP_OB.data.update()
     STRIP_OB.location = tl.sheet_drift(f)
 
@@ -873,6 +1049,12 @@ def set_state(f):
     m = tl.light_mix(f)
     for n in M_NODES:
         n.outputs[0].default_value = m
+    for n in PK_NODES:
+        n.outputs[0].default_value = tl.ss((f - 12.0) / 4.0)
+    for n in RIM_NODES:
+        n.outputs[0].default_value = tl.ss((f - 12.0) / 2.5)
+    WORLD_BG.inputs[0].default_value = (0.0006, 0.0006, 0.0006, 1.0)
+    WORLD_BG.inputs[1].default_value = 1.0 if f >= 56 else 0.0
     for n in TAU_NODES:
         n.outputs[0].default_value = 1.0 if f <= 12 else max(0.0, 1.0 - (f - 12.0) / 2.0)
     gx = tl.glint_pos(f)
@@ -883,20 +1065,20 @@ def set_state(f):
     FIBRES.location = d
     FIBRES.hide_render = f < 12
     DECAL.hide_render = f > 12
+    update_pocket(f)
     update_strip(f)
     update_letters(f)
     slab = update_slab(f)
-    key_f.hide_render = f >= 61      # la caméra est derrière la feuille : seule la lumière de l'atelier éclaire
-    fill_f.hide_render = f >= 61
     # l'atelier : obscurité dans la fente tant que la dalle n'est pas en route ; dalle en grains dès qu'elle est posée
+    if f >= 47 and SLAB.name in FRONT_COLL.objects:
+        FRONT_COLL.objects.unlink(SLAB)              # derrière la feuille la dalle n'est plus éclairée que par l'atelier
+    elif f < 47 and SLAB.name not in FRONT_COLL.objects:
+        FRONT_COLL.objects.link(SLAB)
     at = f >= 47
     for o in ATELIER_OBJ + list(LETTRES_AT.values()) + ATELIER_LIGHTS:
         o.hide_render = not at
     if at:
         A.poser_lettres(LETTRES_AT, 72)
-    GRAINS.ob.hide_render = f < 59
-    if f >= 59:
-        GRAINS.poser(72)
     if f >= 59:
         SLAB.hide_render = True
     return slab
@@ -908,6 +1090,13 @@ def render_frame(f, outdir, stats):
     SC.frame_set(f)
     slab = set_state(f)
     pos, fwd, right, up, F = set_camera(f)
+    apply_look(f)
+    bpy.context.view_layer.update()                # la caméra de l'image est en place : le niveau de détail des grains en dépend
+    if f >= 59:
+        GRAINS.poser(72, CAM, SC)                  # dalle de grains à son état de repos (image 72), cristaux proches / points lointains
+    else:
+        GRAINS.cacher(True)
+    t_prep = time.time() - t0
     SC.render.use_motion_blur = 49 <= f <= 65
     SC.render.motion_blur_shutter = 0.45
     cy.seed = 1000 + f
@@ -916,7 +1105,6 @@ def render_frame(f, outdir, stats):
     use_dn = (dn == "on") or (dn == "auto" and not flat)
     cy.use_denoising = use_dn
     if use_dn:
-        cy.denoiser = "OPTIX" if ARGS["device"].upper() == "OPTIX" else "OPENIMAGEDENOISE"
         try:
             cy.denoising_input_passes = "RGB_ALBEDO_NORMAL"
             cy.denoising_prefilter = "ACCURATE"
@@ -926,7 +1114,7 @@ def render_frame(f, outdir, stats):
     bpy.ops.render.render(write_still=True)
     dt = time.time() - t0
     stats[f] = round(dt, 2)
-    print(f"[f{f:04d}] {dt:.1f} s", flush=True)
+    print(f"[f{f:04d}] {dt:.1f} s (préparation {t_prep:.1f} s)", flush=True)
     # contrôle : écart entre la caméra réellement posée et camera_atelier(f, d)
     p, t, mm, fs, fo = GS.camera_atelier(f, D_ATELIER) if f >= 60 else (None,) * 5
     rec = None
@@ -946,6 +1134,11 @@ def main():
     key_camera(min(frames), max(frames))
     stats, recs = {}, []
     for f in frames:
+        if ARGS["arret"] and time.time() > ARGS["arret"]:
+            print(f"arrêt avant l'image {f} : délai atteint", flush=True)
+            break
+        if ARGS["reprise"] and os.path.exists(os.path.join(ARGS["out"], f"f{f:04d}{ARGS['tag']}.png")):
+            continue
         r = render_frame(f, ARGS["out"], stats)
         if r:
             recs.append(r)

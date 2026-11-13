@@ -112,6 +112,12 @@ def make_textures():
     edge = np.clip(edge * 1.3, 0, 1)
     g3 = window(edge[..., None], 0.0)[..., 0]
     save16(os.path.join(CACHE, "tex_edge.png"), g3)
+    # liseré de déchirure de la bande : 1 au bord de la silhouette, 0 à 3,5 px à l'intérieur (la tranche claire du papier)
+    inside = (L["strip"][..., 3] > 0.5).astype(np.uint8)
+    dist = cv2.distanceTransform(inside, cv2.DIST_L2, 3)
+    rim = np.clip(1.0 - (dist - 0.5) / 3.0, 0, 1) * inside
+    rim = np.maximum(rim, cv2.GaussianBlur(rim, (0, 0), 0.6))
+    save16(os.path.join(CACHE, "tex_rim.png"), window(rim[..., None].astype(np.float32), 0.0)[..., 0])
     # masque pleine résolution (1254) pour le contour de la fente
     a0 = cv2.imread(os.path.join(LOGO, "layer_strip.png"), cv2.IMREAD_UNCHANGED)[..., 3] > 127
     lab0 = measure.label(a0, connectivity=2)
@@ -162,7 +168,27 @@ def ring_normals(P):
     return np.stack([t[:, 1], -t[:, 0]], 1)        # pour un anneau CCW, la normale droite pointe vers l'extérieur
 
 
-def build_sheet(P, geo):
+POCKET_D = 6.0
+
+
+def make_pockets():
+    """Le lit de la bande orange : une alvéole à bords déchirés (rectangle de la bande, privé de la fente), en pièces CCW."""
+    ob = GEO["orange_band"]["px"]
+    xa, ya = to_w(ob["x0"], ob["y0"])
+    xb, yb = to_w(ob["x1"], ob["y1"])
+    ring = np.array([[xa, yb], [xb, yb], [xb, ya], [xa, ya], [xa, yb]], float)
+    ls = LineString(ring)
+    n = int(ls.length / 1.5)
+    R = np.array([ls.interpolate(d).coords[0] for d in np.linspace(0, ls.length, n, endpoint=False)])
+    if not Polygon(R).exterior.is_ccw:
+        R = R[::-1].copy()
+    N = ring_normals(R)
+    d = 2.6 * smooth_noise(n, 16, 31) + 1.2 * smooth_noise(n, 4.5, 32) + 0.5 * smooth_noise(n, 1.8, 33)
+    R = R + N * d[:, None]
+    return Polygon(R).buffer(0)
+
+
+def build_sheet(P, geo, pocket=None):
     """Feuille épaisse trouée : faces avant (z=0) / arrière (z=-T), parois déchirées (3 anneaux irréguliers)."""
     n = len(P)
     N = ring_normals(P)
@@ -183,12 +209,23 @@ def build_sheet(P, geo):
         return i0
 
     # face avant : anneau extérieur (4) + trou (anneau 0, sens horaire)
+    pieces = []
+    if pocket is not None:
+        pg = pocket.difference(Polygon(P).buffer(4.0))
+        pieces = [orient(g, 1.0) for g in (pg.geoms if hasattr(pg, "geoms") else [pg]) if g.area > 50]
+    prings = [np.array(g.exterior.coords)[:-1] for g in pieces]
+    geo["pocket_rings"] = np.concatenate(prings).astype(np.float32) if prings else np.zeros((0, 2), np.float32)
+    geo["pocket_len"] = np.array([len(r) for r in prings], np.int32)
     for face, (hole, z, nz) in enumerate(((rings[0], 0.0, 1), (rings[2], -SHEET_T, -1))):
         o0 = add_verts(outer, z)
         h = hole[::-1]
         h0 = add_verts(h, z)
-        verts2 = np.vstack([outer, h])
-        tri = earcut.triangulate_float64(verts2, np.array([4, 4 + len(h)], np.uint32)).reshape(-1, 3)
+        holes = [h] + ([r[::-1] for r in prings] if face == 0 else [])
+        for hh in holes[1:]:
+            add_verts(hh, z)
+        verts2 = np.vstack([outer] + holes)
+        ends = np.cumsum([4] + [len(q) for q in holes]).astype(np.uint32)
+        tri = earcut.triangulate_float64(verts2, ends).reshape(-1, 3)
         for t in tri:
             a, b, c = [o0 + int(q) for q in t]
             # orientation : normale +z pour l'avant, -z pour l'arrière
@@ -217,6 +254,29 @@ def build_sheet(P, geo):
             # anneau CCW vu du dessus : le quad avant->arrière tourne de façon à ce que la normale pointe vers l'intérieur
             F.append((a0 + k, b0 + k, b0 + k2)); M.append(2)
             F.append((a0 + k, b0 + k2, a0 + k2)); M.append(2)
+    # alvéole de la bande : plancher (matériau 3) et parois déchirées (matériau 2), 3 anneaux irréguliers
+    for k, R in enumerate(prings):
+        nR = len(R)
+        NR = ring_normals(R)
+        dd1 = 1.4 * smooth_noise(nR, 8, 41 + k) + 0.7 * smooth_noise(nR, 3, 51 + k)
+        dd2 = 1.8 * smooth_noise(nR, 10, 61 + k) + 0.8 * smooth_noise(nR, 3.5, 71 + k) + 0.8
+        rr = [R, R + NR * dd1[:, None], R + NR * dd2[:, None]]
+        zz = [0.0, -POCKET_D * 0.5, -POCKET_D]
+        b0 = [add_verts(q, z) for q, z in zip(rr, zz)]
+        for lv in range(2):
+            a0, c0 = b0[lv], b0[lv + 1]
+            for j in range(nR):
+                j2 = (j + 1) % nR
+                F.append((a0 + j, c0 + j, c0 + j2)); M.append(2)
+                F.append((a0 + j, c0 + j2, a0 + j2)); M.append(2)
+        fl0 = add_verts(rr[2], -POCKET_D)
+        tri = earcut.triangulate_float64(rr[2], np.array([nR], np.uint32)).reshape(-1, 3)
+        for t in tri:
+            a, b, c = [fl0 + int(q) for q in t]
+            pa, pb, pc = np.array(V[a]), np.array(V[b]), np.array(V[c])
+            if np.cross(pb - pa, pc - pa)[2] < 0:
+                b, c = c, b
+            F.append((a, b, c)); M.append(3)
     geo["sheet_v"] = np.array(V, np.float32)
     geo["sheet_f"] = np.array(F, np.int32)
     geo["sheet_m"] = np.array(M, np.int8)
@@ -225,7 +285,7 @@ def build_sheet(P, geo):
     return rings
 
 
-def build_fibres(P, geo, count=2600, seed=5):
+def build_fibres(P, geo, count=2600, seed=5, pockets=None):
     """Fibres de papier arrachées le long du bord de la fente : petites courbes qui dépassent vers l'intérieur du trou."""
     rng = np.random.default_rng(seed)
     N = ring_normals(P)
@@ -247,6 +307,27 @@ def build_fibres(P, geo, count=2600, seed=5):
             p = base + d * L * tt + np.array([-d[1], d[0]]) * bend[0] * L * tt * tt
             pts.append((p[0], p[1], z0 + lift * tt + 0.8 * bend[1] * tt * tt))
         out.append(pts)
+    # fibres blanches le long du bord de l'alvéole de la bande
+    if "pocket_rings" in geo and len(geo["pocket_rings"]):
+        PR, ln = geo["pocket_rings"].astype(float), geo["pocket_len"]
+        o = 0
+        for L in ln:
+            R = PR[o:o + L]; o += L
+            NR = ring_normals(R)
+            for _ in range(int(2200 * L / len(PR))):
+                i = rng.integers(0, L)
+                inward = -NR[i]
+                ang = rng.normal(0, 0.6)
+                c, s_ = math.cos(ang), math.sin(ang)
+                d = np.array([inward[0] * c - inward[1] * s_, inward[0] * s_ + inward[1] * c])
+                Lf = float(np.clip(rng.lognormal(math.log(5.0), 0.55), 1.5, 24.0))
+                lift = rng.uniform(0.0, 3.0)
+                bend = rng.normal(0, 0.35, 2)
+                pts = []
+                for tt in (0.0, 0.35, 0.7, 1.0):
+                    p = R[i] + d * Lf * tt + np.array([-d[1], d[0]]) * bend[0] * Lf * tt * tt
+                    pts.append((p[0], p[1], 0.2 + lift * tt + 0.8 * abs(bend[1]) * tt * tt))
+                out.append(pts)
     geo["fibres"] = np.array(out, np.float32)
 
 
@@ -372,6 +453,9 @@ def build_letters(geo):
         oy = cy - cap / 2
         from shapely import affinity
         polys = [affinity.translate(p, ox, oy).simplify(0.08) for p in polys]
+        if face == "doto-var":          # points plus gras : on épaissit chaque point de 0,9 px pour la lisibilité en 1008x1512
+            polys = [q for p in polys for q in clean(p.buffer(0.9, join_style=2))]
+            polys = clean(unary_union(polys))
         put_letters(geo, face, polys)
         info[face] = dict(scale=float(s), cap=float(cap), n_poly=len(polys))
         # centre du premier contre-forme du O (premier glyphe) pour la plongée
@@ -390,7 +474,7 @@ def main():
     main_mask = make_textures()
     geo = {}
     P = hole_polygon(main_mask)
-    build_sheet(P, geo)
+    build_sheet(P, geo, make_pockets())
     build_fibres(P, geo)
     build_strip(geo)
     info = build_letters(geo)
