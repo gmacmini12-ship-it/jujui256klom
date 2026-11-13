@@ -27,12 +27,12 @@ NGX, NGZ = 64, 60
 K_LOGO = LOGO / LOGO_PX     # unités monde par pixel du calque
 
 # populations de disques d'orange (fractions des points orange) : géants, grands, moyens, reste = brume
-POP_G, POP_L, POP_M = 6e-6, 3.6e-5, 5.36e-4
-P_G, P_L, P_M = 0.16, 0.07, 0.022
+POP_G, POP_L, POP_M = 6e-6, 1.4e-5, 1.3e-4
+P_G, P_L, P_M = 1.2, 0.8, 0.5
 G_SMALL = 1.2
-END_PARAMS = [0.12, 1.0]     # gain de la brume orange, échelle des pics des grands disques
+END_PARAMS = [7.0, 1.0]     # gain de la brume orange, échelle des pics des grands disques
 # poussière du champ : fraction allumée, intensité allumée, intensité éteinte, surcroît net, gain bokeh, plafond bokeh
-DUST_PARAMS = [0.0015, 50.0, 0.02, 0.8, 0.02, 10.0]
+DUST_PARAMS = [0.0015, 50.0, 0.02, 0.8, 0.08, 40.0]
 
 
 @ti.data_oriented
@@ -357,7 +357,7 @@ class Engine:
                         bk = 1.0
                         e = self.gain_norm * ((1.0 - sb) * self.i0[i] * dust * bk + amp * 0.6 * wq) * haze
                         if orange == 0:
-                            e *= 1.0 - 0.9 * self.sm((tt - 434.0) / 21.0)
+                            e *= 1.0 - 0.99 * self.sm((tt - 432.0) / 17.0)
                         else:
                             ss = self.surge_ramp(ii, tt)
                             if ss > 0.0:

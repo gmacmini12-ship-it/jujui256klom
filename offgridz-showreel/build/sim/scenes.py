@@ -278,7 +278,7 @@ class Filet(SceneBase):
         lo = roi_lo - pad
         hi = roi_hi + pad
         n = np.ceil((hi - lo) / dx).astype(int) + 1
-        wall_eff = max(self.GLASS_WALL, 1.6 * dx)      # a wall thinner than a grid cell leaks: thicken OUTWARD at coarse scale
+        wall_eff = max(self.GLASS_WALL, 3.0 * dx)      # a wall thinner than ~3 grid cells leaks (thin-slab normals): thicken OUTWARD at coarse scale
         cup = CupC(0.0, cy, z_bot, self.GLASS_H, self.GLASS_R_BOT, self.GLASS_R_TOP, wall_eff, bottom=wall_eff, mu=0.4)
         self.wall_eff = wall_eff
         Ne = len(ex_t)
