@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Aperçus en calcul : mojito (chutes et versement simulés) et grains (dalle, bec, filet) ; papier, encre et bande son chez les agents",
+ "etape": "Aperçu complet des 20 secondes envoyé ; versement final en calcul ; papier et encre chez les agents",
  "credits": {
   "depenses": 8.63,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien à valider pour l'instant : un aperçu complet du film arrive",
- "action": false
+ "attente": "Votre accord sur le palier 3 : session GPU pour les grains, 55 crédits au plus",
+ "action": true
 }
