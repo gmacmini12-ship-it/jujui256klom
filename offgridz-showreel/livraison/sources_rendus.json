@@ -1,0 +1,249 @@
+{
+ "titre": "INSOUMISE : où retrouver les images finales rendues sur la machine louée",
+ "usage": "Chaque archive (zip sans compression) contient les images PNG 16 bits de la plage indiquée, rangées sous out/final/<séquence>/. La séquence 4 (images 360 à 455) et la fenêtre de la séquence 6 se recalculent sur place (build/seq4, build/seq56/run.py). L'assemblage (build/final/compose.py) refait le film à partir de ces images.",
+ "archives": [
+  {
+   "sequence": "seq01 (papier)",
+   "images": [
+    0,
+    23
+   ],
+   "session": "B",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/b79dac1f-062c-439b-8405-6652810206f0.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq01 (papier)",
+   "images": [
+    24,
+    47
+   ],
+   "session": "B",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/30c2e33e-6dd8-4b53-b82d-424fa4b2a8c2.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq01 (papier)",
+   "images": [
+    48,
+    71
+   ],
+   "session": "B",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/12525b9e-0b72-4d1c-8110-dd753f322053.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq2 (grains)",
+   "images": [
+    72,
+    95
+   ],
+   "session": "grains, 13 novembre 10 h 08",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/767f5cd8-79e8-43ad-9bde-40bd2a58596e.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq2 (grains)",
+   "images": [
+    96,
+    119
+   ],
+   "session": "grains, 13 novembre 10 h 08",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/3c092ef5-6059-42f1-bdfb-e900e2f1f833.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq2 (grains)",
+   "images": [
+    120,
+    143
+   ],
+   "session": "grains, 13 novembre 10 h 08",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/0c4bd090-fa42-48ce-9ff5-db6a2c08b214.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq2 (grains)",
+   "images": [
+    144,
+    167
+   ],
+   "session": "grains, 13 novembre 10 h 08",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/67c7289f-cda0-4b74-9623-a94556782b85.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq2 (grains)",
+   "images": [
+    168,
+    168
+   ],
+   "session": "grains, 13 novembre 10 h 08",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/a90292f1-94c0-461b-8c6c-3b592b47109c.zip",
+   "accessible": true,
+   "note": "seule l'image 168 de cette archive est gardée"
+  },
+  {
+   "sequence": "seq2 (grains)",
+   "images": [
+    169,
+    192
+   ],
+   "session": "A",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/37ce2216-0fad-4054-9598-957d2fe51cd5.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq2 (grains)",
+   "images": [
+    193,
+    215
+   ],
+   "session": "A",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/92995aac-7476-49ed-a3c9-40331751679a.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    216,
+    239
+   ],
+   "session": "A",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/dce5ae97-bd5a-472a-be2d-83e49de88827.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    240,
+    263
+   ],
+   "session": "A",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/eccefada-6aa0-44d6-b221-fda0929902a7.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    264,
+    280
+   ],
+   "session": "A",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/1f1f8a25-3a7a-4b49-babb-900b7622ec69.zip",
+   "accessible": true,
+   "note": "l'archive contient 264 à 287 ; 281 à 287 sont remplacées par la session B"
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    281,
+    304
+   ],
+   "session": "B",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/dad0e085-3ffd-4b75-b41b-a0aec1dd9611.zip",
+   "accessible": true,
+   "note": "liquide confiné"
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    305,
+    308
+   ],
+   "session": "B",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/e66ef75c-4ca0-4b12-afec-4f1217963fa3.zip",
+   "accessible": true,
+   "note": "liquide confiné"
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    309,
+    332
+   ],
+   "session": "B2",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/b60cf567-f13c-4d7e-94d6-b39e1d42621c.zip",
+   "accessible": true,
+   "note": "liquide confiné jusqu'à 320, brin de menthe corrigé"
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    333,
+    356
+   ],
+   "session": "B2",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/455a6cc5-5400-4670-af69-f61ae1df99fb.zip",
+   "accessible": true,
+   "note": "liquide confiné jusqu'à 320, brin de menthe corrigé"
+  },
+  {
+   "sequence": "seq3 (mojito)",
+   "images": [
+    357,
+    359
+   ],
+   "session": "B2",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/87d8eb4c-e464-4fe6-86e8-e7cc8b726140.zip",
+   "accessible": true,
+   "note": "liquide confiné jusqu'à 320, brin de menthe corrigé"
+  },
+  {
+   "sequence": "seq56 (matière : pigment, encre, raclette)",
+   "images": [
+    456,
+    479
+   ],
+   "session": "B2",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/c78450f3-06b9-406c-a099-5fc288ff939e.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq56 (matière : pigment, encre, raclette)",
+   "images": [
+    480,
+    503
+   ],
+   "session": "B2",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/7925fbe9-1604-4aaa-94e7-a404bef42289.zip",
+   "accessible": true,
+   "note": ""
+  },
+  {
+   "sequence": "seq56 (matière : pigment, encre, raclette)",
+   "images": [
+    504,
+    527
+   ],
+   "session": "B2",
+   "archive": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/35dd46ed-794b-4063-bce7-106c962c529f.zip",
+   "accessible": true,
+   "note": ""
+  }
+ ],
+ "simulations": {
+  "filet_de_sucre_session_A": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/34d79f7c-9ead-43bb-9972-a953cf5f1d67.zip",
+  "liquide_r256": [
+   "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/7529b9b2-9145-4d8e-b0eb-bf114dc052a5.zip",
+   "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/a92df191-4ee5-4965-b8dd-1864dfa66a3c.zip"
+  ],
+  "liquide_confine_r256c": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/16970d6b-9b65-4d96-9d24-fb154accd4d8.zip",
+  "caches_papier_et_encre": [
+   "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/8c90359c-536f-4233-a103-afb53fe80f23.zip",
+   "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/d6d58ebe-41e2-419a-9472-060c5d08fbc1.zip"
+  ]
+ }
+}
