@@ -266,8 +266,8 @@ def faire_glacon(nom, taille, graine):
         glace = materiau("glace", **{"Transmission Weight": 1.0, "IOR": 1.31, "Roughness": 0.008, "Base Color": (1, 1, 1, 1)})
         bruit_relief(glace, 60.0, 0.06, detail=2.0, distance=0.0004)
     givre = bpy.data.materials.get("givre") or materiau(
-        "givre", **{"Transmission Weight": 0.82, "IOR": 1.31, "Roughness": 0.42, "Base Color": (0.97, 0.985, 1.0, 1),
-                    "Subsurface Weight": 0.25})
+        "givre", **{"Transmission Weight": 0.9, "IOR": 1.31, "Roughness": 0.38, "Base Color": (0.98, 0.99, 1.0, 1),
+                    "Subsurface Weight": 0.15})
     ob = depuis_bmesh(nom, lambda bm: bmesh.ops.create_cube(bm, size=taille), glace)
     bev = ob.modifiers.new("arrondi", "BEVEL"); bev.width = taille * 0.11; bev.segments = 4
     sub = ob.modifiers.new("sub", "SUBSURF"); sub.levels = 2; sub.render_levels = 2
@@ -275,11 +275,34 @@ def faire_glacon(nom, taille, graine):
     dis = ob.modifiers.new("fonte", "DISPLACE"); dis.texture = tex; dis.strength = taille * 0.045
     dis.texture_coords = "OBJECT"
     ob.cycles.is_caustics_caster = True
-    coeur = depuis_bmesh(nom + "_coeur", lambda bm: bmesh.ops.create_icosphere(bm, subdivisions=3, radius=taille * 0.27), givre)
+    # voile laiteux discret au centre
+    coeur = depuis_bmesh(nom + "_coeur", lambda bm: bmesh.ops.create_icosphere(bm, subdivisions=3, radius=taille * 0.19), givre)
     tex2 = bpy.data.textures.new(nom + "_coeur", "CLOUDS"); tex2.noise_scale = taille * 0.3
-    d2 = coeur.modifiers.new("irregulier", "DISPLACE"); d2.texture = tex2; d2.strength = taille * 0.25
-    coeur.scale = (rnd.uniform(0.8, 1.25), rnd.uniform(0.8, 1.25), rnd.uniform(0.9, 1.5))
+    d2 = coeur.modifiers.new("irregulier", "DISPLACE"); d2.texture = tex2; d2.strength = taille * 0.22
+    coeur.scale = (rnd.uniform(0.8, 1.25), rnd.uniform(0.8, 1.25), rnd.uniform(0.9, 1.6))
     coeur.parent = ob
+    # traînée de microbulles d'air emprisonnées, comme dans la vraie glace
+    rng = np.random.default_rng(graine)
+    axe = rng.normal(size=3); axe /= np.linalg.norm(axe)
+    k = 260
+    pos = rng.normal(0, 0.17, (k, 1)) * axe[None] * taille + rng.normal(0, 0.065, (k, 3)) * taille
+    pos = pos[np.abs(pos).max(1) < taille * 0.36]
+    micro = bpy.data.materials.get("microbulle") or materiau("microbulle", **{"Transmission Weight": 1.0, "IOR": 0.76, "Roughness": 0.0})
+    rayons = rng.uniform(0.00007, 0.00024, (len(pos), 1))
+    bulles = nuage(nom + "_microbulles", proto_sphere(1), pos, np.tile([[0.0, 0.0, 1.0]], (len(pos), 1)), np.repeat(rayons, 3, 1), micro)
+    bulles.parent = ob
+    # plan de fracture : une lame givrée qui accroche la lumière
+    fracture = bpy.data.materials.get("fracture") or materiau(
+        "fracture", **{"Transmission Weight": 1.0, "IOR": 1.31, "Roughness": 0.28, "Base Color": (1, 1, 1, 1)})
+
+    def lame(bm):
+        bmesh.ops.create_grid(bm, x_segments=6, y_segments=6, size=taille * 0.36)
+    fr = depuis_bmesh(nom + "_fracture", lame, fracture)
+    tex3 = bpy.data.textures.new(nom + "_fracture", "CLOUDS"); tex3.noise_scale = taille * 0.5
+    d3 = fr.modifiers.new("gauchie", "DISPLACE"); d3.texture = tex3; d3.strength = taille * 0.10
+    fr.rotation_euler = Euler((rnd.uniform(0, 3.1), rnd.uniform(0, 3.1), rnd.uniform(0, 3.1)))
+    fr.location = (rnd.uniform(-1, 1) * taille * 0.08, rnd.uniform(-1, 1) * taille * 0.08, rnd.uniform(-1, 1) * taille * 0.08)
+    fr.parent = ob
     return ob
 
 
@@ -668,6 +691,41 @@ def panneau_lumineux(nom, centre, largeur, hauteur, couleur, force, camera=True,
     return ob
 
 
+def faire_enseigne(caractere, force):
+    """Le mot en lettres lumineuses, loin derrière le verre : la profondeur de champ le rend flou."""
+    chemin = os.path.join(SORTIE, "enseigne", caractere + ".png")
+    if not os.path.exists(chemin):
+        print(f"ENSEIGNE absente ({chemin}) : lancer build/mojito/enseigne.py", flush=True)
+        return None
+    img = bpy.data.images.load(chemin)
+    m = bpy.data.materials.new("enseigne")
+    try:
+        m.use_nodes = True
+    except Exception:
+        pass
+    nt = m.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    tex = nt.nodes.new("ShaderNodeTexImage"); tex.image = img
+    em = nt.nodes.new("ShaderNodeEmission"); em.inputs["Color"].default_value = (*lin(CREME), 1)
+    mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY"; mul.inputs[1].default_value = force
+    sortie = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(tex.outputs["Color"], mul.inputs[0]); nt.links.new(mul.outputs["Value"], em.inputs["Strength"])
+    nt.links.new(em.outputs["Emission"], sortie.inputs["Surface"])
+    largeur, hauteur = 0.40, 0.10
+
+    def plan(bm):
+        uv = bm.loops.layers.uv.new("uv")
+        vs = [bm.verts.new((x, 0.0, z)) for x, z in ((-largeur / 2, -hauteur / 2), (largeur / 2, -hauteur / 2),
+                                                     (largeur / 2, hauteur / 2), (-largeur / 2, hauteur / 2))]
+        f = bm.faces.new(vs)
+        for boucle, c in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+            boucle[uv].uv = c
+    ob = depuis_bmesh("enseigne", plan, m, lisse=False)
+    ob.location = (-0.01, 0.78, 0.335)
+    return ob
+
+
 def lumiere_surface(nom, position, cible, taille, puissance, couleur=(1, 1, 1), taille_y=None, caustiques=False, camera=False):
     lum = bpy.data.lights.new(nom, "AREA")
     lum.energy = puissance; lum.color = couleur
@@ -725,6 +783,10 @@ def eclairer(args):
         lumiere_surface("arete_droite", (0.33, 0.14, 0.15), (0, 0, 0.09), 0.04, 1.4 * args.aretes, lin(CREME), taille_y=0.45)
     if args.dessus > 0:
         lumiere_surface("dessus", (-0.05, -0.10, 0.60), (0, 0, 0.12), 0.40, 6.0 * args.dessus, lin(CREME))
+    if args.eclat > 0:        # petite source dure : elle fait scintiller les arêtes de la glace et les gouttes
+        lumiere_surface("eclat", (-0.30, -0.42, 0.46), (0, 0, 0.12), 0.025, 2.2 * args.eclat, lin(CREME))
+    if args.enseigne:
+        faire_enseigne(args.enseigne, args.force_enseigne)
 
 
 def cadrer(args):
@@ -732,8 +794,8 @@ def cadrer(args):
     cam = bpy.data.cameras.new("camera"); ob = bpy.data.objects.new("camera", cam)
     sc.collection.objects.link(ob); sc.camera = ob
     cam.sensor_fit = "VERTICAL"; cam.sensor_height = 36.0; cam.lens = 100.0
-    ob.location = (0.012, -0.72, 0.172)
-    viser(ob, (0.012, 0.0, 0.110))
+    ob.location = (0.010, -0.66, 0.176)
+    viser(ob, (0.010, 0.0, 0.118))
     cam.dof.use_dof = True
     cam.dof.focus_distance = (Vector((0.0, -R_HAUT, 0.09)) - ob.location).length
     cam.dof.aperture_fstop = args.ouverture
@@ -827,6 +889,9 @@ if __name__ == "__main__":
     ap.add_argument("--tente", type=float, default=1.15, help="luminance de la tente vue à travers le verre")
     ap.add_argument("--aretes", type=float, default=0.5)
     ap.add_argument("--dessus", type=float, default=1.0)
+    ap.add_argument("--eclat", type=float, default=1.0, help="petite source dure pour les reflets vifs")
+    ap.add_argument("--enseigne", default="instrument-serif-italic", help="caractère de l'enseigne floue ('' = aucune)")
+    ap.add_argument("--force_enseigne", type=float, default=0.55)
     ap.add_argument("--vue", default="Standard", choices=["AgX", "Standard", "Filmic", "Khronos PBR Neutral"])
     ap.add_argument("--exposition", type=float, default=0.0)
     ap.add_argument("--blend", default="")
