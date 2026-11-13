@@ -12,6 +12,7 @@ import numpy as np
 import soundfile as sf
 from scipy import signal
 from scipy.stats import spearmanr
+from scipy.ndimage import uniform_filter1d
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -66,7 +67,7 @@ def lra(x):
     return float(np.percentile(l[ok2], 95) - np.percentile(l[ok2], 10))
 
 
-def onset_measure(env, s, peak_win=960, pre=1600, post=1600, frac=0.02):
+def onset_measure(env, s, peak_win=960, pre=400, post=800, frac=0.02):
     """Début d'attaque dans le fichier : premier échantillon de [s-pre, s+post] qui dépasse frac x la crête locale.
     Retourne (échantillon, statut). 'masquée' : un son antérieur dépasse déjà le seuil juste avant."""
     a = max(0, s - pre)
@@ -75,7 +76,7 @@ def onset_measure(env, s, peak_win=960, pre=1600, post=1600, frac=0.02):
     if pk < 3e-6:
         return None, "inaudible (< -110 dBFS)"
     thr = max(frac * pk, 2e-7)
-    pre_lvl = env[max(0, s - 400):s].max() if s > 0 else 0.0
+    pre_lvl = env[max(0, s - pre):s].max() if s > 0 else 0.0
     if pre_lvl > thr:
         return None, "masquée par un son antérieur"
     idx = np.nonzero(env[a:b] > thr)[0]
@@ -84,7 +85,7 @@ def onset_measure(env, s, peak_win=960, pre=1600, post=1600, frac=0.02):
     return int(a + idx[0]), "ok"
 
 
-def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
+def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None, S=None):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -115,7 +116,7 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
     for nm, a, b in bars:
         seg = mixr[:, a * SPF:b * SPF]
         sh = band_shares(mixr, a * SPF, b * SPF) if np.max(np.abs(seg)) > 1e-5 else [float("nan")] * 10
-        bar_rows.append((nm, a, b - 1, dbfs(seg), pk_db(seg), sum(sh[:3]) * 100))
+        bar_rows.append((nm, a, b - 1, dbfs(seg), pk_db(seg), sum(sh[:3]) * 100, dbfs(mus_r[:, a * SPF:b * SPF]), dbfs(sfx_r[:, a * SPF:b * SPF])))
 
     # ---- silences
     sil = []
@@ -131,8 +132,8 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
     d_join = float(np.max(np.abs(x[:, 0] - x[:, -1])))
     dd = np.abs(np.diff(x, axis=1))
     med_step = float(np.median(dd[:, -4800:]))
-    loop = np.concatenate([x[:, -4800:], x[:, :4800]], axis=1)
-    k = 4800
+    loop = np.concatenate([x[:, -SR:], x[:, :SR]], axis=1)
+    k = SR
     step_join = float(np.max(np.abs(loop[:, k] - loop[:, k - 1])))
     max_step_win = float(np.max(np.abs(np.diff(loop[:, k - 480:k + 480], axis=1))))
     rms_end = dbfs(x[:, -SR // 10:])
@@ -142,32 +143,50 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
     for _, st in m._filters.items():
         yk = st.apply_filter(yk)
     mom = [(-0.691 + 10 * np.log10(np.mean(yk[a:a + int(0.4 * SR)] ** 2, axis=0).sum() + 1e-20)) for a in range(k - int(0.8 * SR), k + int(0.4 * SR), int(0.1 * SR))]
-    sa, sb = x[:, -9600:], x[:, :9600]
-    fa_, pa_ = signal.welch(sa, SR, nperseg=2048, axis=-1)
-    fb_, pb_ = signal.welch(sb, SR, nperseg=2048, axis=-1)
-    spec_diff = float(np.max(np.abs(10 * np.log10(pa_.sum(0) + 1e-20) - 10 * np.log10(pb_.sum(0) + 1e-20))[(fa_ > 100) & (fa_ < 8000)]))
+    def oct_levels(seg):
+        f_, p_ = signal.welch(seg, SR, nperseg=4096, axis=-1)
+        p_ = p_.sum(0)
+        return np.array([10 * np.log10(p_[(f_ >= lo) & (f_ < hi)].sum() + 1e-30) for lo, hi in zip(EDGES[3:9], EDGES[4:10])])
+    spec_diff = float(np.max(np.abs(oct_levels(x[:, -4 * SPF:]) - oct_levels(x[:, :4 * SPF]))))
 
     # ---- table de synchronisation
     env_m = np.max(np.abs(mus_r), axis=0)
     env_s = np.max(np.abs(sfx_r), axis=0)
     music_stems = {"rythme", "basse", "textures"}
+    _dry = {}
+
+    def env_dry(k):
+        if k not in _dry:
+            _dry[k] = np.max(np.abs(S[k].dry), axis=0)
+        return _dry[k]
+
     perc_music = ("kick", "caisse", "rim", "hat", "clic", "roulement")
     rows = []
     for e in LOG:
         fam = e["family"]
-        dense = fam in ("grains", "points")
+        dense = fam in ("grains", "points") and not e.get("continuous")
+        cont = bool(e.get("continuous"))
         env = env_m if e["stem"] in music_stems else env_s
         meas, stat = (None, "n/a")
+        meas_d = None
         measurable = (fam in ("mojito", "typo", "reticule", "papier") or (fam == "versement" and "contact" in e["name"]) or
                       (fam == "musique" and e["name"].startswith(perc_music)))
         if measurable and not dense:
             meas, stat = onset_measure(env, e["expected"])
+            if S is not None and e["stem"] in S:
+                md_, st_d = onset_measure(env_dry(e["stem"]), e["expected"])
+                meas_d = md_
+                if meas is None and md_ is not None:
+                    stat = "bus sec seulement (WAV : " + stat + ")"
         elif not dense:
             stat = "attaque douce / texture : non mesurée sur seuil"
-        rows.append(dict(e, mesure=meas, statut=stat, dense=dense))
-    sync_rows = [r for r in rows if not r["dense"]]
+        rows.append(dict(e, mesure=meas, mesure_sec=meas_d, statut=stat, dense=dense, cont=cont))
+    cont_rows = [r for r in rows if r["cont"]]
+    sync_rows = [r for r in rows if not r["dense"] and not r["cont"]]
     ok = [r for r in sync_rows if r["mesure"] is not None]
-    dev_prog = [abs(r["sample"] - r["expected"]) for r in rows]
+    ok_d = [r for r in sync_rows if r["mesure_sec"] is not None]
+    dev_d = [r["mesure_sec"] - r["expected"] for r in ok_d]
+    dev_prog = [abs(r["sample"] - r["expected"]) for r in rows if not r["cont"]]
     dev_mes = [r["mesure"] - r["expected"] for r in ok]
 
     # ---- evenements.json
@@ -200,16 +219,20 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
                 i = int(r["sample"] // SPF) - 360
                 if 0 <= i < len(fr):
                     cnt[i] += 1
-        rate = 22.0 + 150.0 * np.clip(np.interp(fr, Pt["frames"], Pt["mean"]) / (np.percentile(Pt["mean"], 98) + 1e-12), 0, 1) ** 1.2
-        r2 = spearmanr(cnt, rate)[0]
-        checks.append(("Points 360-431 : nombre de pings par image contre luminance moyenne des statistiques", f"Spearman {r2:+.2f} ({int(cnt.sum())} pings)"))
+        rate = np.interp(fr, *D["points_rate"])
+        k5 = np.ones(5) / 5
+        r2 = spearmanr(np.convolve(cnt, k5, "same")[2:-2], np.convolve(rate, k5, "same")[2:-2])[0]
+        r2b = spearmanr(cnt, rate)[0]
+        checks.append(("Points 360-431 : pings par image contre densité pilote (statistiques de l'image)", f"Spearman {r2b:+.2f} par image, {r2:+.2f} lissé sur 5 images ({int(cnt.sum())} pings, 1 image = Poisson de 1 à 10 événements)"))
     F56 = D["seq56"]
     if len(F56["n"]) >= 20:
-        fr = np.arange(456, 480)
+        fr = np.arange(456, 467)
         env = np.array([np.sqrt(np.mean(tex[:, f * SPF:(f + 1) * SPF] ** 2)) for f in fr])
         nn = np.array([F56["n"].get(int(f), np.nan) for f in fr])
         r3 = spearmanr(env, nn)[0]
-        checks.append(("Déferlement 456-479 : enveloppe RMS contre n particules libres (meta.json)", f"Spearman {r3:+.2f}"))
+        drv = np.interp(fr, *D["flood_drive"])
+        r3b = spearmanr(env, drv)[0]
+        checks.append(("Déferlement, montée 456-466 (n croît ; ensuite n est constant jusqu'à 478 et le son aussi) : enveloppe RMS du bus des textures contre pilote (taux × niveau tirés de n et dn/dt)", f"Spearman {r3b:+.2f} ; contre n seul {r3:+.2f}"))
     # raclette : centroïde spectral par image contre position de la lame
     fr_ = np.arange(504, 528)
     cen, posv = [], []
@@ -249,9 +272,19 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
             fq = np.fft.rfftfreq(len(sig), 1 / SR)
             cen_i = float((sp * fq).sum() / sp.sum())
             fpk = float(fq[np.argmax(sp)])
-            env = np.abs(signal.hilbert(sig))
-            ix = np.nonzero(env > 0.01 * env.max())[0]
+            env = np.sqrt(uniform_filter1d(sig ** 2, 480))
+            ix = np.nonzero(env > 10 ** (-30 / 20) * env.max())[0]
             ice_rows.append((e["corps"], e["dv"], fpk, cen_i, ix[-1] / SR * 1000, pk_db(sig)))
+    allc, allv = [], []
+    for e in ev:
+        if e["genre"] == "glacon":
+            sig = fin.v_hit_ice(e["dv"], e["corps"], e["k"], e["k"])
+            sp = np.abs(np.fft.rfft(sig * np.hanning(len(sig)))) ** 2
+            fq = np.fft.rfftfreq(len(sig), 1 / SR)
+            j = (e["corps"] - 10) % len(fin.ICE_BASE)
+            allc.append(float((sp * fq).sum() / sp.sum()) / fin.ICE_BASE[j])
+            allv.append(e["dv"])
+    r_ice = spearmanr(allv, allc)[0] if len(allc) > 3 else float("nan")
     if len(ice_rows) > 1:
         pts = np.array([[np.log2(r[2]), np.log2(r[3])] for r in ice_rows])
         dm = np.min([np.hypot(*(pts[i] - pts[j])) for i in range(len(pts)) for j in range(i + 1, len(pts))])
@@ -306,7 +339,8 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
     md.append("## 1. Format, sonie, crête\n")
     md.append("| Mesure | Valeur | Cible |\n|---|---|---|")
     md.append(f"| Fichier | {info.format} {info.subtype}, {info.samplerate} Hz, {info.channels} canaux | WAV, 48 000 Hz, stéréo, 24 bits |")
-    md.append(f"| Échantillons | {n_mix} ({n_mix / SR:.6f} s) | 960 000 (20,000 s) |")
+    md.append(f"| Échantillons | mix {n_mix} ({n_mix / SR:.6f} s) ; musique {mus_r.shape[1]} ; bruitages {sfx_r.shape[1]} | 960 000 (20,000 s) |")
+    md.append(f"| Décalage continu (moyenne L / R) | {np.mean(mixr[0]):.1e} / {np.mean(mixr[1]):.1e} | ≈ 0 |")
     md.append(f"| Sonie intégrée (BS.1770-4, pyloudnorm) | {f2(L)} LUFS | −14,0 ± 0,3 |")
     md.append(f"| Crête vraie, sur-échantillonnage ×4 | {f2(tp4)} dBTP | ≤ −1,0 |")
     md.append(f"| Crête vraie, contrôle ×8 | {f2(tp8)} dBTP | ≤ −1,0 |")
@@ -323,9 +357,9 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
         md.append(f"| {k_} | " + " | ".join(f"{100 * x:.1f} %" for x in v) + f" | **{100 * sum(v[:3]):.1f} %** |")
     md.append(f"\nLa bande 31–125 Hz (trois octaves centrées 31,5 / 63 / 125, de 22 à 177 Hz) porte {100 * low_mix:.1f} % de l'énergie du mix "
               "(cible : minoritaire, donc sous 50 %). Part par mesure :\n")
-    md.append("| Section | Images | RMS (dBFS) | Crête (dBFS) | Part 31–125 Hz |\n|---|---|---|---|---|")
-    for nm, a, b, r_, p_, lw in bar_rows:
-        md.append(f"| {nm} | {a}–{b} | {f2(r_, 1)} | {f2(p_, 1)} | {lw:.0f} % |" if np.isfinite(lw) else f"| {nm} | {a}–{b} | {f2(r_, 1)} | {f2(p_, 1)} | n/a |")
+    md.append("| Section | Images | RMS mix (dBFS) | Crête (dBFS) | RMS musique | RMS bruitages | Part 31–125 Hz |\n|---|---|---|---|---|---|---|")
+    for nm, a, b, r_, p_, lw, rm_, rs_ in bar_rows:
+        md.append(f"| {nm} | {a}–{b} | {f2(r_, 1)} | {f2(p_, 1)} | {f2(rm_, 1)} | {f2(rs_, 1)} | {lw:.0f} % |" if np.isfinite(lw) else f"| {nm} | {a}–{b} | {f2(r_, 1)} | {f2(p_, 1)} | {f2(rm_, 1)} | {f2(rs_, 1)} | n/a |")
     md.append("")
     md.append("## 3. Silences, retrait, fin\n")
     md.append("| Zone | Crête du mix (dBFS) |\n|---|---|")
@@ -339,8 +373,7 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
     md.append(f"| Écart entre le dernier et le premier échantillon (max L/R) | {d_join:.2e} | pas médian entre échantillons voisins sur 100 ms : {med_step:.2e} |")
     md.append(f"| Plus grand pas inter-échantillons exactement au raccord (fichier mis bout à bout) | {step_join:.2e} | plus grand pas sur ±10 ms autour du raccord : {max_step_win:.2e} |")
     md.append(f"| RMS des 100 dernières ms / des 100 premières ms | {f2(rms_end, 1)} / {f2(rms_start, 1)} dBFS | écart {f2(rms_end - rms_start, 1)} dB |")
-    md.append(f"| Sonie momentanée (400 ms) en glissant à travers le raccord, de −0,8 s à +0,4 s | min {min(mom):.1f}, max {max(mom):.1f} LUFS | {'(valeurs sous la porte -70 : silence numérique relatif)' if max(mom) < -70 else 'écart max entre fenêtres voisines ' + f2(max(abs(np.diff(mom))), 1) + ' LU'} |")
-    md.append(f"| Écart de spectre (100-8000 Hz) entre les 200 dernières et les 200 premières ms | {f2(spec_diff, 1)} dB (max sur les bins) | |")
+    md.append(f"| Écart de niveau par octave (250 Hz à 8 kHz) entre les images 596-599 et les images 0-3 | {f2(spec_diff, 1)} dB (maximum sur les six octaves) | |")
     md.append("\nCe qui rend le raccord invisible : le souffle de bande est un bruit périodique de 20 s exactement (filtré dans le domaine de Fourier), "
               "à enveloppe égale au premier et au dernier échantillon ; tout le reste est à zéro numérique entre 596 et 599.\n")
 
@@ -349,15 +382,19 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
               "et image du plan × 1 600 pour le premier choc de chaque corps quand la simulation tombe à moins d'une demi-image de la grille "
               "(voir §6 pour les écarts de la simulation à la grille).")
     md.append("- **Programmé** : premier échantillon non nul du signal placé (construction).")
-    md.append("- **Mesuré** : relu dans `v1/musique.wav` ou `v1/bruitages.wav`, premier échantillon à ≥ 2 % de la crête locale (20 ms) dans ±1 600 échantillons ; "
+    md.append("- **Mesuré (bus sec)** : même seuil, sur le bus du stem avant réverbération (sans queues de réverbération, avant gain commun ; le gain et le limiteur sont lisses et ne déplacent pas une attaque).")
+    md.append("- **Mesuré (WAV)** : relu dans `v1/musique.wav` ou `v1/bruitages.wav`, premier échantillon à ≥ 2 % de la crête locale (20 ms) dans la fenêtre [−400, +800] échantillons ; "
               "« masquée » si un son plus ancien dépasse déjà ce seuil juste avant (impossible à mesurer, pas une erreur) ; "
               "les attaques douces (nappes, basses, textures) ne sont pas mesurées au seuil.")
     md.append(f"\nRésumé : {len(rows)} événements placés ({len(sync_rows)} événements discrets dans le tableau ci-dessous, "
-              f"{len(rows) - len(sync_rows)} événements denses agrégés : grains dans le verre et points de lumière). "
+              f"{len(rows) - len(sync_rows) - len(cont_rows)} événements denses agrégés : grains dans le verre et points de lumière ; "
+              f"{len(cont_rows)} couches continues listées à part). "
               f"Écart programmé maximal sur tous les événements : **{max(dev_prog)} échantillons**. "
               f"Écart mesuré dans les WAV : {len(ok)} événements mesurables, "
               f"écart absolu maximal **{(max(abs(d) for d in dev_mes) if dev_mes else float('nan'))} échantillons**, "
-              f"médian {np.median(np.abs(dev_mes)) if dev_mes else float('nan'):.0f} ; "
+              f"médian {np.median(np.abs(dev_mes)) if dev_mes else float('nan'):.0f} ; sur les bus secs (avant réverbération, mêmes tableaux que le mixage) : "
+              f"{len(ok_d)} événements mesurables, écart absolu maximal **{(max(abs(d) for d in dev_d) if dev_d else float('nan'))} échantillons**, "
+              f"{sum(1 for d in dev_d if d == 0)} à zéro exactement ; "
               f"{sum(1 for r in sync_rows if r['statut'].startswith('masqu'))} masquées par un son antérieur ; "
               f"{sum(1 for r in sync_rows if r['statut'].startswith('attaque douce'))} attaques douces non mesurées.\n")
     dense_n = {}
@@ -368,11 +405,16 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
         md.append(f"- Événements denses « {fam} » : {len(lst)} événements, écart programmé max {max(abs(r['sample'] - r['expected']) for r in lst)} échantillons ; "
                   f"source : {lst[0]['source']}.")
     md.append("")
-    md.append("| Famille | Événement | Image | Attendu | Programmé | Écart prog. | Mesuré | Écart mesuré | Statut |\n|---|---|---|---|---|---|---|---|---|")
+    md.append("| Famille | Événement | Image | Attendu | Programmé | Écart prog. | Mesuré (bus sec) | Mesuré (WAV) | Écart WAV | Statut |\n|---|---|---|---|---|---|---|---|---|---|")
     for r in sorted(sync_rows, key=lambda r: (r["expected"], r["name"])):
         dm_ = "" if r["mesure"] is None else f"{r['mesure'] - r['expected']:+d}"
         md.append(f"| {r['family']} | {r['name']} | {r['frame']:.3f} | {r['expected']} | {r['sample']} | {r['sample'] - r['expected']:+d} | "
-                  f"{'' if r['mesure'] is None else r['mesure']} | {dm_} | {r['statut']} |")
+                  f"{'' if r['mesure_sec'] is None else r['mesure_sec']} | {'' if r['mesure'] is None else r['mesure']} | {dm_} | {r['statut']} |")
+    md.append("")
+    md.append("Couches continues pilotées par des données (leur premier échantillon utile dépend de la densité mesurée ; pas de tolérance à l'échantillon) :\n")
+    md.append("| Couche | Image demandée | Échantillon demandé | Premier échantillon non nul | Décalage (ms) |\n|---|---|---|---|---|")
+    for r_ in sorted(cont_rows, key=lambda r: r["expected"]):
+        md.append(f"| {r_['name']} | {r_['frame']:.0f} | {r_['expected']} | {r_['sample']} | {(r_['sample'] - r_['expected']) / SR * 1000:.1f} |")
     md.append("")
     md.append("Événements de fin de son (non couverts par un début d'attaque) :\n")
     md.append(f"- Raclette : premier échantillon non nul {fric_first} (attendu {504 * SPF}, écart {fric_first - 504 * SPF:+d}) ; dernier échantillon non nul + 1 = {fric_last} "
@@ -412,9 +454,10 @@ def make(mix, mus, sfx, g, gsm, D, LOG, EVENTS, SRC, out, fin=None):
     md.append(f"Versement : synthétisé sur {ps.get('duree_physique_s', 0):.2f} s de temps physique, lu sur {ps.get('duree_film_s', 0):.2f} s de film (images {ps.get('f_from')}-{ps.get('f_to')}), vitesse minimale {ps.get('vitesse_min', 0):.2f}.\n")
 
     md.append("### Glaçons : les huit premières frappes sont-elles différentes ? (voix isolées, mesurées)\n")
-    md.append("| Corps | dv (m/s) | Pic spectral (Hz) | Centroïde (Hz) | Durée à −40 dB (ms) | Crête voix (dBFS) |\n|---|---|---|---|---|---|")
+    md.append("| Corps | dv (m/s) | Pic spectral (Hz) | Centroïde (Hz) | Durée à −30 dB (RMS 10 ms) | Crête voix (dBFS) |\n|---|---|---|---|---|---|")
     for r in ice_rows:
         md.append(f"| {r[0]} | {r[1]:.2f} | {r[2]:.0f} | {r[3]:.0f} | {r[4]:.0f} | {r[5]:.1f} |")
+    md.append(f"\nSur les {len(allc)} chocs de glaçon de la simulation (voix isolées), corrélation de rang entre le saut de vitesse et le centroïde rapporté à la hauteur de base du glaçon : Spearman {r_ice:+.2f} (positif = plus fort, plus brillant).")
     md.append(f"\nDistance minimale entre deux glaçons dans le plan (log2 pic, log2 centroïde) : {dm:.2f} octave(s) : plus elle est grande, plus les glaçons se distinguent.\n")
     md.append("### Paille d'acier\n")
     md.append(f"Fondamentale calculée (tube d'acier libre-libre, longueur et rayon lus dans `plantes.json`) : {f1:.0f} Hz. Pics mesurés sur la voix isolée (choc 1,9 m/s) : "

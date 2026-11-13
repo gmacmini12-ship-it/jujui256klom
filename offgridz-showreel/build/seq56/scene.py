@@ -138,7 +138,7 @@ def setup_render(A):
     w = bpy.data.worlds.new("w")
     w.use_nodes = True
     bg = w.node_tree.nodes["Background"]
-    bg.inputs["Color"].default_value = (0.02, 0.019, 0.018, 1)
+    bg.inputs["Color"].default_value = (0.10, 0.095, 0.09, 1)
     bg.inputs["Strength"].default_value = 1.0
     sc.world = w
 
@@ -179,9 +179,9 @@ def setup_sheet():
 def setup_lights():
     # one large softbox almost overhead (broad reflections slide over the relief), one long strip along X (bright line along
     # the bead), one low rake from the left (reads the grain relief).  Powers in W (Cycles area lights), tuned on test frames.
-    area_light("softbox", (-0.02, 0.03, 0.20), (0.0, 0.0, 0.0), 0.12, 0.12, 0.36)
-    area_light("ruban", (0.0, -0.12, 0.20), (0.0, 0.0, 0.0), 0.60, 0.020, 0.30)
-    area_light("rasante", (-0.26, 0.02, 0.13), (0.0, 0.0, 0.0), 0.10, 0.28, 0.20, (1.0, 0.90, 0.80))
+    area_light("softbox", (-0.07, 0.07, 0.20), (0.0, 0.0, 0.0), 0.14, 0.10, 0.25)
+    area_light("ruban", (0.0, -0.12, 0.20), (0.0, 0.0, 0.0), 0.60, 0.020, 0.53)
+    area_light("rasante", (-0.26, 0.02, 0.13), (0.0, 0.0, 0.0), 0.10, 0.28, 0.28, (1.0, 0.90, 0.80))
 
 
 # ------------------------------------------------------------------------------------------------ ink film
@@ -190,7 +190,8 @@ def ink_material():
     nt = m.node_tree
     b = nt.nodes["Principled BSDF"]
     b.inputs["Base Color"].default_value = (*lin(ORANGE), 1)
-    b.inputs["Roughness"].default_value = 0.15
+    b.inputs["Roughness"].default_value = 0.17
+    b.inputs["Specular IOR Level"].default_value = 0.3
     b.inputs["IOR"].default_value = 1.45
     b.inputs["Coat Weight"].default_value = 1.0
     b.inputs["Coat Roughness"].default_value = 0.03
@@ -302,7 +303,7 @@ def make_squeegee():
         rubber.node_tree.nodes["Principled BSDF"].inputs["Sheen Weight"].default_value = 0.2
     except Exception:
         pass
-    alu = principled("aluminium", **{"Base Color": (0.78, 0.76, 0.73, 1), "Metallic": 1.0, "Roughness": 0.30})
+    alu = principled("aluminium", **{"Base Color": (0.78, 0.76, 0.73, 1), "Metallic": 1.0, "Roughness": 0.40})
     nt = alu.node_tree
     b = nt.nodes["Principled BSDF"]
     tc = nt.nodes.new("ShaderNodeTexCoord")

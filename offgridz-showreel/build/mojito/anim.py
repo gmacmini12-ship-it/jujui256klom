@@ -302,7 +302,16 @@ def construire(args):
                 lum.light_linking.receiver_collection = exclus
     cam = S.cadrer(args)
     liquide = Liquide(os.path.join(S.RACINE, "cache", "mojito", f"liquide_r{args.sim}"))
-    return dict(d=d, plantes=plantes, objets=objets, brin=brin, fondus=fondus, cam=cam, liquide=liquide, enseigne=Enseigne())
+    # le sucre : si la simulation du filet existe, ce sont ses grains, tombés de l'atelier, qui forment le tas au fond du verre
+    sucre = None
+    filet = os.path.join(S.RACINE, "out", "grains", "filet")
+    if os.path.exists(os.path.join(filet, "run.json")):
+        sys.path.insert(0, os.path.join(os.path.dirname(ICI), "grains"))
+        import atelier as A
+        sucre = A.Grains("grains_filet", filet, A.decalage())
+        for nom in ("sucre", "sucre_coeur"):
+            bpy.data.objects[nom].hide_render = True
+    return dict(d=d, plantes=plantes, objets=objets, brin=brin, fondus=fondus, cam=cam, liquide=liquide, enseigne=Enseigne(), sucre=sucre)
 
 
 def poser(scene, f):
@@ -310,6 +319,8 @@ def poser(scene, f):
     scene["brin"].poser(f)
     a_du_liquide = scene["liquide"].poser(f)
     scene["enseigne"].poser(f)
+    if scene["sucre"] is not None:
+        scene["sucre"].poser(f)
     scene["fondus"]["buee"].default_value = lisse((f - 246) / 60.0)        # la buée se forme dès que la glace arrive
     scene["fondus"]["bulles"].default_value = lisse((f - 298) / 16.0) if a_du_liquide else 0.0
     cam = scene["cam"]

@@ -158,13 +158,17 @@ def read16(path):
 
 
 def composite_frame(A, f):
-    sheet = np.empty((H, W, 3), np.float32)
+    """Matter layer over the window content over a black sheet, at the resolution of the matter layer."""
+    mp = os.path.join(A.matiere_dir, "f%04d.png" % f)
+    m = read16(mp) if os.path.exists(mp) else None
+    wd, hd = (m.shape[1], m.shape[0]) if m is not None else (W, H)
+    k = wd / float(W)
+    sheet = np.empty((hd, wd, 3), np.float32)
     sheet[:] = np.array([10, 10, 9], np.float32) / 255.0
     win = read16(os.path.join(A.out, "fenetre", "f%04d.png" % f))
-    sheet[WIN[1]:WIN[3], WIN[0]:WIN[2]] = win
-    mp = os.path.join(A.out, "matiere", "f%04d.png" % f)
-    if os.path.exists(mp):
-        m = read16(mp)
+    x0, y0, x1, y1 = [int(round(v * k)) for v in WIN]
+    sheet[y0:y1, x0:x1] = cv2.resize(win, (x1 - x0, y1 - y0), interpolation=cv2.INTER_AREA)
+    if m is not None:
         a = m[..., 3:4]
         sheet = sheet * (1 - a) + m[..., :3] * a
     return sheet
@@ -172,12 +176,12 @@ def composite_frame(A, f):
 
 def stage_preview(A):
     import subprocess
-    tmp = os.path.join(A.work, "preview_frames")
+    tmp = os.path.join(A.work, "preview_frames" + A.tag)
     os.makedirs(tmp, exist_ok=True)
     for f in range(456, 600):
         img = composite_frame(A, f)
         cv2.imwrite(os.path.join(tmp, "p%04d.png" % (f - 456)), (img[:, :, ::-1] * 255 + 0.5).astype(np.uint8))
-    mp4 = os.path.join(A.out, "apercu.mp4")
+    mp4 = os.path.join(A.out, "apercu%s.mp4" % A.tag)
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", "30", "-i", os.path.join(tmp, "p%04d.png"),
                     "-vf", "scale=540:960:flags=area", "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p", mp4], check=True)
     # planche: 12 labelled frames
@@ -189,7 +193,7 @@ def stage_preview(A):
         cv2.putText(im, "f%d" % f, (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (210, 223, 238), 2, cv2.LINE_AA)
         tiles.append(im)
     rows = [np.hstack(tiles[i:i + 6]) for i in range(0, 12, 6)]
-    cv2.imwrite(os.path.join(A.out, "planche.png"), np.vstack(rows))
+    cv2.imwrite(os.path.join(A.out, "planche%s.png" % A.tag), np.vstack(rows))
     log("preview done")
 
 
@@ -210,10 +214,13 @@ def main():
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--frames", default="456:599")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--matiere-dir", default=None, help="matter layer to composite in the preview (default <out>/matiere)")
+    ap.add_argument("--tag", default="", help="suffix of the preview files, e.g. _pt")
     A = ap.parse_args()
     A.grains = os.path.abspath(A.grains)
     A.out = os.path.abspath(A.out)
     A.work = A.work or os.path.join(ROOT, "cache", "seq56", "work_" + os.path.basename(A.grains.rstrip("/")))
+    A.matiere_dir = os.path.abspath(A.matiere_dir) if A.matiere_dir else os.path.join(A.out, "matiere")
     os.makedirs(A.work, exist_ok=True)
     os.makedirs(A.out, exist_ok=True)
     init_taichi(A.threads)

@@ -50,22 +50,29 @@ nz = M.nz
 # Registre des événements (evenements.json) et placement
 # ==========================================================================
 LOG: list[dict] = []
+CONT_NAMES = ("grains secs", "corps de l'avalanche", "grains accordés", "versement :", "scintillement", "souffle de caméra",
+              "souffle de la montée", "aspiration", "nappe de bruit large", "déferlement :", "encre :")
 SRC: dict = {}          # description des jeux de données effectivement utilisés (rapport)
 
 
-def put(stem, sig, sample, name, source, *, frame=None, expect=None, family="sfx", **kw):
-    """Place `sig` à l'échantillon `sample` et l'inscrit dans le registre."""
+def put(stem, sig, sample, name, source, *, frame=None, expect=None, family="sfx", continuous=False, **kw):
+    """Place `sig` à l'échantillon `sample` et l'inscrit dans le registre.
+    continuous : couche continue pilotée par des données (le premier échantillon utile dépend de la densité mesurée)."""
     sample = int(sample)
+    sig = np.asarray(sig, dtype=float)
+    continuous = continuous or name.startswith(CONT_NAMES)
+    if not continuous and np.all(sig[..., 0] == 0.0):
+        sig = nz(sig)
     stem.add(sig, at=sample, label=name, sync=source, **kw)
     e = sy.EVENTS[-1]
     LOG.append(dict(name=name, source=source, frame=float(sample / SPF if frame is None else frame),
                     expected=int(sample if expect is None else expect), sample=int(e["first_nz"]), stem=stem.name,
-                    family=family))
+                    family=family, continuous=continuous))
 
 
 def log_only(name, source, sample, expected, stem, family):
     LOG.append(dict(name=name, source=source, frame=float(sample / SPF), expected=int(expected), sample=int(sample),
-                    stem=stem, family=family))
+                    stem=stem, family=family, continuous=False))
 
 
 def fr2s(f):
@@ -136,11 +143,11 @@ def load_pour():
     zg = float(d.get("z_glace", 0.13))
     touch = None
     for f in sorted(zmin):
-        if zmin[f] <= zg + 0.012:
+        if zmin[f] <= zg:
             touch = f
             break
     d["f_touch"] = touch if touch is not None else 264
-    d["f_touch_source"] = "maillage (z min <= z_glace + 12 mm)" if touch is not None else "défaut 264 (maillage absent)"
+    d["f_touch_source"] = "maillage (z min <= z_glace)" if touch is not None else "défaut 264 (maillage absent)"
     SRC["versement"] = dict(f_on=f_on, f_off=f_off, f_touch=d["f_touch"], source_touch=d["f_touch_source"], images_maillage=len(counts))
     return d
 
@@ -202,7 +209,40 @@ def load_grains():
         except Exception as ex:                       # cache en cours de régénération
             SRC["grains_exits_erreur"] = str(ex)
     out["land"] = land
-    SRC["grains"] = dict(images_dalle=got, images_filet=gf, atterrissages=(0 if land is None else int(len(land["frame"]))))
+    out["land_source"] = "exits.npz (sorties du bec + chute libre)" if land is not None else None
+    # grains qui arrivent au fond du verre, lus dans la simulation « filet » quand elle existe (images 128+)
+    try:
+        zc = -GM.DENIVELE + 0.025
+        prev = None
+        fl2, vl2, xl2 = [], [], []
+        got_f = 0
+        for f in range(128, 240):
+            p = ROOT / "out" / "grains" / "filet" / f"f{f:04d}.npz"
+            if not p.exists():
+                prev = None
+                continue
+            z = np.load(p)
+            ids = z["id"]
+            cur = dict(id=ids, z=z["pos"][:, 2].astype(float), x=z["pos"][:, 0].astype(float), v=z["vel"].astype(float))
+            got_f += 1
+            if prev is not None:
+                _, ia, ib = np.intersect1d(prev["id"], cur["id"], assume_unique=True, return_indices=True)
+                z0, z1 = prev["z"][ia], cur["z"][ib]
+                hit = (z0 > zc) & (z1 <= zc)
+                for j in np.nonzero(hit)[0]:
+                    fr = (f - 1) + (z0[j] - zc) / max(1e-9, (z0[j] - z1[j]))
+                    fl2.append(fr)
+                    vl2.append(float(np.linalg.norm(cur["v"][ib[j]])))
+                    xl2.append(float(cur["x"][ib[j]]))
+            prev = cur
+        if got_f >= 40 and len(fl2) > 50:
+            xl2 = np.array(xl2)
+            out["land"] = dict(frame=np.array(fl2), v=np.array(vl2), x=xl2 - np.median(xl2))
+            out["land_source"] = "out/grains/filet/f####.npz (grains qui passent sous le fond du verre entre deux images, temps interpolé)"
+    except Exception as ex:
+        SRC["grains_filet_erreur"] = str(ex)
+    land = out["land"]
+    SRC["grains"] = dict(images_dalle=got, images_filet=gf, atterrissages=(0 if land is None else int(len(land["frame"]))), source_atterrissages=out["land_source"])
     return out
 
 
@@ -251,7 +291,8 @@ def load_final56():
 # ==========================================================================
 # Voix nouvelles
 # ==========================================================================
-ICE_BASE = [3300.0, 2750.0, 3950.0, 3050.0, 4250.0, 2600.0, 3550.0, 3800.0]    # un timbre de base par glaçon
+ICE_BASE = [2300.0 * (5400.0 / 2300.0) ** (p / 7.0) for p in (3, 0, 5, 2, 7, 1, 6, 4)]    # huit hauteurs de base espacées de plus d'un quart d'octave
+ICE_RATIO_JIT = [1.0, 1.035, 0.97, 1.05, 0.985, 1.06, 0.96, 1.02]                          # rapports inharmoniques propres à chaque glaçon
 RATIOS_ICE = np.array([1.0, 2.32, 4.25, 6.63, 9.38])
 
 
@@ -299,7 +340,8 @@ def v_hit_ice(v, body, k, seed):
     amps = np.array([1.0, 0.7, 0.45, 0.28, 0.14]) * bright ** (0.5 * np.arange(5))
     dur = 0.16 + 0.36 * min(1.0, vv / 2.0)
     t60 = np.array([0.42, 0.26, 0.15, 0.09, 0.05]) * (dur / 0.4) * (1.0 - 0.15 * j / 8)
-    y = sy.modal(fb * RATIOS_ICE * (1 + 0.002 * g.standard_normal(5)), t60, amps, n, phases=[0.3, 1.2, 2.0, 0.7, 1.7])
+    rj = np.array([1.0] + [ICE_RATIO_JIT[j] ** (1 + 0.5 * i) for i in range(1, 5)])
+    y = sy.modal(fb * RATIOS_ICE * rj * (1 + 0.002 * g.standard_normal(5)), t60, amps, n, phases=[0.3, 1.2, 2.0, 0.7, 1.7])
     y += sy.hp(g.standard_normal(n), 2600.0 + 900 * bright) * np.exp(-t / 0.0007) * (0.35 + 0.5 * bright)
     a = min(1.0, vv / 2.0) ** 0.75
     return nz(a * y * sy.fade_out(n, 0.18) * 0.34)
@@ -618,10 +660,27 @@ def periodic_bed():
 # La partition
 # ==========================================================================
 LV = dict(
-    kick=-5.0, snare=-4.5, rim=-6.0, hat=-6.0, tick=-5.0,
-    bass=-8.0, sub=-18.0, pad=-12.0, pluck=-10.0, bell=-12.0, wash=-26.0, pgrain=-24.0,
-    ret=-6.0,
+    kick=-5.5, snare=-4.0, rim=-5.0, hat=-4.0, tick=-4.5,
+    bass=-13.0, sub=-24.0, pad=-12.0, pluck=-10.0, bell=-12.0, wash=-26.0, pgrain=-24.0,
+    ret=-8.0,
 )
+
+
+def v_bass2(f, dur, amp=1.0, c0=1100.0, c1=260.0, drive=2.2, glide_from=None, glide_tau=0.05,
+            attack=0.004, rel=0.05, bright=1.05, seed="b", sub_w=0.45):
+    """Basse de la v0 avec moins de fondamentale (sub_w 0,8 -> 0,45) et plus de médium saturé : tient sur un petit haut-parleur."""
+    n = int(dur * SR)
+    t = tt(n)
+    fr = f if glide_from is None else f * (glide_from / f) ** np.exp(-t / glide_tau)
+    subw = np.sin(TWO_PI * sy.phase(fr, n) + 0.4)
+    sw = sy.saw(fr, n)
+    sw = sy.sweep(sw, c1 + (c0 - c1) * np.exp(-t / 0.18), q=1.1, kind="lp")
+    oc = sy.tri(fr * 2.0, n) * 0.34
+    y = subw * sub_w + sw * bright * 1.15 + oc
+    y = sy.asym_sat(y * 0.9, drive, 0.12)
+    y = sy.hp(y, 34.0, 0.7071)
+    env = sy.adsr(n, attack, 0.2, 0.8, rel)
+    return amp * y * env * 0.55
 
 
 def v_kick2(seed, amp=1.0):
@@ -633,9 +692,9 @@ def v_kick2(seed, amp=1.0):
     body = np.sin(TWO_PI * sy.phase(f, n) + 0.7) * np.exp(-t / 0.060)
     body = sy.softclip(body * 1.1, 3.0)
     mid = np.sin(TWO_PI * sy.phase(f * 2.0 + 20, n) + 0.7) * np.exp(-t / 0.03) * 0.8
-    tick = sy.hp(g.standard_normal(n) * np.exp(-t / 0.0014), 1800.0) * 0.7
-    tick += np.cos(TWO_PI * 2300 * t) * np.exp(-t / 0.0018) * 0.32
-    y = (body * 0.8 + mid + tick) * sy.fade_out(n, 0.05)
+    tick = sy.hp(g.standard_normal(n) * np.exp(-t / 0.0014), 1800.0) * 0.45
+    tick += np.cos(TWO_PI * 2300 * t) * np.exp(-t / 0.0018) * 0.25
+    y = sy.softclip((body * 0.50 + mid + tick) * sy.fade_out(n, 0.05), 1.4)
     return amp * y * 0.8
 
 
@@ -694,7 +753,7 @@ def build(S, D):
     put(RY, v_kick2("m1a", 0.9), m1 * SPF, "kick d'entrée", src_p + " (mesure 1)", gain_db=LV["kick"], send={"room": 0.05}, family="musique")
     put(RY, M.v_rim("m1b", 0.8), step(1, 8) * SPF, "rim temps 3", src_p, gain_db=LV["rim"], pan_pos=0.2, send={"room": 0.12}, family="musique")
     put(RY, v_kick2("m1c", 0.55), step(1, 13) * SPF, "kick syncopé m1", src_p, gain_db=LV["kick"] - 5, family="musique")
-    put(BA, M.v_bass(note("F2"), 0.42, 0.85, glide_from=note("C2"), glide_tau=0.07, c0=900, c1=300), step(1, 8) * SPF,
+    put(BA, v_bass2(note("F2"), 0.42, 0.85, glide_from=note("C2"), glide_tau=0.07, c0=900, c1=300), step(1, 8) * SPF,
         "glissé de basse (temps 3)", src_p, gain_db=LV["bass"], family="musique")
     air = P.one("bruitage", "souffle de caméra")
     put(TXS, M.v_air((air["fin"] + 1 - air["debut"]) * SPF), air["debut"] * SPF, "souffle de caméra", "partition.json (bruitage 48-71)",
@@ -724,7 +783,7 @@ def build(S, D):
             put(RY, M.v_hat(f"a{b}{k}", vel_h[k] * (1.0 if not op else 0.9), open_=op), step(b, k) * SPF, f"hat A{b}.{k}", src_p,
                 gain_db=LV["hat"], pan_pos=0.25 * np.sin(k * 1.3 + b), send={"room": 0.05}, family="musique")
         for (k, nm, dur_steps) in bass_fig[b]:
-            put(BA, M.v_bass(note(nm), dur_steps * 0.1 - 0.012, 1.0 if k == 0 else 0.8), step(b, k) * SPF, f"basse A{b}.{k} {nm}", src_p,
+            put(BA, v_bass2(note(nm), dur_steps * 0.1 - 0.012, 1.0 if k == 0 else 0.8), step(b, k) * SPF, f"basse A{b}.{k} {nm}", src_p,
                 gain_db=LV["bass"], family="musique")
 
     # réticule : tentatives et glissements
@@ -763,7 +822,7 @@ def build(S, D):
     lvl = per_sample(fr_, level_f, f_a, f_b)
     sand = granular(nn, rate, brg, lvl, rng("sandfinal"))
     put(TXS, sand, f_a * SPF, "grains secs (nuage piloté par la dalle)", "out/grains/dalle/f####.npz (grains en mouvement, vitesse)",
-        gain_db=-18.0, send={"room": 0.08}, family="grains")
+        gain_db=-15.5, send={"room": 0.08}, family="grains")
     rumble = sy.bp(rng("rumblef").standard_normal(nn), 380.0, 0.8)
     rumble = rumble / np.std(rumble) * (np.clip(rate / 1900.0, 0, 1) ** 1.4) * 0.5
     put(TXS, rumble, f_a * SPF, "corps de l'avalanche", "out/grains/dalle/f####.npz", gain_db=-30, family="grains")
@@ -807,7 +866,7 @@ def build(S, D):
                 continue
             buf[0, s:s + len(tk)] += tk * a * np.cos(ang)
             buf[1, s:s + len(tk)] += tk * a * np.sin(ang)
-            log_only("grain dans le verre", "out/grains/dalle/exits.npz (t de sortie + chute libre, horloge monde.image_de)", s, s, TXS.name, "grains")
+            log_only("grain dans le verre", G["land_source"], s, s, TXS.name, "grains")
             count += 1
         TXS.dry += buf * db(-24.0)
         if "room" in TXS.reverbs:
@@ -852,7 +911,7 @@ def build(S, D):
     # ---- versement
     pour, fa = synth_pour(D["pour"])
     put(TXS, pour, fa * SPF, "versement : filet, bulles, clapotis (temps physique -> temps du film)",
-        "cache/mojito/versement_r128 (reglages.json f_on/f_off ; maillage par image) + temps.tau()", gain_db=-23.0, family="versement",
+        "cache/mojito/versement_r128 (reglages.json f_on/f_off ; maillage par image) + temps.tau()", gain_db=-19.0, family="versement",
         send={"room": 0.12, "plate": 0.08})
     put(EV, v_plop(1), D["pour"]["f_touch"] * SPF, "contact de la tête du filet sur la glace", "versement_r128 : " + D["pour"]["f_touch_source"],
         gain_db=-10.0, pan_pos=0.0, send={"room": 0.15, "plate": 0.1}, family="versement")
@@ -865,7 +924,7 @@ def build(S, D):
     put(RY, M.v_rim("b5", 0.9, 1750), step(5, 8) * SPF, "rim B5 temps 3", src_p, gain_db=LV["rim"] + 1, pan_pos=-0.1, send={"room": 0.14}, family="musique")
     put(RY, v_kick2("b5k", 0.6), step(5, 0) * SPF, "kick doux B5", src_p, gain_db=LV["kick"] - 6, send={"room": 0.05}, family="musique")
     for (k, nm, d_) in [(0, "F2", 6.0), (10, "Eb2", 4.2)]:
-        put(BA, M.v_bass(note(nm), d_ * 0.1 - 0.01, 0.7, c0=800, c1=240), step(5, k) * SPF, f"basse B5 {nm}", src_p, gain_db=LV["bass"] - 2, family="musique")
+        put(BA, v_bass2(note(nm), d_ * 0.1 - 0.01, 0.7, c0=800, c1=240), step(5, k) * SPF, f"basse B5 {nm}", src_p, gain_db=LV["bass"] - 2, family="musique")
 
     # ======================================================= mesure 6 : arpège montant
     arp_notes = ["F3", "C4", "Ab3", "Eb4", "C4", "F4", "Eb4", "Ab4", "F4", "C5", "Ab4", "Eb5", "C5", "F5", "Eb5", "Ab5"]
@@ -876,7 +935,7 @@ def build(S, D):
         put(TX, v, step(6, k) * SPF, f"arpège 6.{k}", src_p, gain_db=LV["pluck"], pan_pos=0.55 * np.sin(k * 1.2), send={"plate": 0.22, "room": 0.08}, family="musique")
         ec = sy.delay_taps(v, 3 * SX, 0.38, 4, 3500.0)
         TX.add(ec * 0.35, at=step(6, k) * SPF, gain_db=LV["pluck"] - 4, label="écho arpège")
-    put(BA, M.v_bass(note("F2"), 1.5, 0.6, c0=600, c1=200, rel=0.15), bar(6) * SPF, "basse tenue m6", src_p, gain_db=LV["bass"] - 3, family="musique")
+    put(BA, v_bass2(note("F2"), 1.5, 0.6, c0=600, c1=200, rel=0.15), bar(6) * SPF, "basse tenue m6", src_p, gain_db=LV["bass"] - 3, family="musique")
 
     # ======================================================= mesure 7 : accord ouvert
     straw = P.one("bruitage", "paille")["image"]
@@ -898,8 +957,8 @@ def build(S, D):
     chord = M.v_pad([note(x) for x in ("C4", "Eb4", "G4", "Ab4", "Eb5")], cn / SR, 1.0, attack=0.07, release=0.22, cutoff=1700, det=8, spread=0.9)
     put(TX, chord, straw * SPF, "accord ouvert (Fm9)", "partition.json (musique 312)", gain_db=LV["pad"], send={"hall": 0.28, "plate": 0.08}, family="musique")
     _sb = M.v_sub(note("F1"), cn / SR, 0.9, tau=3.0)
-    put(BA, _sb * sy.fade_out(len(_sb), 0.06), straw * SPF, "sous-basse F1", src_p, gain_db=LV["sub"], family="musique")
-    put(BA, M.v_bass(note("F2"), cn / SR, 0.75, c0=700, c1=300, rel=0.08, drive=1.7), straw * SPF, "basse F2 tenue", src_p, gain_db=LV["bass"] - 2, family="musique")
+    put(BA, _sb * sy.fade_out(len(_sb), 0.06), straw * SPF, "sous-basse F1", src_p, gain_db=LV["sub"] + 5, family="musique")
+    put(BA, v_bass2(note("F2"), cn / SR, 0.75, c0=700, c1=300, rel=0.08, drive=1.7), straw * SPF, "basse F2 tenue", src_p, gain_db=LV["bass"] + 1, family="musique")
     lk = P.one("reticule", "tentative 3")
     cue_attempt(R, lk["image"], "tentative 318 (tenue)", up=True, seed=300)
     dn_ = (lk["fin"] - lk["image"]) * SPF
@@ -913,8 +972,8 @@ def build(S, D):
     # ======================================================= groove C (360-407) : points
     for k in (0, 10):
         put(RY, v_kick2(f"c{k}", 0.8), step(8, k) * SPF, f"kick C.{k}", src_p, gain_db=LV["kick"] - 3, send={"hall": 0.08}, family="musique")
-    put(BA, M.v_bass(note("F2"), 0.5, 0.6, c0=700, c1=200), step(8, 0) * SPF, "basse C.0", src_p, gain_db=LV["bass"] - 3, family="musique")
-    put(BA, M.v_bass(note("Ab2"), 0.3, 0.5, c0=700, c1=200), step(8, 10) * SPF, "basse C.10", src_p, gain_db=LV["bass"] - 4, family="musique")
+    put(BA, v_bass2(note("F2"), 0.5, 0.6, c0=700, c1=200), step(8, 0) * SPF, "basse C.0", src_p, gain_db=LV["bass"] - 3, family="musique")
+    put(BA, v_bass2(note("Ab2"), 0.3, 0.5, c0=700, c1=200), step(8, 10) * SPF, "basse C.10", src_p, gain_db=LV["bass"] - 4, family="musique")
     put(RY, M.v_rim("c8", 0.55, 2100), step(8, 8) * SPF, "rim C.8", src_p, gain_db=LV["rim"] - 4, pan_pos=0.3, send={"plate": 0.15}, family="musique")
     bell_notes = ["F5", "Ab5", "C6", "G5", "Eb6", "C6", "Ab5", "F6", "C6", "Eb6", "G5", "Ab5", "C6", "F6", "Eb6", "Ab5"]
     accents = {0, 3, 6, 9, 12}
@@ -935,6 +994,7 @@ def build(S, D):
         rate_p = 22.0 + 150.0 * m_ ** 1.2 + 150.0 * s_
         pitch_i = v_
         D["points_source"] = "out/seq4/stats : luminance moyenne, points du ruban (strip_all), p99,9 par image"
+        D["points_rate"] = (Pt["frames"], rate_p)
     else:
         m_ = np.ones(96) * 0.5
         rate_p = np.full(96, 120.0)
@@ -954,7 +1014,7 @@ def build(S, D):
         pb[0, h:h + len(pg_)] += pg_ * np.cos(ang)
         pb[1, h:h + len(pg_)] += pg_ * np.sin(ang)
         log_only("point de lumière (scintillement)", "out/seq4/stats/f####.json (densité)", f_p0 * SPF + h, f_p0 * SPF + h, TXS.name, "points")
-    put(TXS, pb[:, :npp], f_p0 * SPF, "scintillement des points (piloté par les statistiques)", "out/seq4/stats/f####.json", gain_db=-17.0,
+    put(TXS, pb[:, :npp], f_p0 * SPF, "scintillement des points (piloté par les statistiques)", "out/seq4/stats/f####.json", gain_db=-10.0,
         send={"plate": 0.25, "hall": 0.08}, family="points")
 
     # ======================================================= montée (408-452)
@@ -976,7 +1036,11 @@ def build(S, D):
     swl = np.stack(cs)
     swl = swl / np.std(swl) * ((tsw / Ts) ** 2.2)[None, :] * sy.fade_in(sn, 0.01, 0.01)[None, :] * sy.fade_out(sn, 0.002)[None, :]
     put(TXS, swl, sw["debut"] * SPF, "souffle de la montée", "partition.json (bruitage 432-452)", gain_db=-27, family="texture")
-    put(BA, M.v_bass(note("F2"), (453 - 408) * SPF / SR, 0.7, c0=2200.0, c1=500.0, rel=0.02, drive=1.8), bar(9) * SPF, "basse tenue m9", src_p,
+    cr_n = (453 - 408) * SPF
+    cr_env = (np.arange(cr_n) / cr_n) ** 2.2 * sy.fade_in(cr_n, 0.05, 0.01)
+    cres = M.v_pad([note(x) for x in ("F4", "Ab4", "C5", "Eb5", "G5")], cr_n / SR, 1.0, cutoff=np.geomspace(700, 7000, cr_n), det=9, spread=1.0, env=cr_env)
+    put(TX, cres, bar(9) * SPF, "montée : nappe en crescendo (le filtre s'ouvre)", src_p, gain_db=LV["pad"] + 4, send={"hall": 0.15, "plate": 0.1}, family="musique", continuous=True)
+    put(BA, v_bass2(note("F2"), (453 - 408) * SPF / SR, 0.7, c0=2200.0, c1=500.0, rel=0.02, drive=1.8), bar(9) * SPF, "basse tenue m9", src_p,
         gain_db=LV["bass"] - 4, family="musique")
 
     # ======================================================= plein, contrôlé (456-503) : déferlement puis encre
@@ -1006,7 +1070,7 @@ def build(S, D):
     wash = M.v_wash(wn, wcur) * sy.fade_in(wn, 0.2, 0.01)[None, :]
     put(TX, wash, f0 * SPF, "nappe de bruit large (sec -> mouillé)", "partition.json (musique 456)", gain_db=LV["wash"], send={"hall": 0.1 + 0.5 * wcur}, family="musique")
     bn10 = wn / SR
-    put(BA, M.v_bass(note("F2"), bn10, 0.8, c0=900.0, c1=420.0, rel=0.02, drive=2.0, bright=0.9), f0 * SPF, "basse tenue F", src_p, gain_db=LV["bass"], family="musique")
+    put(BA, v_bass2(note("F2"), bn10, 0.8, c0=900.0, c1=420.0, rel=0.02, drive=2.0, bright=0.9), f0 * SPF, "basse tenue F", src_p, gain_db=LV["bass"], family="musique")
     put(BA, M.v_sub(note("F1"), bn10, 0.6, tau=5.0), f0 * SPF, "sous-note F1 m10", src_p, gain_db=LV["sub"] - 3, family="musique")
     pd = M.v_pad([note(x) for x in ("F3", "C4", "Eb4", "Ab4")], bn10, 1.0, attack=0.05, release=0.04, cutoff=np.geomspace(2400, 1100, wn), det=9, spread=1.0)
     put(TX, pd, f0 * SPF, "nappe d'accord m10", src_p, gain_db=LV["pad"] - 1, send={"hall": 0.12 + 0.4 * wcur}, family="musique")
@@ -1029,6 +1093,7 @@ def build(S, D):
         brg_fl = np.clip(0.35 + 0.55 * dn_pos, 0, 1) * (1 - 0.6 * wetf)
         lvl_fl = (0.35 + 0.65 * nn_ ** 0.5)
         D["flood_source"] = "meta.json : n particules libres par image (niveau, dn/dt) ; encre à partir de 480"
+        D["flood_drive"] = (fr_, rate_fl * lvl_fl)
         sfl = granular(nfl, per_sample(fr_, rate_fl, fl0, fl1), per_sample(fr_, brg_fl, fl0, fl1), per_sample(fr_, lvl_fl, fl0, fl1), rng("floodf"), 1.5, 7.0)
         put(TXS, sfl, fl0 * SPF, "déferlement : grains contre les bords (n et dn/dt de meta.json)", "out/final/seq56/meta.json", gain_db=-21.0, send={"room": 0.1, "hall": 0.1}, family="déferlement")
         # du sec au mouillé : clapotis visqueux d'encre, taux et niveau selon la quantité de matière
@@ -1053,8 +1118,8 @@ def build(S, D):
     m = int(2.2 * SR)
     cf = M.v_pad([note(x) for x in ("F3", "Ab3", "C4", "Eb4", "C5")], m / SR, 1.0, cutoff=2600.0, det=6, spread=0.8, env=stab_env(m, 0.55) * sy.fade_out(m, 0.3))
     put(TX, cf, fr0 * SPF, "accord de fa mineur (final)", "partition.json (musique 528)", gain_db=LV["pad"] + 3, send={"hall": 0.45, "plate": 0.1}, family="musique")
-    put(BA, M.v_sub(note("F1"), 2.6, 0.95, tau=0.9), fr0 * SPF, "sous-note F1 (final)", src_p, gain_db=LV["sub"] + 1, family="musique")
-    put(BA, M.v_bass(note("F2"), 1.4, 0.7, c0=900, c1=300, rel=0.3, drive=1.9), fr0 * SPF, "basse F2 (final)", src_p, gain_db=LV["bass"] - 3, family="musique")
+    put(BA, M.v_sub(note("F1"), 2.6, 0.95, tau=0.9), fr0 * SPF, "sous-note F1 (final)", src_p, gain_db=LV["sub"] + 4, family="musique")
+    put(BA, v_bass2(note("F2"), 1.4, 0.7, c0=900, c1=300, rel=0.3, drive=1.9), fr0 * SPF, "basse F2 (final)", src_p, gain_db=LV["bass"] - 3, family="musique")
     cf2 = M.v_pad([note(x) for x in ("Ab3", "C4", "F4", "Eb5")], m / SR, 1.0, cutoff=2300.0, det=6, spread=0.8, env=stab_env(m, 0.45) * sy.fade_out(m, 0.3))
     put(TX, cf2, acc * SPF, "second appui (accord)", "partition.json (bruitage 540)", gain_db=LV["pad"] - 2, send={"hall": 0.45, "plate": 0.1}, family="musique")
     put(BA, M.v_sub(note("F1"), 1.2, 0.5, tau=0.6), acc * SPF, "sous-note second appui", src_p, gain_db=LV["sub"] - 3, family="musique")
@@ -1084,7 +1149,7 @@ def render(D):
     bed = periodic_bed()
     out["souffle"] = bed.copy()
     for k in NAMES_INT:
-        out[k] = out[k] * db(TRIM[k])
+        out[k] = sy.hp(out[k], 20.0, 0.7071, order=2) * db(TRIM[k])       # coupe le décalage continu des saturations de basse
 
     # silences de la partition : 210-215 et 453-455 (tout le film se tait), retrait 504-527, fin 596-599
     gates = []
@@ -1103,8 +1168,8 @@ def render(D):
         if k == "souffle":
             d = int(0.050 * SR)
             x[:, cut_a:cut_a + d] *= np.linspace(1, 0, d)[None, :]
-            x[:, cut_a + d:cut_c - d] = 0.0
-            x[:, cut_c - d:cut_c] *= np.linspace(0, 1, d)[None, :]
+            x[:, cut_a + d:cut_c] = 0.0
+            x[:, cut_c:cut_c + d] *= np.linspace(0, 1, d)[None, :]
             continue                                   # le souffle traverse la fin : il est le point de raccord de la boucle
         d = int(0.050 * SR)
         x[:, cut_a:cut_a + d] *= np.linspace(1, 0, d)[None, :] ** 1.5
@@ -1135,6 +1200,11 @@ def mix_and_write(out, t0):
             break
         g *= 10 ** ((-14.0 - L) / 20.0)
     print(f"[{time.time() - t0:5.1f}s] gain {20 * np.log10(g):+.2f} dB, {L:.2f} LUFS, réduction max {20 * np.log10(gsm.min()):.2f} dB")
+    if "--debug" in sys.argv:
+        grf = np.array([gsm[f * SPF:(f + 1) * SPF].min() for f in range(600)])
+        for f in np.argsort(grf)[:12]:
+            pk = {k: round(20 * np.log10(np.abs(out[k][:, f * SPF:(f + 1) * SPF]).max() * g + 1e-12), 1) for k in NAMES_INT + ["souffle"]}
+            print("limiteur", int(f), round(20 * np.log10(grf[f]), 2), pk)
     V1.mkdir(parents=True, exist_ok=True)
     mus = out["music"] * g * gsm[None, :]
     sfx = out["sfx"] * g * gsm[None, :]
@@ -1157,7 +1227,7 @@ def main():
     out, S, t0 = render(D)
     mix, mus, sfx, g, gsm = mix_and_write(out, t0)
     import rapport_v1
-    rapport_v1.make(mix, mus, sfx, g, gsm, D, LOG, sy.EVENTS, SRC, out, fin=sys.modules[__name__])
+    rapport_v1.make(mix, mus, sfx, g, gsm, D, LOG, sy.EVENTS, SRC, out, fin=sys.modules[__name__], S=S)
     print(f"[{time.time() - t0:5.1f}s] terminé")
 
 

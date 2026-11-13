@@ -75,12 +75,16 @@ if __name__ == "__main__":
     for ob in list(bpy.context.scene.collection.objects):
         if ob.type != "CAMERA":
             bpy.context.scene.collection.objects.unlink(ob); coll_bar.objects.link(ob)
+    if bar["sucre"] is not None:                       # les grains du filet traversent l'atelier : ils restent toujours visibles
+        coll_bar.objects.unlink(bar["sucre"].ob); bpy.context.scene.collection.objects.link(bar["sucre"].ob)
     d = A.decalage()
     A.faire_sol_et_mur(d)
     lettres = A.faire_lettres(d)
     A.eclairer(d)
-    grains = [A.Grains("grains_dalle", os.path.join(A.SIMS, "dalle"), d), A.Grains("grains_filet", os.path.join(A.SIMS, "filet"), d),
-              A.Egares("grains_egares", os.path.join(A.SIMS, "dalle"), d)]
+    # les grains du filet sont déjà dans la scène du bar (ils y forment le tas de sucre) : on ne les crée pas deux fois
+    grains = [A.Grains("grains_dalle", os.path.join(A.SIMS, "dalle"), d), A.Egares("grains_egares", os.path.join(A.SIMS, "dalle"), d)]
+    if bar["sucre"] is None:
+        grains.append(A.Grains("grains_filet", os.path.join(A.SIMS, "filet"), d))
     raccorder(d)
     sc = bpy.context.scene
     sc.render.use_persistent_data = True
@@ -97,7 +101,7 @@ if __name__ == "__main__":
                 o.hide_render = True
         coll_bar.hide_render = f < IMAGE_DESCENTE
         A.poser_lettres(lettres, f)
-        libres = [g.poser(f) for g in grains]
+        libres = [g.poser(f) for g in grains] + ([bar["sucre"].poser(f)] if bar["sucre"] is not None else [])
         if f < IMAGE_DESCENTE:
             pos, cible, focale, ouv, net = camera_atelier(f, d)
             anim.regarder(cam, pos, cible)
