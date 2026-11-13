@@ -48,6 +48,7 @@ une machine de calcul.
 - Mojito : correction du liquide et du brin de menthe demandées et validées sur aperçus ; rendu final livré.
 - Papier (ouverture) et encre (fin) : validés sur aperçus. Depuis, seules les images 57 et 58 du papier ont été nettoyées (éclats de fibres).
 - Séquence des points : gardée telle quelle.
+- **Film complet : validé le 13 novembre.**
 
 ## Contrôle qualité
 

@@ -10,7 +10,7 @@ Le film est calculé, pas généré : simulations et rendus sont reproductibles 
 
 ## État
 
-Phase 5 (contrôle qualité) terminée, film livré le 13 novembre. Crédits Higgsfield dépensés : 147,68, uniquement en
+Projet terminé : film livré et validé par le client le 13 novembre. Crédits Higgsfield dépensés : 147,68, uniquement en
 location de machine de calcul (test GPU 8,63 ; palier 3 : 33,82 ; palier 4 : 70,99 ; session C : 16,98 ; session D : 17,26). Cible 200, plafond 345 ; chaque dépense est soumise au client avant d'être engagée.
 
 | Séquence | Images | État |

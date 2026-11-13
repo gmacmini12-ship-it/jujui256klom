@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Film final livré après contrôle qualité. Séquences du papier (ouverture) et de l'encre (fin) validées par le client le 13 novembre, après celles des grains et du mojito corrigé",
+ "etape": "Film complet validé par le client le 13 novembre. Livraison faite : film 1080 × 1920, version légère, maître ProRes, bande son et pistes séparées",
  "credits": {
   "depenses": 147.68,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre regard sur le film complet (les deux fichiers livrés) : validation, ou dernières retouches",
- "action": true
+ "attente": "Rien : projet terminé",
+ "action": false
 }
