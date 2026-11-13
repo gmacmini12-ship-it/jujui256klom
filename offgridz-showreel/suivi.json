@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Tout est prêt pour le palier 4 : versement final, papier et encre corrigés, sessions A et B répétées dans un environnement neuf",
+ "etape": "Palier 4 prêt (sessions répétées, caches empaquetés) ; bloqué par une panne du service de connexion aux connecteurs : Higgsfield ne se charge dans aucune nouvelle session",
  "credits": {
   "depenses": 42.45,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Deux choses : rétablir le connecteur Higgsfield de cette conversation (lien « Reconnecter »), et valider le palier 4 (34 à 54 crédits attendus, 75 au maximum)",
+ "attente": "Votre accord sur le palier 4 (34 à 54 crédits attendus, 75 au maximum). Rien à faire pour le connecteur : je réessaie automatiquement à 15 h UTC",
  "action": true
 }
