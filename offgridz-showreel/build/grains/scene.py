@@ -26,6 +26,7 @@ import scene as S          # noqa: E402
 import anim                # noqa: E402
 
 IMAGE_DESCENTE = 168       # à partir d'ici la caméra suit la trajectoire du bar (build/mojito/anim.py)
+IMAGE_SOUS_LE_SOL = 190    # à partir d'ici la caméra regarde le verre d'en haut, sous le sol de l'atelier : la dalle n'est plus vue
 
 
 def camera_atelier(f, d):
@@ -101,7 +102,13 @@ if __name__ == "__main__":
                 o.hide_render = True
         coll_bar.hide_render = f < IMAGE_DESCENTE
         A.poser_lettres(lettres, f)
-        libres = [g.poser(f) for g in grains] + ([bar["sucre"].poser(f)] if bar["sucre"] is not None else [])
+        if f >= IMAGE_SOUS_LE_SOL:                     # inutile de charger des millions de grains hors champ
+            grains[0].ob.hide_render = True
+            libres = [g.poser(f) for g in grains[1:]]
+        else:
+            libres = [g.poser(f) for g in grains]
+        if bar["sucre"] is not None:
+            libres.append(bar["sucre"].poser(f))
         if f < IMAGE_DESCENTE:
             pos, cible, focale, ouv, net = camera_atelier(f, d)
             anim.regarder(cam, pos, cible)

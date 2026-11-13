@@ -268,10 +268,12 @@ if __name__ == "__main__":
     ap.add_argument("--threads", type=int, default=1)
     ap.add_argument("--fresh", action="store_true")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--reprise", type=int, default=100000, help="écrire un point de reprise toutes les N images (et à la dernière)")
     A = ap.parse_args()
     sc = Dalle(A.scale) if A.scene == "dalle" else Filet(A.scale)
     out = A.out or os.path.join(SORTIE, A.scene)
-    runner = Runner(sc, out, arch=A.arch, threads=A.threads)
+    # point de reprise seulement à la fin : en écrire un par image coûterait plusieurs secondes par image à l'échelle finale
+    runner = Runner(sc, out, arch=A.arch, threads=A.threads, ckpt_every=A.reprise)
     fa, fb = sc.export_range if A.frames is None else tuple(int(v) for v in A.frames.split(":"))
     t0 = time.time()
     stats = runner.run(fa, fb, fresh=A.fresh)

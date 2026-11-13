@@ -6,11 +6,14 @@
 # Les étapes longues se lancent en arrière-plan depuis l'extérieur :
 #   nohup bash session.sh dalle > /dev/null 2>&1 &
 # puis on suit le journal. Variables : ECH (échelle des grains), IMAGES, SPP.
-W=$HOME/og; mkdir -p "$W/logs"; cd "$W" || exit 1
+W=${OG_DIR:-$HOME/og}; mkdir -p "$W/logs"; cd "$W" || exit 1
 export PATH="$HOME/.local/bin:$PATH"
 [ -f venv/bin/activate ] && . venv/bin/activate
-ECH=${ECH:-0.35}
+ECH=${ECH:-0.25}
 SPP=${SPP:-128}
+ARCH=${ARCH:-cuda}          # cpu pour une répétition locale
+DEVICE=${DEVICE:-OPTIX}     # CPU pour une répétition locale
+RES=${RES:-1008x1512}
 ETAPE=$1
 T0=$(date +%s)
 SUDO=""; [ "$(id -u)" = 0 ] || SUDO="sudo"
@@ -43,25 +46,26 @@ case "$ETAPE" in
     python -c "import bpy, taichi, scipy; print('bpy', bpy.app.version_string, 'taichi', taichi.__version__)" 2>&1 | tail -1
     ;;
   essai)        # le solveur de grains sur le GPU, en tout petit : quelques secondes
-    python build/grains/sim.py dalle --arch cuda --scale 0.004 --frames 72:92 --fresh --out out/essai_dalle 2>&1 | tail -4
+    python build/grains/sim.py dalle --arch "$ARCH" --scale 0.004 --frames 72:92 --fresh --out out/essai_dalle 2>&1 | tail -4
     ;;
   dalle)
-    python build/grains/sim.py dalle --arch cuda --scale "$ECH" --fresh 2>&1 | grep -E "frame (7[2-9]|[0-9]*[05]) |GRAINS|rror|Traceback" | cut -c1-200
+    # la caméra quitte l'atelier vers l'image 176 et le filet n'est plus alimenté après l'image 182 : inutile d'aller plus loin
+    python build/grains/sim.py dalle --arch "$ARCH" --scale "$ECH" --frames "${IMAGES_DALLE:-72:184}" --fresh 2>&1 | grep -E "frame (7[2-9]|[0-9]*[05]) |GRAINS|rror|Traceback" | cut -c1-200
     ;;
   filet)
-    python build/grains/sim.py filet --arch cuda --scale "$ECH" --fresh 2>&1 | grep -E "frame [0-9]*[05] |GRAINS|rror|Traceback" | cut -c1-200
+    python build/grains/sim.py filet --arch "$ARCH" --scale "$ECH" --frames "${IMAGES_FILET:-128:222}" --fresh 2>&1 | grep -E "frame [0-9]*[05] |GRAINS|rror|Traceback" | cut -c1-200
     ;;
   deferlement)
-    python build/sim/scenes.py deferlement --variant seq56 --arch cuda --scale "${ECH5:-0.25}" --out "cache/seq56/grains_final" --frames 456:503 --fresh 2>&1 | grep -E "frame [0-9]*[05] |rror|Traceback|\{" | cut -c1-200
+    python build/sim/scenes.py deferlement --variant seq56 --arch "$ARCH" --scale "${ECH5:-0.25}" --out "cache/seq56/grains_final" --frames 456:503 --fresh 2>&1 | grep -E "frame [0-9]*[05] |rror|Traceback|\{" | cut -c1-200
     ;;
   rendu2)       # séquence 2 : atelier, avalanche, filet
-    python build/grains/scene.py -- --frames "${IMAGES:-72:215}" --res 1008x1512 --spp "$SPP" --device OPTIX --out out/final/seq2 2>&1 | grep -E "GRAINS image|rror|Traceback"
+    python build/grains/scene.py -- --frames "${IMAGES:-72:215}" --res "$RES" --spp "$SPP" --device "$DEVICE" --out out/final/seq2 2>&1 | grep -E "GRAINS image|rror|Traceback"
     ;;
   rendu3)       # séquence 3 : mojito
-    python build/mojito/anim.py -- --frames "${IMAGES:-216:359}" --res 1008x1512 --spp "${SPP3:-256}" --device OPTIX --sim "${SIM:-256}" --out out/final/seq3 2>&1 | grep -E "ANIM image|rror|Traceback"
+    python build/mojito/anim.py -- --frames "${IMAGES:-216:359}" --res "$RES" --spp "${SPP3:-256}" --device "$DEVICE" --sim "${SIM:-256}" --out out/final/seq3 2>&1 | grep -E "ANIM image|rror|Traceback"
     ;;
   rendu01)      # séquences 0 et 1 : papier
-    python build/seq01/scene.py -- --frames "${IMAGES:-0:71}" --res 1008x1512 --spp "${SPP01:-128}" --device OPTIX --out out/final/seq01 2>&1 | grep -E "image|frame|rror|Traceback" | cut -c1-160
+    python build/seq01/scene.py -- --frames "${IMAGES:-0:71}" --res "$RES" --spp "${SPP01:-128}" --device "$DEVICE" --out out/final/seq01 2>&1 | grep -E "image|frame|rror|Traceback" | cut -c1-160
     ;;
   paquet)       # paquet <nom> <créneau> <chemins...> : archive sans compression (les PNG le sont déjà) et envoi
     shift; NOM=$1; CRENEAU=$2; shift 2

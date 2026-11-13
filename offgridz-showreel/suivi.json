@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Aperçu complet des 20 secondes envoyé ; versement final en calcul ; papier et encre chez les agents",
+ "etape": "Palier 3 validé (55 crédits au plus) : préparation de la session GPU des grains",
  "credits": {
   "depenses": 8.63,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre accord sur le palier 3 : session GPU pour les grains, 55 crédits au plus",
- "action": true
+ "attente": "Rien à valider pour l'instant",
+ "action": false
 }
