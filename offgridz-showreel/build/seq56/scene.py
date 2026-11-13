@@ -232,6 +232,7 @@ class Film:
     def __init__(self):
         self.mat = ink_material()
         self.meshes = {}
+        self.tmax = 0.0
 
     def _make(self, ny, nx):
         fpx = W // nx
@@ -266,6 +267,7 @@ class Film:
         sp = np.pad(s, 1, mode="edge").astype(np.float32)
         b = d["b"]
         T = np.maximum(sp - b, 0.0)
+        self.tmax = float(T.max())
         # the film lies on its base; a hair above so it never z-fights with the sheet where it is ultra thin
         z = np.maximum(sp, b) + 2e-6
         co = np.stack([d["X"], d["Y"], z], -1).astype(np.float32)
@@ -555,6 +557,7 @@ def main():
             film.set(s)
         else:
             film.hide()
+            film.tmax = 0.0
         # squeegee 504-527 (tip at row tip_y(f); world Y of the tip = (H/2 - row) * 1e-4); once the whole tool is below the sheet it is gone
         tip = None
         show_tool = False
@@ -568,6 +571,10 @@ def main():
         # until a grain crosses the rim the margins carry nothing at all (no catcher, hence no shadow alpha either)
         for ob in sheet_obs[:4]:
             ob.hide_render = (f <= 503 and grains.outside == 0)
+        # nothing left on the sheet (squeegee gone, ink film thinner than the drawn threshold): no catcher, so the layer is exactly empty
+        if f > 503 and not show_tool and film.tmax < 20e-6:
+            for ob in sheet_obs:
+                ob.hide_render = True
         t1 = time.time()
         sc.render.filepath = dest
         bpy.ops.render.render(write_still=True)

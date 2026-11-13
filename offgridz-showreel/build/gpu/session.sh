@@ -85,7 +85,7 @@ case "$ETAPE" in
     python -u build/mojito/anim.py -- --frames "${IMAGES:-216:359}" --res "$RES" --spp "${SPP3:-256}" --device "$DEVICE" --sim "${SIM:-256}" --arret "$ARRET" --reprise 1 --out out/final/seq3 2>&1 | grep --line-buffered -E "ANIM (image|arrêt)|rror|Traceback"
     ;;
   rendu01)      # séquences 0 et 1 : papier
-    python -u build/seq01/scene.py -- --frames "${IMAGES:-0:71}" --res "$RES" --spp "${SPP01:-128}" --device "$DEVICE" --out out/final/seq01 2>&1 | grep --line-buffered -E "image|frame|rror|Traceback" | $LIGNE cut -c1-160
+    python -u build/seq01/scene.py -- --frames "${IMAGES:-0:71}" --res "$RES" --spp "${SPP01:-128}" --device "$DEVICE" --arret "$ARRET" --reprise 1 --out out/final/seq01 2>&1 | grep --line-buffered -E "^\[f[0-9]+\]|arrêt avant|rror|Traceback" | $LIGNE cut -c1-160
     ;;
   paquet)       # paquet <nom> <créneau> <chemins...> : archive sans compression (les PNG le sont déjà) et envoi
     shift; NOM=$1; CRENEAU=$2; shift 2
