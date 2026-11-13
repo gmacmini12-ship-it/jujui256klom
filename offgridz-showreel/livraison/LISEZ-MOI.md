@@ -42,6 +42,13 @@ une machine de calcul.
   (images 281 à 320) et tout ce qui sortirait du verre est coupé (images 265 à 321). Ce n'est donc pas le mouvement
   brut de la simulation, qui débordait. Les grains tombés hors de l'atelier (756 sur 893 319) ne sont pas montrés.
 
+## Validations du client (13 novembre)
+
+- Grains (images 72 à 168), puis leur rectification (169 à 215) : validés.
+- Mojito : correction du liquide et du brin de menthe demandées et validées sur aperçus ; rendu final livré.
+- Papier (ouverture) et encre (fin) : validés sur aperçus. Depuis, seules les images 57 et 58 du papier ont été nettoyées (éclats de fibres).
+- Séquence des points : gardée telle quelle.
+
 ## Contrôle qualité
 
 Deux relectures indépendantes (image ; son et conformité) et des mesures sur les fichiers livrés.
