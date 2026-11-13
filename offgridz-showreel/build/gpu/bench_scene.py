@@ -65,7 +65,8 @@ if A.adaptive:
     cy.adaptive_min_samples = 64
 cy.use_denoising = bool(A.denoise)
 if A.denoise:
-    want = "OPTIX" if A.device == "OPTIX" else "OPENIMAGEDENOISE"
+    # Le débruiteur OptiX ne démarre pas sur la L40S louée (mesuré le 13 novembre) : OpenImageDenoise partout.
+    want = "OPENIMAGEDENOISE"
     try:
         cy.denoiser = want
     except Exception as e:  # fall back to whatever exists

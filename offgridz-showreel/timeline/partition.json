@@ -1,0 +1,819 @@
+{
+ "format": {
+  "largeur": 1080,
+  "hauteur": 1920,
+  "images_par_seconde": 30,
+  "images": 600,
+  "duree_s": 20.0,
+  "fenetre": [
+   36,
+   204,
+   1044,
+   1716
+  ]
+ },
+ "grille": {
+  "bpm": 150,
+  "images_par_temps": 12,
+  "images_par_double_croche": 3,
+  "levee_temps": 2,
+  "mesures": [
+   {
+    "mesure": 1,
+    "image": 24,
+    "s": 0.8
+   },
+   {
+    "mesure": 2,
+    "image": 72,
+    "s": 2.4
+   },
+   {
+    "mesure": 3,
+    "image": 120,
+    "s": 4.0
+   },
+   {
+    "mesure": 4,
+    "image": 168,
+    "s": 5.6
+   },
+   {
+    "mesure": 5,
+    "image": 216,
+    "s": 7.2
+   },
+   {
+    "mesure": 6,
+    "image": 264,
+    "s": 8.8
+   },
+   {
+    "mesure": 7,
+    "image": 312,
+    "s": 10.4
+   },
+   {
+    "mesure": 8,
+    "image": 360,
+    "s": 12.0
+   },
+   {
+    "mesure": 9,
+    "image": 408,
+    "s": 13.6
+   },
+   {
+    "mesure": 10,
+    "image": 456,
+    "s": 15.2
+   },
+   {
+    "mesure": 11,
+    "image": 504,
+    "s": 16.8
+   },
+   {
+    "mesure": 12,
+    "image": 552,
+    "s": 18.4
+   }
+  ]
+ },
+ "pistes": [
+  {
+   "id": "sequence",
+   "nom": "Séquence"
+  },
+  {
+   "id": "matiere",
+   "nom": "Matière orange"
+  },
+  {
+   "id": "reticule",
+   "nom": "Réticule"
+  },
+  {
+   "id": "typo",
+   "nom": "Typographie"
+  },
+  {
+   "id": "camera",
+   "nom": "Caméra"
+  },
+  {
+   "id": "simulation",
+   "nom": "Simulation"
+  },
+  {
+   "id": "musique",
+   "nom": "Musique"
+  },
+  {
+   "id": "bruitage",
+   "nom": "Bruitages"
+  }
+ ],
+ "evenements": [
+  {
+   "piste": "sequence",
+   "debut": 0,
+   "fin": 23,
+   "nom": "0 Épreuve",
+   "rendu": "logo",
+   "debut_s": 0.0,
+   "fin_s": 0.8
+  },
+  {
+   "piste": "sequence",
+   "debut": 24,
+   "fin": 71,
+   "nom": "1 Déchirure",
+   "rendu": "mat",
+   "debut_s": 0.8,
+   "fin_s": 2.4
+  },
+  {
+   "piste": "sequence",
+   "debut": 72,
+   "fin": 215,
+   "nom": "2 Grains",
+   "rendu": "mat",
+   "debut_s": 2.4,
+   "fin_s": 7.2
+  },
+  {
+   "piste": "sequence",
+   "debut": 216,
+   "fin": 359,
+   "nom": "3 Mojito",
+   "rendu": "brillant",
+   "debut_s": 7.2,
+   "fin_s": 12.0
+  },
+  {
+   "piste": "sequence",
+   "debut": 360,
+   "fin": 455,
+   "nom": "4 Données",
+   "rendu": "données",
+   "debut_s": 12.0,
+   "fin_s": 15.2
+  },
+  {
+   "piste": "sequence",
+   "debut": 456,
+   "fin": 527,
+   "nom": "5 Fond perdu",
+   "rendu": "mat puis brillant",
+   "debut_s": 15.2,
+   "fin_s": 17.6
+  },
+  {
+   "piste": "sequence",
+   "debut": 528,
+   "fin": 599,
+   "nom": "6 Signature",
+   "rendu": "logo",
+   "debut_s": 17.6,
+   "fin_s": 20.0
+  },
+  {
+   "piste": "matiere",
+   "debut": 0,
+   "fin": 83,
+   "nom": "solide (bande)",
+   "debut_s": 0.0,
+   "fin_s": 2.8
+  },
+  {
+   "piste": "matiere",
+   "debut": 84,
+   "fin": 215,
+   "nom": "grains",
+   "debut_s": 2.8,
+   "fin_s": 7.2
+  },
+  {
+   "piste": "matiere",
+   "debut": 216,
+   "fin": 263,
+   "nom": "sucre",
+   "debut_s": 7.2,
+   "fin_s": 8.8
+  },
+  {
+   "piste": "matiere",
+   "debut": 264,
+   "fin": 359,
+   "nom": "dissoute",
+   "debut_s": 8.8,
+   "fin_s": 12.0
+  },
+  {
+   "piste": "matiere",
+   "debut": 360,
+   "fin": 455,
+   "nom": "points",
+   "debut_s": 12.0,
+   "fin_s": 15.2
+  },
+  {
+   "piste": "matiere",
+   "debut": 456,
+   "fin": 479,
+   "nom": "grains",
+   "debut_s": 15.2,
+   "fin_s": 16.0
+  },
+  {
+   "piste": "matiere",
+   "debut": 480,
+   "fin": 527,
+   "nom": "encre",
+   "debut_s": 16.0,
+   "fin_s": 17.6
+  },
+  {
+   "piste": "matiere",
+   "debut": 528,
+   "fin": 599,
+   "nom": "bande imprimée",
+   "debut_s": 17.6,
+   "fin_s": 20.0
+  },
+  {
+   "piste": "reticule",
+   "debut": 0,
+   "fin": 11,
+   "nom": "verrouillé",
+   "debut_s": 0.0,
+   "fin_s": 0.4
+  },
+  {
+   "piste": "reticule",
+   "image": 12,
+   "nom": "déverrouillage",
+   "issue": "ouvert",
+   "image_s": 0.4
+  },
+  {
+   "piste": "reticule",
+   "image": 72,
+   "nom": "tentative 1 : la bande",
+   "issue": "échec",
+   "fin": 96,
+   "fin_s": 3.233,
+   "image_s": 2.4
+  },
+  {
+   "piste": "reticule",
+   "image": 168,
+   "nom": "tentative 2 : le filet",
+   "issue": "échec",
+   "fin": 180,
+   "fin_s": 6.033,
+   "image_s": 5.6
+  },
+  {
+   "piste": "reticule",
+   "image": 318,
+   "nom": "tentative 3 : le verre",
+   "issue": "tenu",
+   "fin": 342,
+   "fin_s": 11.433,
+   "image_s": 10.6
+  },
+  {
+   "piste": "reticule",
+   "debut": 360,
+   "fin": 455,
+   "nom": "devient repère d'axes",
+   "debut_s": 12.0,
+   "fin_s": 15.2
+  },
+  {
+   "piste": "reticule",
+   "image": 528,
+   "nom": "verrouillage final",
+   "issue": "réussi",
+   "image_s": 17.6
+  },
+  {
+   "piste": "typo",
+   "debut": 24,
+   "fin": 47,
+   "nom": "roulement 1",
+   "caracteres": [
+    "archivo-var",
+    "anton",
+    "permanent-marker",
+    "saira-stencil-one",
+    "doto-var",
+    "major-mono-display",
+    "instrument-serif-italic",
+    "bodoni-moda-var"
+   ],
+   "arret": "bodoni-moda-var",
+   "debut_s": 0.8,
+   "fin_s": 1.6
+  },
+  {
+   "piste": "typo",
+   "debut": 96,
+   "fin": 119,
+   "nom": "roulement 2",
+   "arret": "anton",
+   "debut_s": 3.2,
+   "fin_s": 4.0
+  },
+  {
+   "piste": "typo",
+   "debut": 240,
+   "fin": 263,
+   "nom": "roulement 3 (enseigne)",
+   "arret": "instrument-serif-italic",
+   "debut_s": 8.0,
+   "fin_s": 8.8
+  },
+  {
+   "piste": "typo",
+   "debut": 384,
+   "fin": 407,
+   "nom": "roulement 4 (graisse continue)",
+   "arret": "doto-var",
+   "debut_s": 12.8,
+   "fin_s": 13.6
+  },
+  {
+   "piste": "typo",
+   "debut": 504,
+   "fin": 527,
+   "nom": "lettrage d'origine imprimé",
+   "debut_s": 16.8,
+   "fin_s": 17.6
+  },
+  {
+   "piste": "typo",
+   "image": 528,
+   "nom": "« Hors-grille. »",
+   "image_s": 17.6
+  },
+  {
+   "piste": "typo",
+   "image": 540,
+   "nom": "« Sous contrôle. »",
+   "image_s": 18.0
+  },
+  {
+   "piste": "typo",
+   "debut": 588,
+   "fin": 593,
+   "nom": "fondu des lignes",
+   "debut_s": 19.6,
+   "fin_s": 19.8
+  },
+  {
+   "piste": "camera",
+   "debut": 0,
+   "fin": 23,
+   "nom": "fixe",
+   "debut_s": 0.0,
+   "fin_s": 0.8
+  },
+  {
+   "piste": "camera",
+   "debut": 24,
+   "fin": 71,
+   "nom": "travelling avant, plongée dans le O",
+   "debut_s": 0.8,
+   "fin_s": 2.4
+  },
+  {
+   "piste": "camera",
+   "debut": 72,
+   "fin": 119,
+   "nom": "contre-plongée lente",
+   "debut_s": 2.4,
+   "fin_s": 4.0
+  },
+  {
+   "piste": "camera",
+   "debut": 120,
+   "fin": 167,
+   "nom": "recul au ras des grains",
+   "debut_s": 4.0,
+   "fin_s": 5.6
+  },
+  {
+   "piste": "camera",
+   "debut": 168,
+   "fin": 215,
+   "nom": "descente verticale",
+   "debut_s": 5.6,
+   "fin_s": 7.2
+  },
+  {
+   "piste": "camera",
+   "debut": 216,
+   "fin": 263,
+   "nom": "bascule trois-quarts macro",
+   "debut_s": 7.2,
+   "fin_s": 8.8
+  },
+  {
+   "piste": "camera",
+   "debut": 264,
+   "fin": 311,
+   "nom": "orbite 12°, ralenti",
+   "debut_s": 8.8,
+   "fin_s": 10.4
+  },
+  {
+   "piste": "camera",
+   "debut": 312,
+   "fin": 335,
+   "nom": "quasi fixe (plan héros)",
+   "debut_s": 10.4,
+   "fin_s": 11.2
+  },
+  {
+   "piste": "camera",
+   "debut": 336,
+   "fin": 359,
+   "nom": "entrée dans la paille",
+   "debut_s": 11.2,
+   "fin_s": 12.0
+  },
+  {
+   "piste": "camera",
+   "debut": 360,
+   "fin": 407,
+   "nom": "dérive",
+   "debut_s": 12.0,
+   "fin_s": 13.6
+  },
+  {
+   "piste": "camera",
+   "debut": 408,
+   "fin": 431,
+   "nom": "orbite 20°",
+   "debut_s": 13.6,
+   "fin_s": 14.4
+  },
+  {
+   "piste": "camera",
+   "debut": 432,
+   "fin": 455,
+   "nom": "recul accéléré",
+   "debut_s": 14.4,
+   "fin_s": 15.2
+  },
+  {
+   "piste": "camera",
+   "debut": 456,
+   "fin": 599,
+   "nom": "fixe, feuille entière",
+   "debut_s": 15.2,
+   "fin_s": 20.0
+  },
+  {
+   "piste": "simulation",
+   "debut": 12,
+   "fin": 47,
+   "nom": "papier déchiré",
+   "debut_s": 0.4,
+   "fin_s": 1.6
+  },
+  {
+   "piste": "simulation",
+   "debut": 84,
+   "fin": 215,
+   "nom": "grains (MPM)",
+   "debut_s": 2.8,
+   "fin_s": 7.2
+  },
+  {
+   "piste": "simulation",
+   "debut": 216,
+   "fin": 263,
+   "nom": "corps rigides",
+   "debut_s": 7.2,
+   "fin_s": 8.8
+  },
+  {
+   "piste": "simulation",
+   "debut": 264,
+   "fin": 335,
+   "nom": "liquide (FLIP), bulles",
+   "debut_s": 8.8,
+   "fin_s": 11.2
+  },
+  {
+   "piste": "simulation",
+   "debut": 360,
+   "fin": 455,
+   "nom": "champ de vecteurs",
+   "debut_s": 12.0,
+   "fin_s": 15.2
+  },
+  {
+   "piste": "simulation",
+   "debut": 456,
+   "fin": 479,
+   "nom": "grains (MPM)",
+   "debut_s": 15.2,
+   "fin_s": 16.0
+  },
+  {
+   "piste": "simulation",
+   "debut": 480,
+   "fin": 527,
+   "nom": "film d'encre",
+   "debut_s": 16.0,
+   "fin_s": 17.6
+  },
+  {
+   "piste": "musique",
+   "debut": 0,
+   "fin": 23,
+   "nom": "souffle",
+   "debut_s": 0.0,
+   "fin_s": 0.8
+  },
+  {
+   "piste": "musique",
+   "debut": 24,
+   "fin": 71,
+   "nom": "entrée du rythme",
+   "debut_s": 0.8,
+   "fin_s": 2.4
+  },
+  {
+   "piste": "musique",
+   "debut": 72,
+   "fin": 209,
+   "nom": "groove A, demi-temps",
+   "debut_s": 2.4,
+   "fin_s": 7.0
+  },
+  {
+   "piste": "musique",
+   "debut": 210,
+   "fin": 215,
+   "nom": "silence",
+   "debut_s": 7.0,
+   "fin_s": 7.2
+  },
+  {
+   "piste": "musique",
+   "debut": 216,
+   "fin": 263,
+   "nom": "groove B, clics fins",
+   "debut_s": 7.2,
+   "fin_s": 8.8
+  },
+  {
+   "piste": "musique",
+   "debut": 264,
+   "fin": 311,
+   "nom": "arpège montant",
+   "debut_s": 8.8,
+   "fin_s": 10.4
+  },
+  {
+   "piste": "musique",
+   "debut": 312,
+   "fin": 359,
+   "nom": "accord ouvert, basse",
+   "debut_s": 10.4,
+   "fin_s": 12.0
+  },
+  {
+   "piste": "musique",
+   "debut": 360,
+   "fin": 407,
+   "nom": "groove C, aérien",
+   "debut_s": 12.0,
+   "fin_s": 13.6
+  },
+  {
+   "piste": "musique",
+   "debut": 408,
+   "fin": 452,
+   "nom": "montée",
+   "debut_s": 13.6,
+   "fin_s": 15.1
+  },
+  {
+   "piste": "musique",
+   "debut": 453,
+   "fin": 455,
+   "nom": "silence",
+   "debut_s": 15.1,
+   "fin_s": 15.2
+  },
+  {
+   "piste": "musique",
+   "debut": 456,
+   "fin": 503,
+   "nom": "plein, contrôlé",
+   "debut_s": 15.2,
+   "fin_s": 16.8
+  },
+  {
+   "piste": "musique",
+   "debut": 504,
+   "fin": 527,
+   "nom": "retrait",
+   "debut_s": 16.8,
+   "fin_s": 17.6
+  },
+  {
+   "piste": "musique",
+   "debut": 528,
+   "fin": 599,
+   "nom": "accord final, queue",
+   "debut_s": 17.6,
+   "fin_s": 20.0
+  },
+  {
+   "piste": "bruitage",
+   "image": 6,
+   "nom": "tic de papier",
+   "image_s": 0.2
+  },
+  {
+   "piste": "bruitage",
+   "debut": 12,
+   "fin": 23,
+   "nom": "déchirure",
+   "debut_s": 0.4,
+   "fin_s": 0.8
+  },
+  {
+   "piste": "bruitage",
+   "debut": 24,
+   "fin": 47,
+   "nom": "8 clics de caractères",
+   "debut_s": 0.8,
+   "fin_s": 1.6
+  },
+  {
+   "piste": "bruitage",
+   "debut": 48,
+   "fin": 71,
+   "nom": "souffle de caméra",
+   "debut_s": 1.6,
+   "fin_s": 2.4
+  },
+  {
+   "piste": "bruitage",
+   "image": 72,
+   "nom": "déclic 1",
+   "image_s": 2.4
+  },
+  {
+   "piste": "bruitage",
+   "debut": 84,
+   "fin": 119,
+   "nom": "effritement",
+   "debut_s": 2.8,
+   "fin_s": 4.0
+  },
+  {
+   "piste": "bruitage",
+   "image": 96,
+   "nom": "glissement",
+   "image_s": 3.2
+  },
+  {
+   "piste": "bruitage",
+   "debut": 120,
+   "fin": 167,
+   "nom": "avalanche (densité = débit simulé)",
+   "debut_s": 4.0,
+   "fin_s": 5.6
+  },
+  {
+   "piste": "bruitage",
+   "image": 168,
+   "nom": "déclic 2",
+   "image_s": 5.6
+  },
+  {
+   "piste": "bruitage",
+   "image": 180,
+   "nom": "glissement",
+   "image_s": 6.0
+  },
+  {
+   "piste": "bruitage",
+   "debut": 168,
+   "fin": 215,
+   "nom": "filet de grains",
+   "debut_s": 5.6,
+   "fin_s": 7.2
+  },
+  {
+   "piste": "bruitage",
+   "image": 216,
+   "nom": "citron",
+   "image_s": 7.2
+  },
+  {
+   "piste": "bruitage",
+   "image": 228,
+   "nom": "menthe",
+   "image_s": 7.6
+  },
+  {
+   "piste": "bruitage",
+   "debut": 240,
+   "fin": 263,
+   "nom": "glaçons (chocs simulés)",
+   "debut_s": 8.0,
+   "fin_s": 8.8
+  },
+  {
+   "piste": "bruitage",
+   "debut": 264,
+   "fin": 311,
+   "nom": "versement, bulles",
+   "debut_s": 8.8,
+   "fin_s": 10.4
+  },
+  {
+   "piste": "bruitage",
+   "image": 312,
+   "nom": "paille",
+   "image_s": 10.4
+  },
+  {
+   "piste": "bruitage",
+   "image": 318,
+   "nom": "déclic tenu",
+   "image_s": 10.6
+  },
+  {
+   "piste": "bruitage",
+   "debut": 336,
+   "fin": 359,
+   "nom": "aspiration",
+   "debut_s": 11.2,
+   "fin_s": 12.0
+  },
+  {
+   "piste": "bruitage",
+   "debut": 360,
+   "fin": 407,
+   "nom": "scintillement",
+   "debut_s": 12.0,
+   "fin_s": 13.6
+  },
+  {
+   "piste": "bruitage",
+   "debut": 432,
+   "fin": 452,
+   "nom": "roulement, souffle",
+   "debut_s": 14.4,
+   "fin_s": 15.1
+  },
+  {
+   "piste": "bruitage",
+   "debut": 456,
+   "fin": 479,
+   "nom": "déferlement",
+   "debut_s": 15.2,
+   "fin_s": 16.0
+  },
+  {
+   "piste": "bruitage",
+   "debut": 480,
+   "fin": 503,
+   "nom": "du sec au mouillé",
+   "debut_s": 16.0,
+   "fin_s": 16.8
+  },
+  {
+   "piste": "bruitage",
+   "debut": 504,
+   "fin": 527,
+   "nom": "raclette",
+   "debut_s": 16.8,
+   "fin_s": 17.6
+  },
+  {
+   "piste": "bruitage",
+   "image": 528,
+   "nom": "déclic final",
+   "image_s": 17.6
+  },
+  {
+   "piste": "bruitage",
+   "image": 540,
+   "nom": "second appui",
+   "image_s": 18.0
+  }
+ ]
+}
