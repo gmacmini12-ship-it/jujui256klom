@@ -1,0 +1,6 @@
+{
+  "name": "suivi-insoumise",
+  "version": "0.1.0",
+  "description": "Bande de suivi au-dessus de la barre de chat pour la production du showreel OFFGRIDZ « INSOUMISE » : phase, étape en cours, crédits, décision attendue.",
+  "types": "./types/index.d.ts"
+}

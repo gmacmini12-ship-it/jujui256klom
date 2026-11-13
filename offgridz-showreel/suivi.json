@@ -1,0 +1,9 @@
+{
+  "projet": "OFFGRIDZ · INSOUMISE",
+  "phase": 3,
+  "phases": ["Questions", "Concept", "Préproduction", "Production", "Contrôle qualité"],
+  "etape": "Accès réseau vers Higgsfield, puis test GPU (15 crédits autorisés)",
+  "credits": { "depenses": 0, "vise": 200, "plafond": 345 },
+  "attente": "Rien à valider pour l'instant",
+  "action": false
+}
