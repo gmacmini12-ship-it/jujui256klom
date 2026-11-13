@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Palier 4 prêt ; le connecteur Higgsfield est en panne chez eux (erreur 502, y compris dans une session neuve à 14 h 41 UTC) : aucune location possible pour l'instant",
+ "etape": "Palier 4, session A en cours sur la machine GPU : sucre rectifié (images 169 à 215) puis mojito (144 images). Lancée à 15 h 29 UTC",
  "credits": {
   "depenses": 42.45,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre accord sur le palier 4 (34 à 54 crédits attendus, 75 au maximum). Pour le connecteur, rien à faire de votre côté : nouvelle vérification automatique à 15 h UTC",
- "action": true
+ "attente": "Rien : la machine s'éteindra seule à la fin (19 à 29 minutes attendues)",
+ "action": false
 }
