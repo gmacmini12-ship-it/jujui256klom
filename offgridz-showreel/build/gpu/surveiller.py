@@ -3,8 +3,8 @@ créneaux d'envoi, et les images par tranches ; on lit ces dépôts depuis le r�
 
     python build/gpu/surveiller.py <resultats.json> <dossier de réception> <heure Unix de la location> [durée max en s]
 
-resultats.json : {"1": {"nom": "seq2_1", "url": "...", "media_id": "..."}, ...} (créneaux 1 à 19).
-S'arrête quand le journal de fin (créneau 10) est arrivé, ou à l'échéance. Écrit <dossier>/suivi.txt.
+resultats.json : {"1": {"nom": "seq2_169_191", "url": "...", "media_id": "..."}, ...} (fabriqué par build/gpu/plan.py).
+S'arrête quand le journal de fin (créneau nommé « journaux ») est arrivé, ou à l'échéance. Écrit <dossier>/suivi.txt.
 """
 import io
 import json
@@ -46,8 +46,12 @@ def lire_journal(chemin_zip, n=14):
             texte = z.read("logs/pilote.log").decode("utf-8", "replace") if "logs/pilote.log" in noms else ""
             images = z.read("logs/images.txt").decode().strip() if "logs/images.txt" in noms else "?"
             gpu = z.read("logs/gpu.txt").decode().strip() if "logs/gpu.txt" in noms else "?"
+            if "logs/etat.json" in noms:                  # pilote conduit par un plan : bilan par étape et par séquence
+                etat = json.loads(z.read("logs/etat.json").decode())
+                images = ", ".join(f"{k} {v}" for k, v in etat.get("images", {}).items()) or "aucune"
+                gpu = etat.get("gpu", gpu)
             extraits = []
-            for nom in ("logs/dalle.log", "logs/filet.log", "logs/rendu2.log", "logs/installer.log"):
+            for nom in sorted(n for n in noms if n.endswith(".log") and "paquet" not in n and n != "logs/pilote.log"):
                 if nom in noms:
                     lignes = z.read(nom).decode("utf-8", "replace").strip().split("\n")
                     extraits.append(f"    {nom[5:]} : {lignes[-1][:150]}")
@@ -57,7 +61,9 @@ def lire_journal(chemin_zip, n=14):
 
 
 vus = set()
-ordre = [str(k) for k in list(range(12, 20)) + list(range(1, 7)) + [9, 10]]
+ordre = sorted(creneaux, key=int)
+final = [k for k, c in creneaux.items() if c["nom"] == "journaux"]
+final = final[0] if final else "10"
 dire("surveillance commencée")
 while True:
     for k in ordre:
@@ -78,7 +84,7 @@ while True:
                 dire(e)
         else:
             dire(f"=== {c['nom']} déposé")
-    if "10" in vus:
+    if final in vus:
         dire("journal de fin reçu : la session est terminée")
         break
     if time.time() - t_ref > duree_max:

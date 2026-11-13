@@ -361,6 +361,9 @@ if __name__ == "__main__":
     ap.add_argument("--force_enseigne", type=float, default=0.42)
     ap.add_argument("--vue", default="Standard")
     ap.add_argument("--exposition", type=float, default=0.0)
+    ap.add_argument("--egares", type=int, default=0, help="1 : montrer sur le comptoir les grains tombés du bord de l'atelier")
+    ap.add_argument("--arret", type=float, default=0.0, help="heure (secondes Unix) après laquelle on n'entame plus d'image")
+    ap.add_argument("--reprise", type=int, default=0, help="1 : ne pas recalculer les images déjà présentes")
     A = ap.parse_args(argv)
     if "," in A.frames or ":" not in A.frames:
         images = [int(v) for v in A.frames.split(",")]
@@ -376,6 +379,11 @@ if __name__ == "__main__":
     chemin_meta = os.path.join(sortie, "meta.json")
     meta = json.load(open(chemin_meta)) if os.path.exists(chemin_meta) else {"images": {}}
     for f in images:
+        if A.arret and time.time() > A.arret:
+            print(f"ANIM arrêt avant l'image {f} : délai atteint", flush=True)
+            break
+        if A.reprise and os.path.exists(os.path.join(sortie, f"f{f:04d}.png")):
+            continue
         t0 = time.time()
         a_du_liquide = poser(scene, f)
         bpy.context.view_layer.update()
