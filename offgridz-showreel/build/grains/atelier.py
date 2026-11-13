@@ -347,7 +347,8 @@ class Egares(Grains):
     supplémentaire. Ceux qui tomberaient sur le verre ne sont pas suivis. Une fois posés, ils restent sur le comptoir :
     la séquence du mojito les montre aussi.
     Seuls comptent les grains sortis par le bord avant : une sortie ailleurs que par le bec ou ce bord serait une fuite
-    du sol (le défaut de joints corrigé le 13 novembre en produisait), pas une chute."""
+    du sol (le défaut de joints corrigé le 13 novembre en produisait), pas une chute.
+    Classe gardée pour mémoire : depuis le 13 novembre ces grains ne sont plus rendus (option --egares des scènes)."""
 
     def __init__(self, nom, dossier_dalle, d):
         super().__init__(nom, dossier_dalle, d)

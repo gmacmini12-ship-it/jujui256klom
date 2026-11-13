@@ -311,10 +311,11 @@ def construire(args):
         sucre = A.Grains("grains_filet", filet, A.decalage())
         for nom in ("sucre", "sucre_coeur"):
             bpy.data.objects[nom].hide_render = True
-    # les grains tombés du bord de l'atelier se sont posés sur le comptoir pendant la séquence précédente : ils y restent
+    # Les grains tombés du bord avant de l'atelier ne sont pas rendus (décision du 13 novembre : tout le sucre visible
+    # dans le bar passe par le bec et finit dans le verre). L'option --egares 1 les remet, posés sur le comptoir.
     egares = None
     dalle = os.path.join(S.RACINE, "out", "grains", "dalle")
-    if sucre is not None and os.path.exists(os.path.join(dalle, "exits.npz")):
+    if getattr(args, "egares", 0) and sucre is not None and os.path.exists(os.path.join(dalle, "exits.npz")):
         egares = A.Egares("grains_egares", dalle, A.decalage())
     return dict(d=d, plantes=plantes, objets=objets, brin=brin, fondus=fondus, cam=cam, liquide=liquide, enseigne=Enseigne(), sucre=sucre,
                 egares=egares)

@@ -66,6 +66,7 @@ if __name__ == "__main__":
     ap.add_argument("--reprise", type=int, default=0, help="1 : ne pas recalculer les images déjà présentes")
     ap.add_argument("--points", type=int, default=2, help="grains de la dalle. 0 : cristaux instanciés ; 1 : points à facettes simulées ; "
                     "2 : cristaux pour les grains proches et visibles, points pour les autres")
+    ap.add_argument("--egares", type=int, default=0, help="1 : rendre aussi les grains tombés du bord avant de l'atelier (jusqu'au comptoir)")
     ap.add_argument("--vue", default="Standard")
     args = ap.parse_args(argv)
     if "," in args.frames or ":" not in args.frames:
@@ -107,7 +108,11 @@ if __name__ == "__main__":
     # la dalle compte un million de grains à l'échelle finale : en points ; le filet et les égarés, peu nombreux, restent des cristaux
     dossier_dalle = os.path.join(A.SIMS, "dalle")
     dalle = A.GrainsMixtes("grains_dalle", dossier_dalle, d) if args.points == 2 else A.Grains("grains_dalle", dossier_dalle, d, points=bool(args.points))
-    grains = [] if (bar is not None and bar.get("egares") is not None) else [A.Egares("grains_egares", dossier_dalle, d)]
+    # Décision du 13 novembre (retour du client) : tout le sucre qu'on voit dans le bar passe par le bec et finit dans le
+    # verre. Les grains tombés du bord avant de l'atelier (moins de 0,1 %) ne sont donc plus rendus une fois sous le sol.
+    grains = []
+    if args.egares and not (bar is not None and bar.get("egares") is not None):
+        grains.append(A.Egares("grains_egares", dossier_dalle, d))
     if sucre is None:
         grains.append(A.Grains("grains_filet", os.path.join(A.SIMS, "filet"), d))
     if not sans_bar:

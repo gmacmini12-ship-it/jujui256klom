@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Séquence des grains en qualité finale ; versement du mojito en calcul (fin vers 13 h 30 UTC) ; agents au travail sur le papier et l'encre",
+ "etape": "Grains validés par vous, sauf le sucre tombé à côté du verre : rectifié (plus aucun grain hors du verre), images 169 à 215 à recalculer avec le palier 4",
  "credits": {
   "depenses": 42.45,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre avis sur la séquence des grains (film envoyé). Aucun crédit ne sera engagé avant que je vous soumette le palier 4",
- "action": true
+ "attente": "Rien pour l'instant : je prépare le palier 4 (mojito, papier, encre, rectification du sucre) et vous le soumets avec ses durées mesurées",
+ "action": false
 }
