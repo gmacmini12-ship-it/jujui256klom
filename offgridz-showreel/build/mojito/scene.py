@@ -41,7 +41,7 @@ R_BAS, R_HAUT = 0.0340, 0.0385  # rayons extérieurs
 E_PAROI = 0.0022                # épaisseur de paroi
 E_FOND = 0.012                  # épaisseur du fond
 NIVEAU = 0.121                  # hauteur du liquide au repos (depuis le dessous du verre)
-TROUBLE = 3.0                   # densité de diffusion du liquide (0 = parfaitement limpide)
+TROUBLE = 14.0                  # densité de diffusion du liquide (0 = parfaitement limpide) ; un mojito est légèrement trouble
 T_GLACON = 0.027                # côté d'un glaçon
 R_CITRON = (0.023, 0.023, 0.027)  # demi-axes du citron vert
 
@@ -282,9 +282,9 @@ def faire_liquide(niveau=NIVEAU):
     plage.inputs["From Min"].default_value = Z0 + E_FOND; plage.inputs["From Max"].default_value = Z0 + E_FOND + 0.045
     melange = nt.nodes.new("ShaderNodeMix"); melange.data_type = "RGBA"
     melange.inputs["A"].default_value = (0.98, 0.56, 0.16, 1)     # ambre du sucre de canne
-    melange.inputs["B"].default_value = (0.90, 0.95, 0.82, 1)     # citron vert très dilué
+    melange.inputs["B"].default_value = (0.86, 0.93, 0.62, 1)     # citron vert dilué : jaune-vert pâle
     dens = nt.nodes.new("ShaderNodeMapRange")
-    dens.inputs["To Min"].default_value = 26.0; dens.inputs["To Max"].default_value = 5.0
+    dens.inputs["To Min"].default_value = 26.0; dens.inputs["To Max"].default_value = 9.0
     va = nt.nodes.new("ShaderNodeVolumeAbsorption")
     nt.links.new(coord.outputs["Object"], sep.inputs["Vector"])
     nt.links.new(sep.outputs["Z"], plage.inputs["Value"])
@@ -923,7 +923,7 @@ def faire_enseigne(caractere, force):
     nt.links.new(tex.outputs["Color"], mix.inputs["Fac"])
     nt.links.new(vide.outputs["BSDF"], mix.inputs[1]); nt.links.new(em.outputs["Emission"], mix.inputs[2])
     nt.links.new(mix.outputs["Shader"], sortie.inputs["Surface"])
-    largeur, hauteur = 0.234, 0.0585
+    largeur, hauteur = 0.187, 0.0468      # 80 % de la première version : le mot entier tient dans le cadre, avec 10 % de marge
 
     def plan(bm):
         uv = bm.loops.layers.uv.new("uv")
@@ -933,7 +933,7 @@ def faire_enseigne(caractere, force):
         for boucle, c in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
             boucle[uv].uv = c
     ob = depuis_bmesh("enseigne", plan, m, lisse=False)
-    ob.location = (0.006, 0.33, 0.2415)
+    ob.location = (0.006, 0.33, 0.2235)     # abaissée de 18 mm : le haut des lettres garde 3 % de marge sous le bord du cadre
     return ob
 
 

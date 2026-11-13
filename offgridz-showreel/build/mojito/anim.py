@@ -55,8 +55,8 @@ CLES_CAMERA = [
     (168, (0.000, -0.050, 0.900), (0.000, 0.0, 0.030), 50.0, 5.6),
     (215, (0.000, -0.050, 0.335), (0.000, 0.0, 0.030), 50.0, 5.6),
     (228, (-0.040, -0.330, 0.380), (0.000, 0.0, 0.085), 60.0, 6.3),
-    (240, (-0.055, -0.525, 0.228), (-0.004, 0.0, 0.118), 80.0, 8.0),
-    (264, (-0.070, -0.575, 0.205), (-0.002, 0.0, 0.119), 88.0, 8.0),
+    (240, (-0.035, -0.525, 0.228), (-0.004, 0.0, 0.118), 80.0, 8.0),      # décalage latéral réduit : l'enseigne, loin derrière,
+    (264, (-0.040, -0.575, 0.205), (-0.002, 0.0, 0.119), 88.0, 8.0),      # sortait du cadre par la gauche entre 240 et 300
     (312, (0.010, -0.660, 0.176), (0.010, 0.0, 0.118), 100.0, 11.0),
     (IMAGE_PAILLE, (0.010, -0.654, 0.176), (0.010, 0.0, 0.118), 100.0, 11.0),
 ]
@@ -218,8 +218,19 @@ class Liquide:
         z = np.load(chemin)
         if len(z["v"]) == 0:
             return False
-        faces = [tuple(q) for q in z["quads"]] + [tuple(t) for t in z["tri"]]
-        me = bpy.data.meshes.new("liquide"); me.from_pydata(z["v"].tolist(), [], faces)
+        # Maillage rempli par tableaux entiers : en résolution finale la surface compte un million de faces, et la
+        # construire face par face prendrait plusieurs secondes par image sur l'unique cœur de la machine louée.
+        v = np.ascontiguousarray(z["v"], np.float32)
+        quads = np.ascontiguousarray(z["quads"], np.int32).reshape(-1, 4); tri = np.ascontiguousarray(z["tri"], np.int32).reshape(-1, 3)
+        nq, nt = len(quads), len(tri)
+        me = bpy.data.meshes.new("liquide")
+        me.vertices.add(len(v)); me.vertices.foreach_set("co", v.ravel())
+        me.loops.add(4 * nq + 3 * nt)
+        me.loops.foreach_set("vertex_index", np.concatenate([quads.ravel(), tri.ravel()]))
+        me.polygons.add(nq + nt)
+        me.polygons.foreach_set("loop_start", np.concatenate([4 * np.arange(nq, dtype=np.int32), 4 * nq + 3 * np.arange(nt, dtype=np.int32)]))
+        me.polygons.foreach_set("loop_total", np.concatenate([np.full(nq, 4, np.int32), np.full(nt, 3, np.int32)]))
+        me.update(calc_edges=True)
         self.ob = S.lier("liquide", me, self.mat)
         self.ob.cycles.is_caustics_caster = True
         return True
