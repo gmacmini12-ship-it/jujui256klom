@@ -36,7 +36,7 @@ def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     a = dict(frames="0:71", res="1008x1512", spp=96, device="CPU", out=os.path.join(ROOT, "out", "final", "seq01"),
              denoise="auto", only=None, tag="", filter="0.05", uvshift="0,0",
-             arret="0", reprise="0", threads="2")
+             arret="0", reprise="0", threads="2", blur="1")
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")
@@ -1097,8 +1097,8 @@ def render_frame(f, outdir, stats):
     else:
         GRAINS.cacher(True)
     t_prep = time.time() - t0
-    SC.render.use_motion_blur = 49 <= f <= 65
-    SC.render.motion_blur_shutter = 0.45
+    SC.render.use_motion_blur = (49 <= f <= 65) and ARGS["blur"] != "0"
+    SC.render.motion_blur_shutter = 0.30
     cy.seed = 1000 + f
     dn = ARGS["denoise"]
     flat = f <= 11 and not (dn == "on")

@@ -506,6 +506,7 @@ def main():
     ap.add_argument("--list", default=None, help="comma separated frames instead of --frames (stills)")
     ap.add_argument("--arret", type=float, default=0.0, help="unix time after which no new frame is started")
     ap.add_argument("--reprise", type=int, default=0, help="1: skip frames already on disk")
+    ap.add_argument("--lod-res", type=int, default=0, help="width in px used to choose crystals vs points (default: --res); 1080 for timing tests at tiny resolution")
     A = ap.parse_args(argv)
     if A.film is None:
         w = os.path.join(ROOT, "cache", "seq56", "work_" + os.path.basename(os.path.abspath(A.grains).rstrip("/")))
@@ -518,7 +519,7 @@ def main():
     setup_lights()
     Ta = np.load(os.path.join(A.film, "Ta.npy")) if os.path.exists(os.path.join(A.film, "Ta.npy")) else None
     film = Film()
-    res_x = int(A.res.split("x")[0])
+    res_x = A.lod_res or int(A.res.split("x")[0])
     grains = GrainLayer(A.grains, Ta, res_x)
     root, parts, tool_info, fill = make_squeegee()
     outdir = os.path.join(A.out, "matiere")
