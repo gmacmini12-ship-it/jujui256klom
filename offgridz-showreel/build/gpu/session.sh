@@ -82,7 +82,7 @@ case "$ETAPE" in
     python -u build/grains/scene.py -- --frames "${IMAGES:-72:215}" --res "$RES" --spp "$SPP" --device "$DEVICE" --arret "$ARRET" --reprise 1 --out out/final/seq2 2>&1 | grep --line-buffered -E "GRAINS (image|arrêt)|rror|Traceback"
     ;;
   rendu3)       # séquence 3 : mojito
-    python -u build/mojito/anim.py -- --frames "${IMAGES:-216:359}" --res "$RES" --spp "${SPP3:-256}" --device "$DEVICE" --sim "${SIM:-256}" --arret "$ARRET" --reprise 1 --out out/final/seq3 2>&1 | grep --line-buffered -E "ANIM (image|arrêt)|rror|Traceback"
+    python -u build/mojito/anim.py -- --frames "${IMAGES:-216:359}" --res "$RES" --spp "${SPP3:-256}" --device "$DEVICE" --sim "${SIM:-256}" ${VARIANTE3:+--variante "$VARIANTE3"} --arret "$ARRET" --reprise 1 --out out/final/seq3 2>&1 | grep --line-buffered -E "ANIM (image|arrêt)|rror|Traceback"
     ;;
   rendu01)      # séquences 0 et 1 : papier
     python -u build/seq01/scene.py -- --frames "${IMAGES:-0:71}" --res "$RES" --spp "${SPP01:-128}" --device "$DEVICE" --arret "$ARRET" --reprise 1 --out out/final/seq01 2>&1 | grep --line-buffered -E "^\[f[0-9]+\]|arrêt avant|rror|Traceback" | $LIGNE cut -c1-160

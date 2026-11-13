@@ -2,6 +2,7 @@
 
     /opt/og/venv/bin/python build/gpu/kit.py code        ->  out/gpu/kit_code.zip     (scripts, petites données : quelques Mo)
     /opt/og/venv/bin/python build/gpu/kit.py liquide 256 ->  out/gpu/kit_liquide_NN.zip (surfaces du liquide, par tranches)
+    /opt/og/venv/bin/python build/gpu/kit.py liquide_c 256 281 320 ->  out/gpu/kit_liquide_c.zip (images du liquide refaites)
     /opt/og/venv/bin/python build/gpu/kit.py papier      ->  out/gpu/kit_papier.zip   (caches de la séquence d'ouverture)
     /opt/og/venv/bin/python build/gpu/kit.py seq56 [grains_final] ->  out/gpu/kit_seq56.zip (séquences 5-6 : grains légers 456-503 + film d'encre 480-527)
 
@@ -74,6 +75,13 @@ if __name__ == "__main__":
             lot.append(f); taille += f.stat().st_size
         if lot:
             archiver(f"kit_liquide_{n:02d}.zip", lot, zipfile.ZIP_STORED)
+    elif quoi == "liquide_c":
+        # kit.py liquide_c 256 281 320 : images du liquide refaites par le confinement (build/mojito/surface.py --confiner 1)
+        res = sys.argv[2] if len(sys.argv) > 2 else "256"
+        a, b = (int(v) for v in sys.argv[3:5]) if len(sys.argv) > 4 else (0, 9999)
+        d = RACINE / "cache" / "mojito" / f"liquide_r{res}c"
+        liste = [f for f in sorted(d.glob("f[0-9][0-9][0-9][0-9].npz")) if a <= int(f.stem[1:]) <= b]
+        archiver("kit_liquide_c.zip", liste, zipfile.ZIP_STORED)
     elif quoi == "papier":
         archiver("kit_papier.zip", list(fichiers(["cache/seq01"])))
     elif quoi == "seq56":

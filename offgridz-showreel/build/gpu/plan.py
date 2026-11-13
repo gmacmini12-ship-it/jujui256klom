@@ -97,22 +97,16 @@ def repetition_sim():
     return 256                                     # la répétition lit le même liquide que la session réelle
 
 
-def plan_b(table, caches, repetition, reste3=None, liquide=None):
+def plan_b(table, caches, repetition, reste3=None, liquide=None, variante3=""):
     """Papier (séquences 0 et 1) puis encre (séquences 5 et 6). Les caches viennent de notre machine.
-    reste3 = (a, b) : images du mojito que la session a n'a pas eu le temps de rendre ; elles passent en premier
-    (liquide : adresses des archives du liquide et du filet de la session a)."""
+    reste3 = [(a, b), ...] : plages d'images du mojito à rendre ensuite (images restantes, images corrigées) ; ce qui
+    n'aurait pas le temps de passer se finit sur notre machine (build/mojito/rendu_local.sh).
+    liquide : adresses des archives du liquide et du filet de la session a ; variante3 : suffixe du dossier d'images
+    du liquide refaites (« c » : confinement)."""
     etapes = installation()
-    if reste3:
-        etapes += [dict(type="telecharger", nom="liquide_filet", adresses=liquide or [])]
     etapes += [
         dict(type="telecharger", nom="caches", adresses=caches),
         dict(type="attendre", nom="installer_rendu"),
-    ]
-    if reste3:
-        etapes += [dict(type="rendu", nom="seq3", etape="rendu3", images=list(reste3), dossier="out/final/seq3",
-                        tranches=tranches(table, "seq3", reste3[0], reste3[1]), joindre=["out/final/seq3/meta.json"],
-                        requiert=["installer_rendu", "liquide_filet"])]
-    etapes += [
         dict(type="rendu", nom="seq01", etape="rendu01", images=[0, 71], dossier="out/final/seq01",
              tranches=tranches(table, "seq01", 0, 71), requiert=["installer_rendu", "caches"]),
         # la couche de matière est transparente là où la feuille est nue : une image vide (527) est normale
@@ -120,7 +114,15 @@ def plan_b(table, caches, repetition, reste3=None, liquide=None):
              taille=[1080, 1920], noir_permis=True,
              tranches=tranches(table, "seq56", 456, 527), requiert=["installer_rendu", "caches"]),
     ]
+    if reste3:
+        etapes += [dict(type="telecharger", nom="liquide_filet", adresses=liquide or [])]
+        for k, (a, b) in enumerate(reste3):
+            etapes += [dict(type="rendu", nom="seq3" + "abcdef"[k], etape="rendu3", images=[a, b], dossier="out/final/seq3",
+                            tranches=tranches(table, "seq3", a, b), joindre=["out/final/seq3/meta.json"],
+                            requiert=["installer_rendu", "liquide_filet"])]
     env = dict(SPP01=128, SPP56=128, SPP3=256, SIM=256)
+    if variante3:
+        env["VARIANTE3"] = variante3
     if repetition:
         env.update(SPP01=4, SPP56=4, SPP3=4, ARCH="cpu", DEVICE="CPU", RES="126x189", RES56="135x240", LOD56=1080)
     return etapes, env, ["out/final/seq56/scene_log.json", "out/final/seq56/tool_info.json"] + (["out/final/seq3/meta.json"] if reste3 else [])
@@ -136,7 +138,8 @@ if __name__ == "__main__":
     ap.add_argument("--battements", default="120,300,480,660,840,1020,1200,1380,1560,1740")
     ap.add_argument("--repetition", action="store_true")
     ap.add_argument("--compact", action="store_true", help="session a avec quatre créneaux : voir plan_a_compact")
-    ap.add_argument("--reste3", default="", help="session b : images du mojito restant à rendre, a:b (avec --liquide : liquide et filet)")
+    ap.add_argument("--reste3", default="", help="session b : plages d'images du mojito à rendre, a:b[,c:d...] (avec --liquide : liquide et filet)")
+    ap.add_argument("--variante3", default="", help="session b : suffixe du dossier d'images du liquide refaites (c : confinement)")
     ap.add_argument("--sortie", default="")
     A = ap.parse_args()
     creneaux = json.load(open(A.creneaux))
@@ -147,9 +150,9 @@ if __name__ == "__main__":
     elif A.session == "a":
         etapes, env, fichiers = plan_a(table, json.load(open(A.liquide)) if A.liquide else [], A.repetition)
     else:
-        reste3 = tuple(int(v) for v in A.reste3.split(":")) if A.reste3 else None
+        reste3 = [tuple(int(v) for v in plage.split(":")) for plage in A.reste3.split(",")] if A.reste3 else None
         etapes, env, fichiers = plan_b(table, json.load(open(A.caches)) if A.caches else [], A.repetition, reste3,
-                                       json.load(open(A.liquide)) if A.liquide else [])
+                                       json.load(open(A.liquide)) if A.liquide else [], A.variante3)
     journal = table.prendre("journaux")
     temps = [t for t in A.battements.split(",") if t.strip()]
     battements = [[int(t), table.prendre(f"battement_{k + 1:02d}")] for k, t in enumerate(temps) if int(t) < A.limite + 240]

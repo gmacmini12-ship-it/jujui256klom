@@ -203,8 +203,9 @@ class Brin:
 class Liquide:
     """Surface du liquide, relue image par image dans le cache."""
 
-    def __init__(self, dossier):
+    def __init__(self, dossier, variante=""):
         self.dossier = dossier
+        self.variante = dossier + variante if variante else None     # images refaites (confinement) : lues en priorité
         self.ob = None
         tmp = S.faire_liquide(); self.mat = tmp.data.materials[0]
         me = tmp.data; bpy.data.objects.remove(tmp, do_unlink=True); bpy.data.meshes.remove(me)
@@ -213,6 +214,8 @@ class Liquide:
         if self.ob is not None:
             me = self.ob.data; bpy.data.objects.remove(self.ob, do_unlink=True); bpy.data.meshes.remove(me); self.ob = None
         chemin = os.path.join(self.dossier, f"f{f:04d}.npz")
+        if self.variante and os.path.exists(os.path.join(self.variante, f"f{f:04d}.npz")):
+            chemin = os.path.join(self.variante, f"f{f:04d}.npz")
         if not os.path.exists(chemin):
             return False
         z = np.load(chemin)
@@ -312,7 +315,7 @@ def construire(args):
             if lum:
                 lum.light_linking.receiver_collection = exclus
     cam = S.cadrer(args)
-    liquide = Liquide(os.path.join(S.RACINE, "cache", "mojito", f"liquide_r{args.sim}"))
+    liquide = Liquide(os.path.join(S.RACINE, "cache", "mojito", f"liquide_r{args.sim}"), getattr(args, "variante", ""))
     # le sucre : si la simulation du filet existe, ce sont ses grains, tombés de l'atelier, qui forment le tas au fond du verre
     sucre = None
     filet = os.path.join(S.RACINE, "out", "grains", "filet")
@@ -360,6 +363,7 @@ if __name__ == "__main__":
     ap.add_argument("--device", default="CPU", choices=["CPU", "CUDA", "OPTIX"])
     ap.add_argument("--out", default=os.path.join(S.SORTIE, "anim"))
     ap.add_argument("--sim", type=int, default=128, help="résolution de la simulation de liquide à lire")
+    ap.add_argument("--variante", default="", help="suffixe d'un dossier d'images du liquide refaites, lu en priorité (c : confinement)")
     ap.add_argument("--ouverture", type=float, default=11.0)
     ap.add_argument("--barre", type=float, default=1.3)
     ap.add_argument("--caustiques", type=float, default=0.0)
