@@ -20,17 +20,21 @@ SSIM (grayscale, 7x7): whole 0.9973, outside strip 0.9975.  Max abs error outsid
 
 ## Wordmark vector vs raster (IoU)
 
-| letter | clean vs raster mask (L>117) | clean vs mask with specks filled | raw vs raster mask |
-|---|---|---|---|
-| O1 | 0.9834 | 0.9835 | 0.9829 |
-| F1 | 0.9812 | 0.9826 | 0.9843 |
-| F2 | 0.9782 | 0.9786 | 0.9783 |
-| G1 | 0.9768 | 0.9768 | 0.9795 |
-| R1 | 0.9785 | 0.9802 | 0.9832 |
-| I1 | 0.9793 | 0.9793 | 0.9810 |
-| D1 | 0.9786 | 0.9787 | 0.9862 |
-| Z1 | 0.9833 | 0.9833 | 0.9830 |
-| ALL | 0.9799 | 0.9804 | 0.9825 |
+Raster mask = connected components of mean(R,G,B) > 117 inside the letter band (eroded edges and specks included). Vector rasterised at 4x with area-averaging; the 'SVG file' column re-parses the written `wordmark_clean.svg` (2-decimal coordinates) instead of the in-memory curves.
+
+| letter | clean vector vs raster mask | clean vs mask with specks filled | raw vector vs raster mask | clean SVG file vs raster mask |
+|---|---|---|---|---|
+| O1 | 0.9834 | 0.9835 | 0.9829 | 0.9834 |
+| F1 | 0.9812 | 0.9826 | 0.9843 | 0.9812 |
+| F2 | 0.9782 | 0.9786 | 0.9783 | 0.9780 |
+| G1 | 0.9768 | 0.9768 | 0.9795 | 0.9767 |
+| R1 | 0.9785 | 0.9802 | 0.9832 | 0.9785 |
+| I1 | 0.9793 | 0.9793 | 0.9810 | 0.9793 |
+| D1 | 0.9786 | 0.9787 | 0.9862 | 0.9787 |
+| Z1 | 0.9833 | 0.9833 | 0.9830 | 0.9833 |
+| ALL | 0.9799 | 0.9804 | 0.9825 | 0.9799 |
+
+Raw SVG file vs raster mask (all letters): 0.9824
 
 ## Circle fit
 

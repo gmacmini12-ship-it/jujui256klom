@@ -140,7 +140,7 @@ Estimation du rendu final :
 
 17,60 – 20,00 s · images 528 – 599 · mesure 11, troisième temps, à mesure 12 · logo à plat
 
-- **Composition :** Le logo source, au pixel près. Dessous : « Hors-grille. » puis « Sous contrôle. ». En marge : STUDIO CRÉATIF · IDENTITÉ · MOTION · 3D · PUBLICITÉ.
+- **Composition :** Le logo source, au pixel près. Au-dessus, dans la zone libre de la fenêtre : « Hors-grille. » puis « Sous contrôle. ». Les lignes sont au-dessus du logo et non dessous, pour rester à l'écart des légendes que les plateformes affichent en bas. En marge : STUDIO CRÉATIF · IDENTITÉ · MOTION · 3D · PUBLICITÉ.
 - **Caméra :** Fixe.
 - **Matériaux :** L'encre de la bande, encore humide, devient mate en une seconde et demie.
 - **Lumière :** Uniforme ; un dernier reflet glisse sur la bande.
@@ -298,7 +298,7 @@ Ce qui reste à prouver :
 ## Textes à l'image
 
 - **Dans l'image, avant la signature :** OFFGRIDZ, seul mot du film
-- **Signature :** « Hors-grille. » à 17,60 s, puis « Sous contrôle. » à 18,00 s
+- **Signature :** « Hors-grille. » à 17,60 s, puis « Sous contrôle. » à 18,00 s, au-dessus du logo
 - **En marge, à la signature :** STUDIO CRÉATIF · IDENTITÉ · MOTION · 3D · PUBLICITÉ
 - **Annotations de marge :** ÉPREUVE N° 01 · REPÉRAGE : OK / PERDU · CIBLE : BANDE / FLUX / VERRE · ÉTAT : SOLIDE / GRANULAIRE / LIQUIDE / LUMIÈRE · N = nombre de particules · FOND PERDU · BON À TIRER
 - **Voix :** Aucune

@@ -82,7 +82,8 @@ La mesure n (1 à 12) commence à t = 0,8 + 1,6 × (n − 1) s, soit l'image 24 
 ## 6. Textes à l'image (français)
 
 - Seul mot avant la signature : OFFGRIDZ.
-- Signature : « Hors-grille. » puis, un temps plus tard, « Sous contrôle. »
+- Signature : « Hors-grille. » puis, un temps plus tard, « Sous contrôle. », au-dessus du logo (lignes de base vers y = 330 et y = 410),
+  à l'écart des légendes que les plateformes affichent en bas.
 - Marges : micro-annotations d'atelier d'imprimerie (ÉPREUVE N° 01, REPÉRAGE, ÉTAT, compteur de particules,
   FOND PERDU, BON À TIRER). Elles réagissent à l'image.
 - Aucune voix. Aucun identifiant de compte dans l'image.

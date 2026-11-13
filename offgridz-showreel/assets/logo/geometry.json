@@ -2475,54 +2475,64 @@
     "clean_vs_raster_mask": 0.9834281099633231,
     "clean_vs_specks_filled_mask": 0.9835178393171596,
     "raw_vs_raster_mask": 0.9829306413754082,
-    "area_px": 11034.0
+    "area_px": 11034.0,
+    "clean_svg_file_vs_raster_mask": 0.9834438200356698
    },
    "F1": {
     "clean_vs_raster_mask": 0.9812491530380081,
     "clean_vs_specks_filled_mask": 0.9826185568480889,
     "raw_vs_raster_mask": 0.9843398047838678,
-    "area_px": 8644.0
+    "area_px": 8644.0,
+    "clean_svg_file_vs_raster_mask": 0.9812491530380081
    },
    "F2": {
     "clean_vs_raster_mask": 0.9781749724413394,
     "clean_vs_specks_filled_mask": 0.9786330904353553,
     "raw_vs_raster_mask": 0.9782670881187694,
-    "area_px": 8589.0
+    "area_px": 8589.0,
+    "clean_svg_file_vs_raster_mask": 0.9780478552461117
    },
    "G1": {
     "clean_vs_raster_mask": 0.9767959362195178,
     "clean_vs_specks_filled_mask": 0.9767959362195178,
     "raw_vs_raster_mask": 0.9795374668265142,
-    "area_px": 12013.0
+    "area_px": 12013.0,
+    "clean_svg_file_vs_raster_mask": 0.9767497774731178
    },
    "R1": {
     "clean_vs_raster_mask": 0.978526548367051,
     "clean_vs_specks_filled_mask": 0.9801996530549258,
     "raw_vs_raster_mask": 0.9832408164131738,
-    "area_px": 11669.0
+    "area_px": 11669.0,
+    "clean_svg_file_vs_raster_mask": 0.9785205526018069
    },
    "I1": {
     "clean_vs_raster_mask": 0.9793380848211135,
     "clean_vs_specks_filled_mask": 0.9793380848211135,
     "raw_vs_raster_mask": 0.9810431223092667,
-    "area_px": 4357.0
+    "area_px": 4357.0,
+    "clean_svg_file_vs_raster_mask": 0.9792966214118377
    },
    "D1": {
     "clean_vs_raster_mask": 0.978595890410959,
     "clean_vs_specks_filled_mask": 0.9786848425547056,
     "raw_vs_raster_mask": 0.9861910241657077,
-    "area_px": 11117.0
+    "area_px": 11117.0,
+    "clean_svg_file_vs_raster_mask": 0.9786557397101094
    },
    "Z1": {
     "clean_vs_raster_mask": 0.9832788466691676,
     "clean_vs_specks_filled_mask": 0.9832788466691676,
     "raw_vs_raster_mask": 0.9830386421391546,
-    "area_px": 10349.0
+    "area_px": 10349.0,
+    "clean_svg_file_vs_raster_mask": 0.9832903583104563
    },
    "ALL": {
     "clean_vs_raster_mask": 0.9799039061812107,
     "clean_vs_specks_filled_mask": 0.9803822929643178,
-    "raw_vs_raster_mask": 0.9824616136934843
+    "raw_vs_raster_mask": 0.9824616136934843,
+    "clean_svg_file_vs_raster_mask": 0.9798916884746669,
+    "raw_svg_file_vs_raster_mask": 0.9824432159176428
    }
   }
  }

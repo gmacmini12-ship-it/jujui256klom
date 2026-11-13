@@ -177,8 +177,8 @@ def planche(cle):
                              '<rect x="0" y="98" width="108" height="5" class="fo2"/>'
                              '<rect x="0" y="90" width="108" height="8" class="rc"/><rect x="0" y="88" width="108" height="2.2" class="rc2"/>'),
         "signature": lambda: (marques() + logo()
-                              + '<text x="54" y="156.5" text-anchor="middle" font-size="5.4" class="sg">Hors-grille.</text>'
-                              + '<text x="54" y="164" text-anchor="middle" font-size="5.4" class="sg">Sous contrôle.</text>'),
+                              + '<text x="54" y="31.5" text-anchor="middle" font-size="5.4" class="sg">Hors-grille.</text>'
+                              + '<text x="54" y="39.5" text-anchor="middle" font-size="5.4" class="sg">Sous contrôle.</text>'),
     }[cle]
     return ('<svg viewBox="0 0 108 192" role="img" xmlns="http://www.w3.org/2000/svg">'
             '<rect x="0" y="0" width="108" height="192" class="fn"/>' + f() + "</svg>")
