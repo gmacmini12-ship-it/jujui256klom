@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Mojito corrigé (verre = limite physique) ; points rendus ; grains, papier et encre en fabrication",
+ "etape": "Mojito animé (chutes et versement simulés) et atelier des grains : aperçus en calcul ; papier et encre confiés aux agents",
  "credits": {
   "depenses": 8.63,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Votre avis sur la nouvelle image du mojito (facultatif)",
+ "attente": "Rien à valider pour l'instant",
  "action": false
 }

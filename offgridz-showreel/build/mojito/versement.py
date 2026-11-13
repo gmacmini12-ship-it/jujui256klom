@@ -168,6 +168,15 @@ def simuler(res, tension, images, sortie, fractions=False, supprime=True):
     for f in range(debut, b + 1):
         ds.time_scale = T.vitesse(f); dom.keyframe_insert('modifiers["fluide"].domain_settings.time_scale', frame=f - debut + 1)
         fs.use_inflow = reg["f_on"] <= f < reg["f_off"]; jet.keyframe_insert('modifiers["fluide"].flow_settings.use_inflow', frame=f - debut + 1)
+        # un filet versé à la main n'est jamais un cylindre parfait : la bouche du jet tremble de 1,5 mm et le débit pulse de 8 %
+        t = T.tau(f)
+        jx, jy, jz = reg["jet"]
+        jet.location = (jx + 0.0015 * math.cos(2 * math.pi * 7.0 * t) + 0.0007 * math.cos(2 * math.pi * 17.0 * t + 1.0),
+                        jy + 0.0015 * math.sin(2 * math.pi * 7.0 * t + 0.6) + 0.0007 * math.sin(2 * math.pi * 17.0 * t), jz)
+        jet.keyframe_insert("location", frame=f - debut + 1)
+        fs.velocity_coord = (0.10 * math.sin(2 * math.pi * 3.1 * t), 0.10 * math.cos(2 * math.pi * 4.3 * t + 0.4),
+                             -JET_V * (1.0 + 0.08 * math.sin(2 * math.pi * 5.0 * t)))
+        jet.keyframe_insert('modifiers["fluide"].flow_settings.velocity_coord', frame=f - debut + 1)
     reg["debut"] = debut
     os.makedirs(sortie, exist_ok=True)
     json.dump(reg, open(os.path.join(sortie, "reglages.json"), "w"), indent=1)

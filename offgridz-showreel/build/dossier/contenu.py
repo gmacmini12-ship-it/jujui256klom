@@ -143,12 +143,15 @@ SEQUENCES = [
                           "paille noire brillante, buée et gouttes, sous-verre rond imprimé du logo."),
             ("Lumière", "Éclairage de boisson : contre-jour orange, source douce au-dessus, cartons noirs pour dessiner "
                         "les arêtes du verre."),
-            ("Mouvement", "Premier temps : quartiers de citron. Deuxième temps : menthe. Troisième et quatrième temps : "
-                          "glaçons, et roulement n° 3 sur l'enseigne, arrêt sur Instrument Serif italique. Mesure 6 : "
-                          "versement, le sucre se dissout en volutes ambrées, les bulles montent. Image 312 : la paille "
-                          "tombe et se cale. Image 318 : troisième tentative, le verrouillage tient jusqu'à l'image 341."),
-            ("Simulation", "Corps rigides pour le citron, les glaçons et la paille. Liquide calculé en particules avec "
-                           "surface maillée. Bulles et buée procédurales."),
+            ("Mouvement", "Premier temps : quartiers de citron. Deuxième temps : feuilles de menthe, puis la paille tombe et "
+                          "se cale contre le bord (image 237). Troisième et quatrième temps : huit glaçons, un par "
+                          "double-croche, et roulement n° 3 sur l'enseigne, arrêt sur Instrument Serif italique. Mesure 6 : "
+                          "versement au ralenti, le sucre teinte le liquide d'ambre, les bulles montent. Image 312 : le brin "
+                          "de menthe est planté dans la glace. Image 318 : troisième tentative, le verrouillage tient "
+                          "jusqu'à l'image 341."),
+            ("Simulation", "Corps rigides pour le citron, les feuilles de menthe, la paille et les glaçons, calés sur la "
+                           "grille musicale. Liquide calculé en particules avec surface maillée. Brin de menthe, bulles et "
+                           "buée posés à la main."),
             ("Transformation", "Du granulaire au dissous : le sucre teinte le liquide. La matière accepte une forme."),
             ("Son", "Percussions réduites à des clics fins ; chaque choc de glaçon déclenche son tintement. Versement et "
                     "bulles synthétisés. Arpège montant à la mesure 6. Mesure 7 : accord ouvert, basse profonde, déclic "

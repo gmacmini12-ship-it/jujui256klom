@@ -290,13 +290,16 @@ def construire(args):
     bulles = S.faire_bulles(glacons); buee = S.faire_buee()
     fondus = {"bulles": apparition(bulles), "buee": apparition(buee)}
     S.eclairer(args)
-    # La lumière du dessus n'éclaire pas le comptoir : vue d'en haut, son reflet y dessinerait un grand carré blanc.
-    dessus = bpy.data.objects.get("dessus"); comptoir = bpy.data.objects.get("comptoir")
-    if dessus and comptoir:
-        exclus = bpy.data.collections.new("hors_lumiere_du_dessus")
+    # Les sources qui dessinent le verre n'éclairent pas le comptoir : vues d'en haut, leurs reflets y feraient des taches blanches.
+    comptoir = bpy.data.objects.get("comptoir")
+    if comptoir:
+        exclus = bpy.data.collections.new("hors_lumieres_du_verre")
         exclus.objects.link(comptoir)
-        dessus.light_linking.receiver_collection = exclus
         exclus.collection_objects[0].light_linking.link_state = "EXCLUDE"
+        for nom in ("dessus", "arete_gauche", "arete_droite", "eclat"):      # ces sources dessinent le verre, pas le comptoir
+            lum = bpy.data.objects.get(nom)
+            if lum:
+                lum.light_linking.receiver_collection = exclus
     cam = S.cadrer(args)
     liquide = Liquide(os.path.join(S.RACINE, "cache", "mojito", f"liquide_r{args.sim}"))
     return dict(d=d, plantes=plantes, objets=objets, brin=brin, fondus=fondus, cam=cam, liquide=liquide, enseigne=Enseigne())

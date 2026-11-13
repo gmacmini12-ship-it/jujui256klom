@@ -12,7 +12,9 @@ import fx_common as X
 import fx_draw as D
 import fx_sheet as SH
 
-WAV = X.ROOT / "out" / "audio" / "maquette_v0.wav"
+# bande son : la version finale si elle existe, sinon la maquette
+WAV = next((p for p in (X.ROOT / "out" / "audio" / "insoumise_v1.wav", X.ROOT / "out" / "audio" / "maquette_v0.wav") if p.exists()),
+           X.ROOT / "out" / "audio" / "maquette_v0.wav")
 DUR = X.NFRAMES / X.FPS
 CRF = 13
 AF = f"aresample=48000,aformat=channel_layouts=stereo,apad=whole_dur={DUR},atrim=end={DUR},asetpts=N/SR/TB"

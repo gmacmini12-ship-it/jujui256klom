@@ -66,7 +66,47 @@ def ensure_cache():
 
 
 ensure_cache()
+
+# ---- l'atelier du réalisateur (build/grains) : sol, mur, lettres, lumières, dalle en grains, caméra
+import importlib.util  # noqa: E402
+GRAINS_DIR = os.path.join(ROOT, "build", "grains")
+sys.path.append(GRAINS_DIR)
+sys.path.append(os.path.join(ROOT, "build", "mojito"))
+import atelier as A  # noqa: E402   (insère build/mojito en tête : « scene » désigne alors le module du mojito)
+import monde as MON  # noqa: E402
+import anim  # noqa: E402
+_spec = importlib.util.spec_from_file_location("grains_scene", os.path.join(GRAINS_DIR, "scene.py"))
+GS = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(GS)
+D_ATELIER = A.decalage()
+S_M = 0.060 / 202.45                         # mètres par px : la bande du logo (202,45 px) fait 60 mm
 GEO = np.load(os.path.join(CACHE, "geo.npz"))
+
+# --- monde partagé : repère « px » de la feuille -> repère de l'atelier (mètres) ; la caméra de l'atelier à l'image 60
+_P60, _T60, _F60, _, _ = GS.camera_atelier(60, D_ATELIER)
+_P61 = GS.camera_atelier(61, D_ATELIER)[0]
+OX, OY = tl.O_CENTRE
+YC_W = _P60.y - S_M * 56.0                   # la fente (z_px = -56 après dérive) est traversée par la caméra de l'atelier à l'image 60
+ZC_W = _P60.z - S_M * OY
+XC_W = _P60.x - S_M * OX
+
+
+def pw(p):
+    """point du repère px (x droite, y haut, z vers le spectateur) -> monde de l'atelier."""
+    return Vector((XC_W + S_M * p[0], YC_W - S_M * p[2], ZC_W + S_M * p[1]))
+
+
+tl.SLAB_H = MON.DALLE_HI[2] / S_M * 1.0 - MON.DALLE_LO[2] / S_M
+tl.SLAB_T = (MON.DALLE_HI[1] - MON.DALLE_LO[1]) / S_M
+tl.SLAB_W = (MON.DALLE_HI[0] - MON.DALLE_LO[0]) / S_M
+tl.SLAB_Y0 = 451.03 - tl.SLAB_H / 2.0
+_cen = (Vector(MON.DALLE_LO) + Vector(MON.DALLE_HI)) / 2.0 + D_ATELIER
+tl.SLAB_F = (OX + (_cen.x - _P60.x) / S_M, (_cen.z - ZC_W) / S_M, (YC_W - _cen.y) / S_M)
+tl.FLOOR_Y = (D_ATELIER.z - ZC_W) / S_M
+_v = (_P61.y - _P60.y) / S_M                 # vitesse de la caméra de l'atelier en px/image au point de jonction
+tl._ZK = [(24, 1800.0), (47, 1580.0), (50, 1210.0), (53, 780.0), (55, 420.0), (57, -56.0 + 3 * _v), (58, -56.0 + 2 * _v),
+          (59, -56.0 + _v), (60, -56.0)]
+BUMP_D = S_M                                 # distance de relief : 1 px local, exprimé en mètres
 STRIP = np.load(os.path.join(CACHE, "strip.npz"))
 STRIP_FR = STRIP["frames"]
 STRIP_F0 = int(STRIP["first"][0])
@@ -284,7 +324,7 @@ def noise_bump(nt, scale, strength, detail=6.0, dist=0.0, vec=None, coord="Objec
     link(nt, src, nz.inputs["Vector"])
     bp = N(nt, "ShaderNodeBump")
     bp.inputs["Strength"].default_value = strength
-    bp.inputs["Distance"].default_value = 1.0
+    bp.inputs["Distance"].default_value = BUMP_D
     link(nt, nz.outputs["Fac"], bp.inputs["Height"])
     return bp.outputs["Normal"], nz
 
@@ -445,6 +485,7 @@ def mat_slab():
     link(nt, ramp.outputs["Color"], grain.inputs["A"])
     bp2 = N(nt, "ShaderNodeBump")
     bp2.inputs["Strength"].default_value = 0.35
+    bp2.inputs["Distance"].default_value = BUMP_D
     link(nt, vor.outputs["Distance"], bp2.inputs["Height"])
     link(nt, nrm, bp2.inputs["Normal"])
     df = N(nt, "ShaderNodeBsdfDiffuse")
@@ -633,10 +674,21 @@ _md.angle_limit = math.radians(35)
 _md.use_clamp_overlap = True
 SLAB_VCO = _co.copy()
 
-# ---- sol de plâtre pâle derrière la feuille
-FR = 9000.0
-FLOOR = mesh_obj("floor", [(-6000, tl.FLOOR_Y, -60), (6000, tl.FLOOR_Y, -60), (6000, tl.FLOOR_Y, -FR), (-6000, tl.FLOOR_Y, -FR)],
-                 [(0, 3, 2, 1)], [MAT["floor"]])
+# ---- groupe « avant » : tout ce qui est devant l'atelier (feuille, bande, lettres, dalle) vit en px sous un parent à l'échelle S_M
+FRONT = bpy.data.objects.new("avant", None)
+SC.collection.objects.link(FRONT)
+FRONT.matrix_world = Matrix.Translation(Vector((XC_W, YC_W, ZC_W))) @ Matrix(((S_M, 0, 0), (0, 0, -S_M), (0, S_M, 0))).to_4x4()
+for _o in [SHEET, FIBRES, STRIP_OB, DECAL, SLAB] + [v[0] for v in LET.values()]:
+    _o.parent = FRONT
+    _o.matrix_parent_inverse = Matrix.Identity(4)
+
+# ---- l'atelier (derrière la feuille)
+ATELIER_OBJ = A.faire_sol_et_mur(D_ATELIER)
+LETTRES_AT = A.faire_lettres(D_ATELIER)
+A.poser_lettres(LETTRES_AT, 72)
+ATELIER_LIGHTS = list(A.eclairer(D_ATELIER))
+GRAINS = A.Grains("grains_dalle", os.path.join(A.SIMS, "dalle"), D_ATELIER)
+GRAINS.poser(72)
 
 # ============================================================================ lumières
 KEY_FRONT_L = Vector((-0.85, 0.38, 0.36)).normalized()
@@ -659,62 +711,103 @@ def add_light(name, kind, **kw):
     return ob
 
 
-LIGHT_STRENGTH = dict(key_front=11.0, fill_front=3200.0, key_back=1.25e9, fill_back=1.2e7)
+LIGHT_STRENGTH = dict(key_front=11.0, fill_front=3200.0 * S_M ** 2)
+_Lw = lambda v: Vector((v.x, -v.z, v.y))           # direction px -> monde (x->X, y->Z, z->-Y)
 key_f = add_light("key_front", "SUN", energy=LIGHT_STRENGTH["key_front"], angle=math.radians(2.5), color=(1.0, 0.88, 0.74))
-aim(key_f, KEY_FRONT_L)
-fill_f = add_light("fill_front", "AREA", energy=LIGHT_STRENGTH["fill_front"], shape="SQUARE", size=2600.0, color=(1.0, 0.95, 0.9))
-fill_f.location = (150.0, 500.0, 2300.0)
-slab_f = Vector(tl.SLAB_F)
-kb_pos = slab_f + KEY_BACK_L * 3800.0
-key_b = add_light("key_back", "SPOT", energy=LIGHT_STRENGTH["key_back"], spot_size=math.radians(100), spot_blend=1.0,
-                  shadow_soft_size=140.0, color=(1.0, 0.89, 0.77))
-key_b.location = kb_pos
-aim(key_b, KEY_BACK_L)
-fill_b = add_light("fill_back", "AREA", energy=LIGHT_STRENGTH["fill_back"], shape="SQUARE", size=3400.0, color=(1.0, 0.93, 0.85))
-fill_b.location = (-150.0, 120.0, -500.0)
-aim(fill_b, (0.0, 0.0, 1.0))
+aim(key_f, _Lw(KEY_FRONT_L))
+fill_f = add_light("fill_front", "AREA", energy=LIGHT_STRENGTH["fill_front"], shape="SQUARE", size=2600.0 * S_M, color=(1.0, 0.95, 0.9))
+fill_f.location = pw((150.0, 500.0, 2300.0))
+aim(fill_f, (0.0, -1.0, 0.0))
 
 # ============================================================================ caméra
 CAMD = bpy.data.cameras.new("cam")
 CAMD.type = "PERSP"
-CAMD.sensor_fit = "HORIZONTAL"
-CAMD.sensor_width = float(tl.WIN_W)
-CAMD.clip_start = 0.3
-CAMD.clip_end = 40000.0
+CAMD.sensor_fit = "VERTICAL"
+CAMD.sensor_height = 36.0
+CAMD.clip_start = 2e-5
+CAMD.clip_end = 30.0
 CAM = bpy.data.objects.new("cam", CAMD)
 SC.collection.objects.link(CAM)
 SC.camera = CAM
 
 
 def cam_matrix(pos, tgt):
+    """Même construction que anim.regarder (haut = +Z du monde, sauf en vue plongeante)."""
     p = Vector(pos)
-    fwd = (Vector(tgt) - p).normalized()
-    right = fwd.cross(Vector((0, 1, 0))).normalized()
-    up = right.cross(fwd).normalized()
-    R = Matrix(((right.x, up.x, -fwd.x), (right.y, up.y, -fwd.y), (right.z, up.z, -fwd.z)))
-    return R, fwd, right, up
+    avant = (Vector(tgt) - p).normalized()
+    w = avant.z * avant.z
+    haut = (Vector((0, 0, 1)) * (1 - w) + Vector((0, 1, 0)) * w).normalized()
+    droite = avant.cross(haut).normalized()
+    haut = droite.cross(avant)
+    R = Matrix((droite, haut, -avant)).transposed()
+    return R, avant, droite, haut
+
+
+def hermite(p0, v0, p1, v1, u):
+    h00 = 2 * u ** 3 - 3 * u ** 2 + 1
+    h10 = u ** 3 - 2 * u ** 2 + u
+    h01 = -2 * u ** 3 + 3 * u ** 2
+    h11 = u ** 3 - u ** 2
+    return p0 * h00 + v0 * h10 + p1 * h01 + v1 * h11
+
+
+def mine_cam(f):
+    pos, tgt, F = tl.cam_state(f)
+    return pw(pos), pw(tgt), F * 36.0 / tl.WIN_H
+
+
+def cam_world(f):
+    """(position, cible, focale mm, ouverture, mise au point) dans le monde de l'atelier.
+    A partir de l'image 60 : exactement camera_atelier(f, d) ; avant : la plongée, avec la cible et la focale fondues
+    vers celles de l'atelier (position et vitesse continues à l'image 60)."""
+    if f >= 60:
+        p, t, mm, fs, fo = GS.camera_atelier(f, D_ATELIER)
+        return Vector(p), Vector(t), float(mm), float(fs), float(fo)
+    p, t, mm = mine_cam(f)
+    if f >= 55:
+        t0 = mine_cam(55)[1]
+        v0 = (mine_cam(56)[1] - mine_cam(54)[1]) / 2.0
+        t1 = GS.camera_atelier(60, D_ATELIER)[1]
+        v1 = GS.camera_atelier(61, D_ATELIER)[1] - GS.camera_atelier(60, D_ATELIER)[1]
+        t = hermite(t0, v0 * 5.0, Vector(t1), v1 * 5.0, (f - 55.0) / 5.0)
+    if f >= 53:
+        mm = mm + (GS.camera_atelier(60, D_ATELIER)[2] - mm) * tl.ss((f - 53.0) / 7.0)
+    return p, t, float(mm), None, None
 
 
 def set_camera(f):
-    pos, tgt, F = tl.cam_state(f)
+    pos, tgt, mm, fs, fo = cam_world(f)
     R, fwd, right, up = cam_matrix(pos, tgt)
-    CAM.matrix_world = Matrix.Translation(Vector(pos)) @ R.to_4x4()
-    CAMD.lens = float(F)
-    return pos, fwd, right, up, F
+    CAM.matrix_world = Matrix.Translation(pos) @ R.to_4x4()
+    CAMD.lens = mm
+    CAMD.dof.use_dof = fs is not None
+    if fs is not None:
+        CAMD.dof.aperture_fstop = fs
+        CAMD.dof.focus_distance = fo
+    return pos, fwd, right, up, mm
 
 
 # animation de caméra (flou de mouvement de la plongée) : clés à chaque image
 def key_camera(f0, f1):
     CAM.rotation_mode = "QUATERNION"
     ad = CAM.animation_data_create()
-    for f in range(f0 - 1, f1 + 2):
-        pos, tgt, F = tl.cam_state(f)
+    for f in range(max(f0 - 1, 0), f1 + 2):
+        pos, tgt, mm, fs, fo = cam_world(f)
         R, *_ = cam_matrix(pos, tgt)
-        CAM.location = Vector(pos)
+        CAM.location = pos
         CAM.rotation_quaternion = R.to_quaternion()
         CAM.keyframe_insert("location", frame=f)
         CAM.keyframe_insert("rotation_quaternion", frame=f)
-    for fc in ad.action.fcurves if hasattr(ad.action, "fcurves") else []:
+    act = ad.action
+    try:
+        fcs = list(act.fcurves)
+    except Exception:
+        fcs = []
+        for layer in getattr(act, "layers", []):
+            for strip in layer.strips:
+                for bag in strip.channelbags:
+                    fcs += list(bag.fcurves)
+    for fc in fcs:
         for kp in fc.keyframe_points:
             kp.interpolation = "LINEAR"
 
@@ -790,14 +883,22 @@ def set_state(f):
     FIBRES.location = d
     FIBRES.hide_render = f < 12
     DECAL.hide_render = f > 12
-    FLOOR.hide_render = f < 12
     update_strip(f)
     update_letters(f)
     slab = update_slab(f)
-    key_f.hide_render = f >= 62      # la caméra est derrière la feuille : seule la lumière du fond éclaire
-    fill_f.hide_render = f >= 62
-    key_b.hide_render = f < 12
-    fill_b.hide_render = f < 12
+    key_f.hide_render = f >= 61      # la caméra est derrière la feuille : seule la lumière de l'atelier éclaire
+    fill_f.hide_render = f >= 61
+    # l'atelier : obscurité dans la fente tant que la dalle n'est pas en route ; dalle en grains dès qu'elle est posée
+    at = f >= 47
+    for o in ATELIER_OBJ + list(LETTRES_AT.values()) + ATELIER_LIGHTS:
+        o.hide_render = not at
+    if at:
+        A.poser_lettres(LETTRES_AT, 72)
+    GRAINS.ob.hide_render = f < 59
+    if f >= 59:
+        GRAINS.poser(72)
+    if f >= 59:
+        SLAB.hide_render = True
     return slab
 
 
@@ -807,7 +908,7 @@ def render_frame(f, outdir, stats):
     SC.frame_set(f)
     slab = set_state(f)
     pos, fwd, right, up, F = set_camera(f)
-    SC.render.use_motion_blur = f >= 49
+    SC.render.use_motion_blur = 49 <= f <= 65
     SC.render.motion_blur_shutter = 0.45
     cy.seed = 1000 + f
     dn = ARGS["denoise"]
@@ -826,33 +927,15 @@ def render_frame(f, outdir, stats):
     dt = time.time() - t0
     stats[f] = round(dt, 2)
     print(f"[f{f:04d}] {dt:.1f} s", flush=True)
+    # contrôle : écart entre la caméra réellement posée et camera_atelier(f, d)
+    p, t, mm, fs, fo = GS.camera_atelier(f, D_ATELIER) if f >= 60 else (None,) * 5
     rec = None
-    if f >= 48 and slab is not None:
-        cx, cy_, cz, th, t = slab
-        u, n = tl._rot_u(th)
-        R = Matrix.Rotation(-th, 3, "X")
-        corners = []
-        for sx in (-1, 1):
-            for sy in (-1, 1):
-                for sz in (-1, 1):
-                    q = Vector((sx * tl.SLAB_W / 2, sy * tl.SLAB_H / 2, sz * t / 2))
-                    corners.append(R @ q + Vector((cx, cy_, cz)))
-        pr = [project(c, pos, right, up, fwd, F) for c in corners]
-        xs = [p[0] for p in pr]
-        ys = [p[1] for p in pr]
-        rec = dict(
-            frame=f,
-            bbox_px=dict(x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys), width=max(xs) - min(xs), height=max(ys) - min(ys),
-                         centre_x=(min(xs) + max(xs)) / 2, centre_y=(min(ys) + max(ys)) / 2,
-                         height_over_window=(max(ys) - min(ys)) / tl.WIN_H),
-            camera=dict(position=[round(v, 3) for v in pos], direction=[round(v, 5) for v in fwd], right=[round(v, 5) for v in right],
-                        up=[round(v, 5) for v in up], focal_px=round(F, 3), focal_mm_sensor_1008mm=round(F, 3),
-                        vertical_fov_deg=round(math.degrees(2 * math.atan(tl.WIN_H / 2 / F)), 3),
-                        horizontal_fov_deg=round(math.degrees(2 * math.atan(tl.WIN_W / 2 / F)), 3)),
-            slab=dict(centre=[round(cx, 3), round(cy_, 3), round(cz, 3)], size_xyz=[tl.SLAB_W, tl.SLAB_H, round(t, 3)],
-                      tilt_deg=round(math.degrees(th), 4), long_axis=[0.0, round(math.cos(th), 5), round(-math.sin(th), 5)],
-                      front_normal=[0.0, round(math.sin(th), 5), round(math.cos(th), 5)]),
-        )
+    if p is not None:
+        w = CAM.matrix_world
+        fwd_r = -(w.to_3x3() @ Vector((0, 0, 1)))
+        fwd_a = (Vector(t) - Vector(p)).normalized()
+        rec = dict(frame=f, d_position_m=(w.translation - Vector(p)).length, d_direction_deg=math.degrees(fwd_r.angle(fwd_a, 0.0)),
+                   d_cible_m=(w.translation + fwd_r * (Vector(t) - Vector(p)).length - Vector(t)).length, d_focale_mm=abs(CAMD.lens - mm))
     return rec
 
 
@@ -871,17 +954,10 @@ def main():
     old.update({str(k): v for k, v in stats.items()})
     json.dump(dict(sorted(old.items(), key=lambda kv: int(kv[0]))), open(tpath, "w"), indent=0)
     if recs and not ARGS["tag"]:
-        rpath = os.path.join(ARGS["out"], "raccord.json")
-        prev = json.load(open(rpath)) if os.path.exists(rpath) else {"frames": {}}
+        cpath = os.path.join(ARGS["out"], "ecart_camera.json")
+        prev = json.load(open(cpath)) if os.path.exists(cpath) else {}
         for r in recs:
-            prev["frames"][str(r["frame"])] = r
-        prev["_meta"] = dict(
-            repere="monde : px de fenêtre dans le plan z=0 de la feuille (x droite, y haut, z vers le spectateur), origine = centre de la fenêtre 1008x1512",
-            fenetre_px="origine en haut à gauche de la fenêtre, y vers le bas",
-            projection="x_px = 504 + F*(d.right)/(d.fwd), y_px = 756 - F*(d.up)/(d.fwd), d = point - position caméra ; F = focale en px (capteur 1008 mm de large : lens en mm = F)",
-            sol=dict(plan_y=tl.FLOOR_Y, albedo="#B4A79C"), lumiere_principale="projecteur rasant venu de la gauche ; direction vers la lumière (monde) = %s" % [round(v, 4) for v in KEY_BACK_L],
-            dalle=dict(taille=[tl.SLAB_W, tl.SLAB_H, tl.SLAB_T], couleur="#EA470F"))
-        json.dump(prev, open(rpath, "w"), indent=1)
-
+            prev[str(r["frame"])] = r
+        json.dump(prev, open(cpath, "w"), indent=1)
 
 main()

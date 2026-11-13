@@ -60,7 +60,9 @@ class Grille:
         g.copyFromArray(phi, ijk=self.i0, tolerance=0.0)
         g.gridClass = vdb.GridClass.LEVEL_SET
         pts, tri, quads = g.convertToPolygons(isovalue=0.0, adaptivity=0.0)
-        return pts.astype(np.float32), quads.astype(np.int32), tri.astype(np.int32)
+        # OpenVDB oriente ses faces à l'inverse de Blender : on les retourne, sinon les normales pointent vers l'intérieur
+        # du liquide et le rendu inverse la réfraction
+        return pts.astype(np.float32), quads.astype(np.int32)[:, ::-1].copy(), tri.astype(np.int32)[:, ::-1].copy()
 
 
 def flou(a, passes=2):

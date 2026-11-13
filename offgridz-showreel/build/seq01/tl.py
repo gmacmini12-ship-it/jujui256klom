@@ -169,8 +169,8 @@ def slab_pose(f):
     if f <= 46:
         return (cx, cy, cz, th, t)
     # derrière la feuille : se redresse et vole jusqu'à la position finale, se pose sur le sol
-    a = ss((f - 46.0) / 12.0)
-    ang = lerp(th, 0.0, ss((f - 46.0) / 10.0))
+    a = ss((f - 46.0) / 10.0)
+    ang = lerp(th, 0.0, ss((f - 46.0) / 8.0))
     pos = lerp3((cx, cy, cz), SLAB_F, a)
     # petit calage à l'arrivée : la base ne descend jamais sous le sol
     hl = SLAB_H / 2.0
@@ -194,7 +194,7 @@ def cam_z(f):
 
 
 def cam_focal(f):
-    return lerp(D0, F_END, ss((f - 54.0) / 12.0))
+    return D0                      # la focale finale vient de la caméra de l'atelier (fondu dans scene.py)
 
 
 def cam_state(f):

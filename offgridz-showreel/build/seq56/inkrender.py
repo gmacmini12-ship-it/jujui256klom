@@ -33,7 +33,7 @@ def base_1x():
 def env(rx, ry):
     def g(cx, cy, sx, sy, a):
         return a * np.exp(-0.5 * (((rx - cx) / sx) ** 2 + ((ry - cy) / sy) ** 2))
-    e = 0.05 + g(-0.55, 0.35, 0.30, 0.30, 1.0) + g(0.45, -0.12, 0.24, 0.24, 0.55) + g(0.08, 0.0, 0.06, 0.70, 0.45)
+    e = 0.05 + g(-0.55, 0.35, 0.30, 0.30, 1.0) + g(0.45, -0.12, 0.24, 0.24, 0.55) + g(0.10, 0.0, 0.22, 0.80, 0.25)
     return e
 
 
@@ -48,7 +48,7 @@ def film_pm(s_film, thin_cut=0.05e-3, spec_gain=1.4, sigma_px=1.6):
     # upsample the THICKNESS (smooth) and not s (which has the 4 mm tray step: cubic ringing would paint lines on the tray rim)
     T = np.maximum(cv2.resize((s_film - b_f).astype(np.float32), (W, H), interpolation=cv2.INTER_CUBIC), 0.0)
     b1 = base_1x()
-    s1 = T + cv2.GaussianBlur(b1, (0, 0), 8.0)
+    s1 = cv2.resize(s_film.astype(np.float32), (W, H), interpolation=cv2.INTER_LINEAR)     # true surface (no cubic ringing)
     ss = cv2.GaussianBlur(s1, (0, 0), sigma_px)
     gy_row, gx = np.gradient(ss)
     gx = gx / PX_M

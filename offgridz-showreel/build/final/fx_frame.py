@@ -47,6 +47,11 @@ def compose(f):
         win = win[..., :3] if win is not None else None
         if win is not None:
             info["window"] = "final"
+            if 72 <= f <= 359:
+                # séquences 2 et 3, rendues sur fond de noir absolu : on les pose « en écran » sur le noir de la feuille,
+                # sinon la fenêtre se découperait en plus sombre sur la feuille (#0A0A09)
+                noir = S[X.WY0:X.WY1, X.WX0:X.WX1]
+                win = noir + win * (1.0 - noir / 65535.0)
         else:
             w8, cnt_a, has_lines = SI.window(f)
             win = w8.astype(np.float32) * X.SCALE16
@@ -88,6 +93,8 @@ def compose(f):
 
     if standin:
         SH.maquette_tag(S)
+    elif os.environ.get("FX_ETIQUETTE"):          # aperçus : toutes les images portent l'étiquette demandée
+        SH.maquette_tag(S, os.environ["FX_ETIQUETTE"])
     info["standin"] = standin
     return np.clip(S + 0.5, 0, 65535).astype(np.uint16), info
 

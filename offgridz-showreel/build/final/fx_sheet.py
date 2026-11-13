@@ -79,15 +79,16 @@ def annotations(S, f, rs, counter=None):
     return float(m)
 
 
-def maquette_tag(S):
-    """Pastille « MAQUETTE » en marge haute, à droite : images dont une partie vient de l'animatique."""
+def maquette_tag(S, texte="MAQUETTE"):
+    """Pastille en marge haute, à droite : « MAQUETTE » pour les images dont une partie vient de l'animatique,
+    ou l'étiquette demandée (aperçus basse définition)."""
     SZm = 15
-    wtxt = D.text_width("MAQUETTE", SZm, 400, 0.14)
+    wtxt = D.text_width(texte, SZm, 400, 0.14)
     pad = 7
     x1 = X.WX1
     x0 = x1 - wtxt - 2 * pad
     ytop, ybot = Y_TOP - 16 - 5, Y_TOP + 5
-    D.draw_text(S, "MAQUETTE", x1 - pad, Y_TOP - 2, SZm, X.CREAM, 0.85, "r", 400, 0.14)
+    D.draw_text(S, texte, x1 - pad, Y_TOP - 2, SZm, X.CREAM, 0.85, "r", 400, 0.14)
     for (a, b, c, d) in ((x0, ytop, x1, ytop + 1), (x0, ybot - 1, x1, ybot), (x0, ytop, x0 + 1, ybot), (x1 - 1, ytop, x1, ybot)):
         D.paint_rect(S, a, b, c, d, X.CREAM, 0.6)
     return min(x0, ytop)

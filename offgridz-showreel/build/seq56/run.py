@@ -67,8 +67,8 @@ def stage_film(A, run, work, frames_avail):
             cache.clear()
             cache[k] = dict(zh=zh, cover=cov)
         return cache[k]
-    out = os.path.join(work, "film_fpx%d_mu%g_g%g" % (A.fpx, A.mu, A.film_gain))
-    film.run_film(A.grains, out, gf, fpx=A.fpx, mu=A.mu, ts_film=A.ts_film, threads=A.threads, spacing=run["spacing"], log=log, film_gain=A.film_gain, fpx_sq=A.fpx_sq, resume=A.resume)
+    out = os.path.join(work, "film_fpx%d_mu%g_g%g_lv%g" % (A.fpx, A.mu, A.film_gain, A.level_sigma))
+    film.run_film(A.grains, out, gf, fpx=A.fpx, mu=A.mu, ts_film=A.ts_film, threads=A.threads, spacing=run["spacing"], log=log, film_gain=A.film_gain, fpx_sq=A.fpx_sq, resume=A.resume, level_sigma_mm=A.level_sigma)
     return out
 
 
@@ -205,6 +205,7 @@ def main():
     ap.add_argument("--film-gain", type=float, default=0.25, help="ink volume / bulk volume of the grain bed")
     ap.add_argument("--fpx-sq", type=int, default=4, help="film cell (px) during the squeegee stage")
     ap.add_argument("--resume", action="store_true", help="film: reuse frames 480-503 if present")
+    ap.add_argument("--level-sigma", type=float, default=18.0, help="film init: level heaps larger than this (mm); 0 = raw bed height")
     ap.add_argument("--ss", type=int, default=2)
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--frames", default="456:599")
@@ -223,7 +224,7 @@ def main():
     fa, fb = [int(v) for v in A.frames.split(":")]
     st = A.stages.split(",") if A.stages != "all" else ["grains", "film", "matiere", "fenetre", "meta", "preview"]
     log("grain cache %s: spacing %.3f mm (grain ~%.1f px), frames %d..%d, N=%d" % (A.grains, run["spacing"] * 1e3, run["spacing"] / PX_M * 1.05, min(avail), max(avail), run["n"]))
-    film_dir = os.path.join(A.work, "film_fpx%d_mu%g_g%g" % (A.fpx, A.mu, A.film_gain))
+    film_dir = os.path.join(A.work, "film_fpx%d_mu%g_g%g_lv%g" % (A.fpx, A.mu, A.film_gain, A.level_sigma))
     if "grains" in st:
         stage_grains(A, run, A.work, avail)
     if "film" in st:

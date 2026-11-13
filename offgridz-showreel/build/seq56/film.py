@@ -251,7 +251,7 @@ class Film:
 
 
 def run_film(cache, out_dir, grain_frames, fpx=2, mu=20.0, ts_film=1.0, threads=2, hsigma_rel=0.9, spacing=None, log=print, film_gain=0.25,
-             render_grain_fn=None, f_last=F_SQ1, fpx_sq=4, Tcg_sq=30e-3, resume=False):
+             render_grain_fn=None, f_last=F_SQ1, fpx_sq=4, Tcg_sq=30e-3, resume=False, level_sigma_mm=18.0):
     """Run frames 480..527.  `grain_frames(f)` -> dict(zh, cover) for the grain cache frame to use at film frame f (clamped)."""
     os.makedirs(out_dir, exist_ok=True)
     fl = Film(fpx=fpx, mu=mu, ts_film=ts_film, threads=threads)
@@ -269,6 +269,7 @@ def run_film(cache, out_dir, grain_frames, fpx=2, mu=20.0, ts_film=1.0, threads=
     t0 = time.time()
     s_np = s0.copy()
     f_begin = F_WET0
+    T_bar = None
     p503 = os.path.join(out_dir, "s%04d.npz" % F_WET1)
     if resume and os.path.exists(p503):
         # frames 480-503 (wetting stage) already computed with the same parameters: continue from the saved state
@@ -290,7 +291,19 @@ def run_film(cache, out_dir, grain_frames, fpx=2, mu=20.0, ts_film=1.0, threads=
                 act_np = fl.act.to_numpy().T.copy()
                 Hh_use = np.where(Hh < -8.0, 0.0, Hh)
                 # thickness: bed top, at least a thin coat where the bed has gaps, never below the base
-                T_new = film_gain * np.maximum(Hh_use - b, 0.0)      # ink volume = film_gain x bulk volume of the bed
+                T_raw = film_gain * np.maximum(Hh_use - b, 0.0)      # ink volume = film_gain x bulk volume of the bed
+                if level_sigma_mm > 0:
+                    # level the large-scale heap (launch column / dome): constant mean thickness + the relief of the bed
+                    # at scales below level_sigma (low-pass by normalised convolution on the film grid)
+                    if T_bar is None:
+                        T_bar = float(film_gain * np.maximum(Hh_use - b, 0.0)[cov > 0.5].mean())
+                    sg = level_sigma_mm * 1e-3 / fl.dx
+                    num = cv2.GaussianBlur(T_raw * cov, (0, 0), sg)
+                    den = cv2.GaussianBlur(cov, (0, 0), sg)
+                    T_lp = num / np.maximum(den, 1e-6)
+                    T_new = np.maximum(T_bar + (T_raw - T_lp), 0.3 * T_bar)
+                else:
+                    T_new = T_raw
                 T_new = np.where(cov < 0.5, np.maximum(T_new, 0.0003), T_new)
                 T_new = np.maximum(T_new, 0.0003)
                 s_np = np.where(newly, b + T_new, s_np)
@@ -320,6 +333,6 @@ def run_film(cache, out_dir, grain_frames, fpx=2, mu=20.0, ts_film=1.0, threads=
                            tip_px=float(tip_y(f)) if f >= F_SQ0 else None, wall_s=time.time() - t0))
         log("film f%d  substeps=%d  V=%.2f cm3  lost=%.2f cm3  Tmax=%.2f mm  wall=%.0fs" % (f, nsub, v1 * 1e6, lost * 1e6, budget[-1]["tmax_mm"], time.time() - t0))
     with open(os.path.join(out_dir, "film_log.json"), "w") as fo:
-        json.dump(dict(fpx=fpx, fpx_squeegee=fpx_sq, Tcg_squeegee_mm=Tcg_sq * 1e3, mu=mu, film_gain=film_gain, ts_film=ts_film, grid=[nx, ny], dx_mm=fl.dx * 1e3, budget=budget), fo, indent=1)
+        json.dump(dict(level_sigma_mm=level_sigma_mm, T_bar_mm=(T_bar * 1e3 if T_bar else None), fpx=fpx, fpx_squeegee=fpx_sq, Tcg_squeegee_mm=Tcg_sq * 1e3, mu=mu, film_gain=film_gain, ts_film=ts_film, grid=[nx, ny], dx_mm=fl.dx * 1e3, budget=budget), fo, indent=1)
     np.save(os.path.join(out_dir, "Ta.npy"), Ta)
     return budget

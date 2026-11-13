@@ -717,6 +717,12 @@
   },
   {
    "piste": "bruitage",
+   "image": 237,
+   "nom": "paille (choc simulé)",
+   "image_s": 7.9
+  },
+  {
+   "piste": "bruitage",
    "debut": 240,
    "fin": 263,
    "nom": "glaçons (chocs simulés)",
@@ -734,7 +740,7 @@
   {
    "piste": "bruitage",
    "image": 312,
-   "nom": "paille",
+   "nom": "brin de menthe",
    "image_s": 10.4
   },
   {
