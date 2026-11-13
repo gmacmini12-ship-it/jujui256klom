@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Mojito animé (chutes et versement simulés) et atelier des grains : aperçus en calcul ; papier et encre confiés aux agents",
+ "etape": "Aperçus en calcul : mojito (chutes et versement simulés) et grains (dalle, bec, filet) ; papier, encre et bande son chez les agents",
  "credits": {
   "depenses": 8.63,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien à valider pour l'instant",
+ "attente": "Rien à valider pour l'instant : un aperçu complet du film arrive",
  "action": false
 }

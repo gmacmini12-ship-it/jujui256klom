@@ -179,8 +179,8 @@ def setup_sheet():
 def setup_lights():
     # one large softbox almost overhead (broad reflections slide over the relief), one long strip along X (bright line along
     # the bead), one low rake from the left (reads the grain relief).  Powers in W (Cycles area lights), tuned on test frames.
-    area_light("softbox", (-0.05, 0.04, 0.26), (0.0, -0.01, 0.0), 0.34, 0.26, 1.0)
-    area_light("ruban", (0.0, -0.13, 0.21), (0.0, 0.0, 0.0), 0.60, 0.030, 0.45)
+    area_light("softbox", (-0.02, 0.03, 0.20), (0.0, 0.0, 0.0), 0.12, 0.12, 0.36)
+    area_light("ruban", (0.0, -0.12, 0.20), (0.0, 0.0, 0.0), 0.60, 0.020, 0.30)
     area_light("rasante", (-0.26, 0.02, 0.13), (0.0, 0.0, 0.0), 0.10, 0.28, 0.20, (1.0, 0.90, 0.80))
 
 

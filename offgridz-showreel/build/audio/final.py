@@ -897,7 +897,8 @@ def build(S, D):
     cn = chord_end - straw * SPF
     chord = M.v_pad([note(x) for x in ("C4", "Eb4", "G4", "Ab4", "Eb5")], cn / SR, 1.0, attack=0.07, release=0.22, cutoff=1700, det=8, spread=0.9)
     put(TX, chord, straw * SPF, "accord ouvert (Fm9)", "partition.json (musique 312)", gain_db=LV["pad"], send={"hall": 0.28, "plate": 0.08}, family="musique")
-    put(BA, M.v_sub(note("F1"), cn / SR, 0.9, tau=3.0) * sy.fade_out(cn, 0.06), straw * SPF, "sous-basse F1", src_p, gain_db=LV["sub"], family="musique")
+    _sb = M.v_sub(note("F1"), cn / SR, 0.9, tau=3.0)
+    put(BA, _sb * sy.fade_out(len(_sb), 0.06), straw * SPF, "sous-basse F1", src_p, gain_db=LV["sub"], family="musique")
     put(BA, M.v_bass(note("F2"), cn / SR, 0.75, c0=700, c1=300, rel=0.08, drive=1.7), straw * SPF, "basse F2 tenue", src_p, gain_db=LV["bass"] - 2, family="musique")
     lk = P.one("reticule", "tentative 3")
     cue_attempt(R, lk["image"], "tentative 318 (tenue)", up=True, seed=300)
@@ -1156,7 +1157,7 @@ def main():
     out, S, t0 = render(D)
     mix, mus, sfx, g, gsm = mix_and_write(out, t0)
     import rapport_v1
-    rapport_v1.make(mix, mus, sfx, g, gsm, D, LOG, sy.EVENTS, SRC, out)
+    rapport_v1.make(mix, mus, sfx, g, gsm, D, LOG, sy.EVENTS, SRC, out, fin=sys.modules[__name__])
     print(f"[{time.time() - t0:5.1f}s] terminé")
 
 
