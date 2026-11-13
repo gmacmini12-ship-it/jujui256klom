@@ -1037,6 +1037,8 @@ def regler_rendu(args):
         cy.denoiser = "OPENIMAGEDENOISE"
     except Exception:
         pass
+    if args.device != "CPU" and hasattr(cy, "denoising_use_gpu"):
+        cy.denoising_use_gpu = True          # la machine louée n'a qu'un cœur : le débruitage doit se faire sur la carte
     cy.max_bounces = 40; cy.transmission_bounces = 36; cy.glossy_bounces = 12; cy.diffuse_bounces = 4
     cy.volume_bounces = 2; cy.transparent_max_bounces = 36
     cy.caustics_reflective = True; cy.caustics_refractive = True; cy.blur_glossy = 0.3

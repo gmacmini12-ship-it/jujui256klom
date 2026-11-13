@@ -715,13 +715,15 @@ class MPM:
 # ----------------------------------------------------------------------------------------------
 class Runner:
     def __init__(self, scene, outdir, arch="cpu", threads=1, log=print, export_dead=False, ckpt_every=1,
-                 max_substeps_per_frame=10_000_000):
+                 max_substeps_per_frame=10_000_000, light=False):
         self.scene = scene
         self.outdir = outdir
         os.makedirs(outdir, exist_ok=True)
         self.log = log
         self.export_dead = export_dead
         self.ckpt_every = ckpt_every
+        self.light = light                    # lean frames (what the renderer reads) + per-frame activity summary
+        self.activity = {}
         init_taichi(arch, threads)
         t0 = time.time()
         self.solver, self.P = scene.build()
@@ -760,6 +762,16 @@ class Runner:
         )
         if extra:
             d.update(extra)
+        if self.light:
+            # at final scale a full frame weighs tens of megabytes: keep what the renderer reads (pos, quat, id)
+            # and summarise the velocities, which the soundtrack reads (moving grains, mean speed, kinetic sum)
+            v = np.linalg.norm(d.pop("vel"), axis=1)
+            mov = v > 0.02
+            self.activity[int(f)] = [int(mov.sum()), float(v[mov].mean()) if mov.any() else 0.0, float((v[mov] ** 2).sum())]
+            with open(os.path.join(self.outdir, "activite.json"), "w") as fh:
+                json.dump(dict(seuil=0.02, colonnes=["n_mobiles", "vitesse_moyenne", "somme_v2"], images=self.activity), fh)
+            d["quat"] = d["quat"].astype(np.float16)
+            del d["state"], d["mat"]
         tmp = os.path.join(self.outdir, f"f{f:04d}.tmp.npz")
         np.savez(tmp, **d)
         os.replace(tmp, os.path.join(self.outdir, f"f{f:04d}.npz"))

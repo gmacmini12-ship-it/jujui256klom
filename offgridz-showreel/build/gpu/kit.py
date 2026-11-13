@@ -15,7 +15,7 @@ SORTIE = RACINE / "out" / "gpu"
 CODE = [
     "BIBLE.md", "timeline/partition.json",
     "build/sim/mpm.py", "build/sim/scenes.py",
-    "build/grains", "build/mojito", "build/seq01", "build/seq56", "build/gpu/session.sh", "build/type",
+    "build/grains", "build/mojito", "build/seq01", "build/seq56", "build/gpu/session.sh", "build/gpu/pilote.sh", "build/type",
     "cache/grains/lettres.json", "cache/mojito/chutes.npz", "cache/mojito/plantes.json",
     "out/mojito/enseigne", "assets/logo", "assets/fonts/fonts.json",
 ]
@@ -49,7 +49,13 @@ def archiver(nom, liste, compression=zipfile.ZIP_DEFLATED):
 if __name__ == "__main__":
     quoi = sys.argv[1] if len(sys.argv) > 1 else "code"
     if quoi == "code":
-        archiver("kit_code.zip", list(fichiers(CODE)))
+        liste = list(fichiers(CODE))
+        creneaux = SORTIE / "creneaux.txt"          # adresses de dépôt des résultats, une par ligne (préparées avant la session)
+        archiver("kit_code.zip", liste)
+        if creneaux.exists():
+            with zipfile.ZipFile(SORTIE / "kit_code.zip", "a", zipfile.ZIP_DEFLATED) as z:
+                z.write(creneaux, "creneaux.txt")
+            print("creneaux.txt ajouté à l'archive")
     elif quoi == "liquide":
         res = sys.argv[2] if len(sys.argv) > 2 else "256"
         tous = list(fichiers([f"cache/mojito/liquide_r{res}"]))

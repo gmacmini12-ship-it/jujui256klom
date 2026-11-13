@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Palier 3 validé (55 crédits au plus) : préparation de la session GPU des grains",
+ "etape": "Session GPU des grains prête, répétée trois fois sur notre machine : une seule commande, plus aucune ensuite",
  "credits": {
-  "depenses": 8.63,
+  "depenses": 23.15,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien à valider pour l'instant",
- "action": false
+ "attente": "Votre présence quelques minutes : deux autorisations à donner coup sur coup dans l'application (location, puis lancement)",
+ "action": true
 }

@@ -72,7 +72,12 @@ def main():
                        "edge_bands_20px_cover": dict(top=float((a[:e] >= 0.5).mean()), bottom=float((a[-e:] >= 0.5).mean()),
                                                      left=float((a[:, :e] >= 0.5).mean()), right=float((a[:, -e:] >= 0.5).mean()))}
     R["coverage"] = cov
-    # squeegee: rows made of opaque, low-saturation pixels (cream rubber and aluminium; the ink is saturated orange)
+    # squeegee: the back edge of the tool is the first row (from the top) made of opaque, low-saturation pixels (aluminium,
+    # screws, cream rubber; the ink is saturated orange); the tip is that row + the plan extent of the 3D model (tool_info.json)
+    ti = os.path.join(os.path.dirname(mdir), "tool_info.json")
+    ext_px = None
+    if os.path.exists(ti):
+        ext_px = json.load(open(ti))["tool"]["plan_extent_m"] / 1e-4
     sq = {}
     for f in range(504, 528):
         if f not in have:
@@ -82,16 +87,17 @@ def main():
         mx = np.maximum(np.maximum(r_, g_), b_)
         mn = np.minimum(np.minimum(r_, g_), b_)
         sat = (mx - mn) / np.maximum(mx, 1e-4)
-        tool = (a_ > 0.98) & (sat < 0.40) & (mx > 0.25)
+        tool = (a_ > 0.98) & (sat < 0.40) & (mx > 0.12)
         rows = np.nonzero(tool.mean(axis=1) > 0.6)[0]
         e = dict(tip_expected_px=float(tip_y(f)))
-        if len(rows):
-            # the tool is a contiguous block ending at the tip (its lowest row)
-            e["tool_rows_detected"] = [int(rows.min() / k), int((rows.max() + 1) / k)]
-            e["tip_measured_px"] = float((rows.max() + 1) / k)
-            e["tip_error_px"] = float((rows.max() + 1) / k - tip_y(f))
+        if ext_px is not None:
+            e["back_edge_expected_px"] = float(tip_y(f) - ext_px)
+        if len(rows) and ext_px is not None and e["back_edge_expected_px"] > 3 and rows.min() > 0:
+            e["back_edge_measured_px"] = float(rows.min() / k)
+            e["tip_measured_px"] = float(rows.min() / k + ext_px)
+            e["tip_error_px"] = float(e["tip_measured_px"] - tip_y(f))
         else:
-            e["tool_rows_detected"] = None
+            e["note"] = "back edge outside the frame or not detectable"
         sq[str(f)] = e
     R["squeegee"] = sq
     for f in (526, 527):

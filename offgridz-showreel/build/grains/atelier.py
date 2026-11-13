@@ -106,10 +106,12 @@ def poser_lettres(lettres, f):
 
 
 # --- grains -----------------------------------------------------------------------------------------------
-def materiau_grain(sucre=True):
+def materiau_grain(sucre=True, points=False, alea_instance=False):
     """Pigment mat dans l'atelier ; en tombant vers le bar, le grain devient un cristal de sucre de canne, ambré et brillant.
-    sucre=False : pigment mat partout (séquence 5, où il n'y a pas de bar)."""
-    nom = "grain" if sucre else "grain_pigment"
+    sucre=False : pigment mat partout (séquence 5, où il n'y a pas de bar).
+    points=True : le grain est une sphère (primitive « point » du moteur de rendu), mille fois plus légère à préparer qu'un
+    cristal instancié ; ses facettes sont rendues par la normale, arrondie à 26 directions dans le repère propre du grain."""
+    nom = ("grain" if sucre else "grain_pigment") + ("_points" if points else "_instance" if alea_instance else "")
     m = bpy.data.materials.get(nom)
     if m:
         return m
@@ -117,6 +119,25 @@ def materiau_grain(sucre=True):
     nt = m.node_tree
     b = nt.nodes.get("Principled BSDF")
     info = nt.nodes.new("ShaderNodeObjectInfo")
+    alea = info.outputs["Random"]
+    if points or alea_instance:                # teinte tirée d'un attribut du grain : la même qu'il soit point ou cristal
+        attr = nt.nodes.new("ShaderNodeAttribute"); attr.attribute_name = "alea"
+        if alea_instance:
+            attr.attribute_type = "INSTANCER"
+        alea = attr.outputs["Fac"]
+    if points:
+        orient = nt.nodes.new("ShaderNodeAttribute"); orient.attribute_name = "rot"
+        normale = nt.nodes.new("ShaderNodeNewGeometry")
+        local = nt.nodes.new("ShaderNodeVectorRotate"); local.rotation_type = "EULER_XYZ"; local.invert = True
+        demi = nt.nodes.new("ShaderNodeVectorMath"); demi.operation = "ADD"; demi.inputs[1].default_value = (0.5, 0.5, 0.5)
+        arrondi = nt.nodes.new("ShaderNodeVectorMath"); arrondi.operation = "FLOOR"
+        unite = nt.nodes.new("ShaderNodeVectorMath"); unite.operation = "NORMALIZE"
+        retour = nt.nodes.new("ShaderNodeVectorRotate"); retour.rotation_type = "EULER_XYZ"
+        nt.links.new(normale.outputs["Normal"], local.inputs["Vector"]); nt.links.new(orient.outputs["Vector"], local.inputs["Rotation"])
+        nt.links.new(local.outputs["Vector"], demi.inputs[0]); nt.links.new(demi.outputs["Vector"], arrondi.inputs[0])
+        nt.links.new(arrondi.outputs["Vector"], unite.inputs[0]); nt.links.new(unite.outputs["Vector"], retour.inputs["Vector"])
+        nt.links.new(orient.outputs["Vector"], retour.inputs["Rotation"])
+        nt.links.new(retour.outputs["Vector"], b.inputs["Normal"])
     geo = nt.nodes.new("ShaderNodeNewGeometry"); sep = nt.nodes.new("ShaderNodeSeparateXYZ")
     hauteur = nt.nodes.new("ShaderNodeMapRange"); hauteur.interpolation_type = "SMOOTHSTEP"
     hauteur.inputs["From Min"].default_value = 0.30; hauteur.inputs["From Max"].default_value = 0.62      # du bar vers l'atelier
@@ -131,7 +152,7 @@ def materiau_grain(sucre=True):
     gris = nt.nodes.new("ShaderNodeCombineColor")
     sucre = nt.nodes.new("ShaderNodeMix"); sucre.data_type = "RGBA"
     sucre.inputs["A"].default_value = (0.80, 0.36, 0.07, 1)        # cristal de sucre de canne
-    nt.links.new(info.outputs["Random"], var.inputs["Value"])
+    nt.links.new(alea, var.inputs["Value"])
     for canal in ("Red", "Green", "Blue"):
         nt.links.new(var.outputs["Result"], gris.inputs[canal])
     nt.links.new(gris.outputs["Color"], pigment.inputs["B"])
@@ -148,10 +169,10 @@ def materiau_grain(sucre=True):
     return m
 
 
-def prototypes(graine=2, sucre=True):
+def prototypes(graine=2, sucre=True, alea_instance=False):
     """Quatre cristaux irréguliers, à facettes, de rayon moyen 1."""
     rng = np.random.default_rng(graine)
-    coll = bpy.data.collections.new("cristaux" if sucre else "cristaux_pigment")
+    coll = bpy.data.collections.new(("cristaux" if sucre else "cristaux_pigment") + ("_instance" if alea_instance else ""))
     for k in range(4):
         def faire(bm, k=k):
             bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1.0)
@@ -160,7 +181,7 @@ def prototypes(graine=2, sucre=True):
             ech = rng.uniform(0.78, 1.22, 3)
             for v in bm.verts:
                 v.co = Vector((v.co.x * ech[0], v.co.y * ech[1], v.co.z * ech[2]))
-        ob = S.depuis_bmesh(f"cristal{k}", faire, materiau_grain(sucre), lisse=False)
+        ob = S.depuis_bmesh(f"cristal{k}", faire, materiau_grain(sucre, alea_instance=alea_instance), lisse=False)
         bpy.context.scene.collection.objects.unlink(ob)
         coll.objects.link(ob)
     return coll
@@ -169,18 +190,31 @@ def prototypes(graine=2, sucre=True):
 class Grains:
     """Nuage de grains instancié sur les particules d'une simulation, relu image par image."""
 
-    def __init__(self, nom, dossier, d, rayon_par_pas=0.60, sucre=True):
+    def __init__(self, nom, dossier, d, rayon_par_pas=0.60, sucre=True, points=False, alea_instance=False):
+        """points=True : grains rendus en primitives « point » à facettes simulées (voir materiau_grain). À l'échelle
+        finale (un million de grains), préparer une image de cristaux instanciés prend dix secondes sur un cœur ;
+        en points, moins d'une seconde."""
         self.nom, self.dossier, self.d = nom, dossier, np.array(d, np.float32)
         run = os.path.join(dossier, "run.json")
         pas = json.load(open(run))["info"]["spacing"] if os.path.exists(run) else 0.0005
         self.rayon = pas * rayon_par_pas
-        coll = bpy.data.collections.get("cristaux" if sucre else "cristaux_pigment") or prototypes(sucre=sucre)
         self.ob = bpy.data.objects.new(nom, bpy.data.meshes.new(nom))
         bpy.context.scene.collection.objects.link(self.ob)
         ng = bpy.data.node_groups.new(nom + "_gn", "GeometryNodeTree")
         ng.interface.new_socket(name="Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
         ng.interface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
         entree = ng.nodes.new("NodeGroupInput"); sortie = ng.nodes.new("NodeGroupOutput")
+        self.dernier = None
+        if points:
+            pts = ng.nodes.new("GeometryNodeMeshToPoints")
+            ray = ng.nodes.new("GeometryNodeInputNamedAttribute"); ray.data_type = "FLOAT"; ray.inputs["Name"].default_value = "ech"
+            mat = ng.nodes.new("GeometryNodeSetMaterial"); mat.inputs["Material"].default_value = materiau_grain(sucre, points=True)
+            ng.links.new(entree.outputs[0], pts.inputs["Mesh"]); ng.links.new(ray.outputs["Attribute"], pts.inputs["Radius"])
+            ng.links.new(pts.outputs["Points"], mat.inputs["Geometry"]); ng.links.new(mat.outputs["Geometry"], sortie.inputs[0])
+            mod = self.ob.modifiers.new("gn", "NODES"); mod.node_group = ng
+            return
+        nom_coll = ("cristaux" if sucre else "cristaux_pigment") + ("_instance" if alea_instance else "")
+        coll = bpy.data.collections.get(nom_coll) or prototypes(sucre=sucre, alea_instance=alea_instance)
         inst = ng.nodes.new("GeometryNodeInstanceOnPoints")
         info = ng.nodes.new("GeometryNodeCollectionInfo")
         info.inputs["Collection"].default_value = coll
@@ -194,45 +228,117 @@ class Grains:
         ng.links.new(ech.outputs["Attribute"], inst.inputs["Scale"])
         ng.links.new(inst.outputs["Instances"], sortie.inputs[0])
         mod = self.ob.modifiers.new("gn", "NODES"); mod.node_group = ng
-        self.dernier = None
 
-    def poser(self, f):
-        """Charge l'image f (ou la dernière disponible avant f). Renvoie le nombre de grains libres, ou None."""
+    def _lire(self, f):
+        """Données de l'image f (ou de la dernière disponible avant f) : positions, orientations, tailles, aléa par grain.
+        None s'il n'y en a pas. self.nouveau dit si elles diffèrent de celles du dernier appel."""
         g = f
         while g >= 0 and not os.path.exists(os.path.join(self.dossier, f"f{g:04d}.npz")):
             g -= 1
             if f - g > 400:
                 g = -1
         if g < 0:
+            return None
+        self.nouveau = g != self.dernier
+        if self.nouveau:
+            z = np.load(os.path.join(self.dossier, f"f{g:04d}.npz"))
+            pos = z["pos"] + self.d
+            q = z["quat"].astype(np.float64)
+            w, x, y, zz = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
+            rot = np.stack([np.arctan2(2 * (w * x + y * zz), 1 - 2 * (x * x + y * y)),
+                            np.arcsin(np.clip(2 * (w * y - zz * x), -1, 1)),
+                            np.arctan2(2 * (w * zz + x * y), 1 - 2 * (y * y + zz * zz))], 1).astype(np.float32)
+            n = len(pos)
+            rng = np.random.default_rng(1)
+            ech = (self.rayon * rng.uniform(0.85, 1.15, int(z["id"].max()) + 1 if n else 1)[z["id"]]).astype(np.float32)
+            alea = rng.random(int(z["id"].max()) + 1 if n else 1, dtype=np.float32)[z["id"]]
+            self.donnees = dict(pos=pos, rot=rot, ech=ech, alea=alea)
+            self.dernier = g
+            self.n_libres = int(z["n_free"])
+        return self.donnees
+
+    def poser(self, f):
+        """Charge l'image f (ou la dernière disponible avant f). Renvoie le nombre de grains libres, ou None."""
+        d = self._lire(f)
+        if d is None:
             self.ob.hide_render = True
             return None
         self.ob.hide_render = False
-        if g == self.dernier:
-            return self.n_libres
-        z = np.load(os.path.join(self.dossier, f"f{g:04d}.npz"))
-        pos = z["pos"] + self.d
-        q = z["quat"].astype(np.float64)
-        w, x, y, zz = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
-        rot = np.stack([np.arctan2(2 * (w * x + y * zz), 1 - 2 * (x * x + y * y)),
-                        np.arcsin(np.clip(2 * (w * y - zz * x), -1, 1)),
-                        np.arctan2(2 * (w * zz + x * y), 1 - 2 * (y * y + zz * zz))], 1).astype(np.float32)
-        n = len(pos)
-        rng = np.random.default_rng(1)
-        ech = (self.rayon * rng.uniform(0.85, 1.15, int(z["id"].max()) + 1 if n else 1)[z["id"]]).astype(np.float32)
-        self._maillage(pos, rot, ech)
-        self.dernier = g
-        self.n_libres = int(z["n_free"])
+        if self.nouveau:
+            self._maillage(d["pos"], d["rot"], d["ech"], d["alea"])
         return self.n_libres
 
-    def _maillage(self, pos, rot, ech):
+    def _maillage(self, pos, rot, ech, alea=None):
         me = bpy.data.meshes.new(self.nom)
         me.vertices.add(len(pos))
         me.vertices.foreach_set("co", np.ascontiguousarray(pos, np.float32).ravel())
         a = me.attributes.new("rot", "FLOAT_VECTOR", "POINT"); a.data.foreach_set("vector", np.ascontiguousarray(rot, np.float32).ravel())
         a = me.attributes.new("ech", "FLOAT", "POINT"); a.data.foreach_set("value", np.ascontiguousarray(ech, np.float32))
+        if alea is not None:
+            a = me.attributes.new("alea", "FLOAT", "POINT"); a.data.foreach_set("value", np.ascontiguousarray(alea, np.float32))
         ancien = self.ob.data
         self.ob.data = me
         bpy.data.meshes.remove(ancien)
+
+
+class GrainsMixtes:
+    """La dalle à l'échelle finale (un million de grains). Aucun grain n'est retiré ; seul son niveau de détail change :
+    les grains assez gros à l'écran, dans le champ et proches de la surface du tas sont des cristaux instanciés ;
+    tous les autres (lointains, hors champ, enfouis) sont des points à facettes simulées, dix fois plus légers."""
+
+    def __init__(self, nom, dossier, d, rayon_par_pas=0.60, sucre=True, taille_min=3.5, marge=0.15):
+        self.loin = Grains(nom + "_points", dossier, d, rayon_par_pas, sucre, points=True)
+        self.pres = Grains(nom + "_cristaux", dossier, d, rayon_par_pas, sucre, alea_instance=True)
+        self.pas = self.loin.rayon / rayon_par_pas
+        self.taille_min, self.marge = taille_min, marge
+        self.n_cristaux = 0
+
+    def cacher(self, oui=True):
+        self.loin.ob.hide_render = oui
+        self.pres.ob.hide_render = oui
+
+    def poser(self, f, cam, sc):
+        """À appeler une fois la caméra de l'image f en place."""
+        d = self.loin._lire(f)
+        if d is None:
+            self.cacher(True)
+            return None
+        self.cacher(False)
+        pres = self._choisir(d, cam, sc)
+        for objet, masque in ((self.loin, ~pres), (self.pres, pres)):
+            objet._maillage(d["pos"][masque], d["rot"][masque], d["ech"][masque], d["alea"][masque])
+        self.n_cristaux = int(pres.sum())
+        return self.loin.n_libres
+
+    def _choisir(self, d, cam, sc):
+        pos = d["pos"]
+        monde_cam = np.array(cam.matrix_world.inverted())
+        pc = pos @ monde_cam[:3, :3].T + monde_cam[:3, 3]
+        prof = -pc[:, 2]                                           # la caméra regarde vers -Z
+        larg, haut = sc.render.resolution_x, sc.render.resolution_y
+        proj = np.array(cam.calc_matrix_camera(bpy.context.evaluated_depsgraph_get(), x=larg, y=haut))
+        devant = prof > 1e-4
+        inv = np.zeros_like(prof); inv[devant] = 1.0 / prof[devant]
+        x, y = proj[0, 0] * pc[:, 0] * inv, proj[1, 1] * pc[:, 1] * inv
+        diametre = d["ech"] * proj[1, 1] * haut * inv              # en pixels
+        cand = devant & (np.abs(x) < 1 + self.marge) & (np.abs(y) < 1 + self.marge) & (diametre >= self.taille_min)
+        if not cand.any():
+            return cand
+        # grains enfouis : dans un voisinage de 7 cases de côté presque plein, on ne voit pas le grain
+        from scipy.ndimage import uniform_filter
+        v = 1.5 * self.pas
+        lo = pos[cand].min(0) - 4 * v; hi = pos[cand].max(0) + 4 * v
+        dims = np.ceil((hi - lo) / v).astype(int) + 1
+        if float(np.prod(dims)) > 8e7:                             # volume trop vaste pour la grille : pas de tri par enfouissement
+            return cand
+        dans = np.all((pos >= lo) & (pos < hi), axis=1)
+        ijk = ((pos[dans] - lo) / v).astype(np.int32)
+        occ = np.zeros(dims, np.float32); occ[ijk[:, 0], ijk[:, 1], ijk[:, 2]] = 1.0
+        densite = uniform_filter(occ, size=7, mode="constant")
+        ic = ((pos[cand] - lo) / v).astype(np.int32)
+        enfoui = densite[ic[:, 0], ic[:, 1], ic[:, 2]] > 0.80
+        pres = cand.copy(); pres[np.nonzero(cand)[0][enfoui]] = False
+        return pres
 
 
 class Egares(Grains):

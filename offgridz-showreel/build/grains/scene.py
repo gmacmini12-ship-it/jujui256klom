@@ -62,6 +62,10 @@ if __name__ == "__main__":
                         ("dessus", 1.25), ("eclat", 1.0), ("force_enseigne", 0.42), ("exposition", 0.0)):
         ap.add_argument("--" + nom, type=float, default=defaut)
     ap.add_argument("--enseigne", default="anton")
+    ap.add_argument("--arret", type=float, default=0.0, help="heure (secondes Unix) après laquelle on n'entame plus d'image")
+    ap.add_argument("--reprise", type=int, default=0, help="1 : ne pas recalculer les images déjà présentes")
+    ap.add_argument("--points", type=int, default=2, help="grains de la dalle. 0 : cristaux instanciés ; 1 : points à facettes simulées ; "
+                    "2 : cristaux pour les grains proches et visibles, points pour les autres")
     ap.add_argument("--vue", default="Standard")
     args = ap.parse_args(argv)
     if "," in args.frames or ":" not in args.frames:
@@ -69,50 +73,79 @@ if __name__ == "__main__":
     else:
         m = [int(v) for v in args.frames.split(":")]
         images = list(range(m[0], m[1] + 1, m[2] if len(m) > 2 else 1))
-    bar = anim.construire(args)                        # le bar d'abord (il repart d'une scène vide)
-    tas = bpy.data.objects.get("sucre"); coeur = bpy.data.objects.get("sucre_coeur")
-    # tout le bar dans une collection : invisible tant que la caméra est dans l'atelier
-    coll_bar = bpy.data.collections.new("bar"); bpy.context.scene.collection.children.link(coll_bar)
-    for ob in list(bpy.context.scene.collection.objects):
-        if ob.type != "CAMERA":
-            bpy.context.scene.collection.objects.unlink(ob); coll_bar.objects.link(ob)
-    if bar["sucre"] is not None:                       # les grains du filet traversent l'atelier : ils restent toujours visibles
-        coll_bar.objects.unlink(bar["sucre"].ob); bpy.context.scene.collection.objects.link(bar["sucre"].ob)
+    sans_bar = max(images) < IMAGE_DESCENTE            # plans d'atelier seuls : inutile de construire le bar
+    if sans_bar:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        S.regler_rendu(args)
+        monde = bpy.data.worlds.new("noir"); bpy.context.scene.world = monde
+        try:
+            monde.use_nodes = True
+        except Exception:
+            pass
+        monde.node_tree.nodes["Background"].inputs["Color"].default_value = (0.0006, 0.0006, 0.0006, 1)
+        bar = None; tas = coeur = coll_bar = None
+        cam = S.cadrer(args)
+        sucre = None
+    else:
+        bar = anim.construire(args)                    # le bar d'abord (il repart d'une scène vide)
+        tas = bpy.data.objects.get("sucre"); coeur = bpy.data.objects.get("sucre_coeur")
+        # tout le bar dans une collection : invisible tant que la caméra est dans l'atelier
+        coll_bar = bpy.data.collections.new("bar"); bpy.context.scene.collection.children.link(coll_bar)
+        for ob in list(bpy.context.scene.collection.objects):
+            if ob.type != "CAMERA":
+                bpy.context.scene.collection.objects.unlink(ob); coll_bar.objects.link(ob)
+        sucre = bar["sucre"]
+        if sucre is not None:                          # les grains du filet traversent l'atelier : ils restent toujours visibles
+            coll_bar.objects.unlink(sucre.ob); bpy.context.scene.collection.objects.link(sucre.ob)
+        cam = bar["cam"]
     d = A.decalage()
     A.faire_sol_et_mur(d)
     lettres = A.faire_lettres(d)
     A.eclairer(d)
     # les grains du filet sont déjà dans la scène du bar (ils y forment le tas de sucre) : on ne les crée pas deux fois
-    grains = [A.Grains("grains_dalle", os.path.join(A.SIMS, "dalle"), d), A.Egares("grains_egares", os.path.join(A.SIMS, "dalle"), d)]
-    if bar["sucre"] is None:
+    # la dalle compte un million de grains à l'échelle finale : en points ; le filet et les égarés, peu nombreux, restent des cristaux
+    dossier_dalle = os.path.join(A.SIMS, "dalle")
+    dalle = A.GrainsMixtes("grains_dalle", dossier_dalle, d) if args.points == 2 else A.Grains("grains_dalle", dossier_dalle, d, points=bool(args.points))
+    grains = [A.Egares("grains_egares", dossier_dalle, d)]
+    if sucre is None:
         grains.append(A.Grains("grains_filet", os.path.join(A.SIMS, "filet"), d))
-    raccorder(d)
+    if not sans_bar:
+        raccorder(d)
     sc = bpy.context.scene
     sc.render.use_persistent_data = True
     sortie = os.path.abspath(args.out)
     os.makedirs(sortie, exist_ok=True)
     chemin_meta = os.path.join(sortie, "meta.json")
     meta = json.load(open(chemin_meta)) if os.path.exists(chemin_meta) else {"images": {}}
-    cam = bar["cam"]
     for f in images:
+        if args.arret and time.time() > args.arret:
+            print(f"GRAINS arrêt avant l'image {f} : délai atteint", flush=True)
+            break
+        if args.reprise and os.path.exists(os.path.join(sortie, f"f{f:04d}.png")):
+            continue
         t0 = time.time()
-        anim.poser(bar, f)                              # corps du bar (cachés avant leur lâcher), enseigne, caméra du bar
-        for o in (tas, coeur):                          # le tas de sucre du bar n'existe pas encore : il arrive par le filet
-            if o:
-                o.hide_render = True
-        coll_bar.hide_render = f < IMAGE_DESCENTE
+        if bar is not None:
+            anim.poser(bar, f)                          # corps du bar (cachés avant leur lâcher), enseigne, caméra du bar
+            for o in (tas, coeur):                      # le tas de sucre du bar n'existe pas encore : il arrive par le filet
+                if o:
+                    o.hide_render = True
+            coll_bar.hide_render = f < IMAGE_DESCENTE
         A.poser_lettres(lettres, f)
-        if f >= IMAGE_SOUS_LE_SOL:                     # inutile de charger des millions de grains hors champ
-            grains[0].ob.hide_render = True
-            libres = [g.poser(f) for g in grains[1:]]
-        else:
-            libres = [g.poser(f) for g in grains]
-        if bar["sucre"] is not None:
-            libres.append(bar["sucre"].poser(f))
         if f < IMAGE_DESCENTE:
             pos, cible, focale, ouv, net = camera_atelier(f, d)
             anim.regarder(cam, pos, cible)
             cam.data.lens = focale; cam.data.dof.aperture_fstop = ouv; cam.data.dof.focus_distance = net
+        bpy.context.view_layer.update()                # la caméra de l'image est en place : le niveau de détail en dépend
+        libres = [g.poser(f) for g in grains]
+        if f >= IMAGE_SOUS_LE_SOL:                     # inutile de charger un million de grains hors champ
+            if args.points == 2:
+                dalle.cacher(True)
+            else:
+                dalle.ob.hide_render = True
+        else:
+            libres.append(dalle.poser(f, cam, sc) if args.points == 2 else dalle.poser(f))
+        if sucre is not None:
+            libres.append(sucre.poser(f))
         bpy.context.view_layer.update()
         info = {}
         n = sum(v for v in libres if v)
@@ -132,4 +165,5 @@ if __name__ == "__main__":
         sc.render.filepath = os.path.join(sortie, f"f{f:04d}.png")
         bpy.ops.render.render(write_still=True)
         json.dump(meta, open(chemin_meta, "w"))
-        print(f"GRAINS image {f} : {time.time() - t0:.1f} s, grains libres {n}", flush=True)
+        detail = f", cristaux {dalle.n_cristaux}" if args.points == 2 and f < IMAGE_SOUS_LE_SOL else ""
+        print(f"GRAINS image {f} : {time.time() - t0:.1f} s, grains libres {n}{detail}", flush=True)
