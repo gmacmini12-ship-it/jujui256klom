@@ -171,6 +171,8 @@ RELIEF = 0.50           # au-dessus du niveau moyen, le relief est réduit à ce
 RELIEF_BANDE = 0.020    # ...sur cette hauteur ; plus haut (gerbes, jet), la surface est seulement translatée
 Z_JET = 0.296           # tranche relue pour tout ce qui est plus haut : le jet se prolonge jusqu'en haut de la grille
 JET_EXCLU = 0.016       # rayon, autour de l'axe du jet, ignoré dans la mesure du niveau
+TASSER_DEPUIS = 276     # image à partir de laquelle on tasse : avant, le verre se remplit et la mesure du niveau ne voit
+                        # que la tête du jet et la première gerbe (elle donnait 178 mm à l'image 262, verre vide)
 
 
 def niveau_moyen(v, jet):
@@ -256,8 +258,12 @@ def finir(g, brut, obst, phi_verre, ri, jeu, niveau=None, confiner=False):
         phi = np.where(g.zz >= S.H_VERRE - 0.0002, np.maximum(phi, g.r - S.r_int(S.H_VERRE)), phi).astype(np.float32)
     # ce qui a giclé hors du verre et retombe à l'extérieur n'est pas montré
     zz = np.clip(g.zz, 0.0, S.H_VERRE)
-    # (avec le confinement, jusqu'en haut du verre : sinon il resterait un disque de 2 mm de liquide autour du bord)
-    dehors = (g.r > S.R_BAS + (S.R_HAUT - S.R_BAS) * zz / S.H_VERRE + 0.0006) & (g.zz < S.H_VERRE - (0.0002 if confiner else 0.002))
+    if confiner:
+        # Rien hors de la cavité du verre, à aucune hauteur : ni pellicule sur la face extérieure (l'ancienne tolérance
+        # de 0,6 mm laissait une collerette dentelée sous le bord), ni liquide dans l'épaisseur de la paroi.
+        dehors = (g.r > ri + RECOUVREMENT + 0.5 * g.h) & (g.zz < S.H_VERRE - 0.0002)
+    else:
+        dehors = (g.r > S.R_BAS + (S.R_HAUT - S.R_BAS) * zz / S.H_VERRE + 0.0006) & (g.zz < S.H_VERRE - 0.002)
     phi = np.where(dehors, np.float32(3 * g.h), phi)
     return g.mailler(phi), int(noye.sum()), int(etendu.sum())
 
@@ -295,6 +301,8 @@ if __name__ == "__main__":
         if len(brut["v"]) == 0:
             np.savez_compressed(os.path.join(sortie, f"f{f:04d}.npz"), v=np.zeros((0, 3), np.float32), quads=np.zeros((0, 4), np.int32), tri=np.zeros((0, 3), np.int32))
             continue
+        if f < TASSER_DEPUIS:
+            niveaux.pop(f, None)              # pas de tassement : seules les coupes hors du verre s'appliquent
         (v, quads, tri), n_noye, n_etendu = finir(g, brut, obst, phi_verre, ri, jeu, niveaux.get(f), bool(A.confiner))
         np.savez_compressed(os.path.join(sortie, f"f{f:04d}.npz"), v=v, quads=quads, tri=tri)
         note = ""

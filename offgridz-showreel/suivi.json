@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Film complet assemblé (600 images finales, 20 s). Contrôle qualité : mesures faites, crête sonore corrigée, deux relectures critiques indépendantes en cours (image ; son et conformité)",
+ "etape": "Contrôle qualité : les deux relectures sont faites. Il reste du liquide hors du verre dans 56 images du versement ; la correction est prête et vérifiée (zéro image fautive), il faut refaire 57 images en qualité finale. Autres retouches sans crédits en cours",
  "credits": {
   "depenses": 113.44,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien : je vous présente le bilan des relectures dès qu'elles sont terminées",
- "action": false
+ "attente": "Votre choix pour refaire les 57 images du versement : machine louée (environ 18 crédits) ou notre machine (gratuit, environ 19 heures)",
+ "action": true
 }
