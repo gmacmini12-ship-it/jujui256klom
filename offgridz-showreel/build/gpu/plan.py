@@ -70,7 +70,7 @@ def plan_a(table, liquide, repetition):
 
 
 def repetition_sim():
-    return 128                                     # la répétition lit le liquide de résolution 128, plus léger
+    return 256                                     # la répétition lit le même liquide que la session réelle
 
 
 def plan_b(table, caches, repetition):
@@ -81,13 +81,15 @@ def plan_b(table, caches, repetition):
         dict(type="attendre", nom="installer_rendu"),
         dict(type="rendu", nom="seq01", etape="rendu01", images=[0, 71], dossier="out/final/seq01",
              tranches=tranches(table, "seq01", 0, 71), requiert=["installer_rendu", "caches"]),
+        # la couche de matière est transparente là où la feuille est nue : une image vide (527) est normale
         dict(type="rendu", nom="seq56", etape="rendu56", images=[456, 527], dossier="out/final/seq56/matiere",
+             taille=[1080, 1920], noir_permis=True,
              tranches=tranches(table, "seq56", 456, 527), requiert=["installer_rendu", "caches"]),
     ]
     env = dict(SPP01=128, SPP56=128)
     if repetition:
-        env.update(SPP01=4, SPP56=4, ARCH="cpu", DEVICE="CPU", RES="126x189", RES56="135x240")
-    return etapes, env, []
+        env.update(SPP01=4, SPP56=4, ARCH="cpu", DEVICE="CPU", RES="126x189", RES56="135x240", LOD56=1080)
+    return etapes, env, ["out/final/seq56/scene_log.json", "out/final/seq56/tool_info.json"]
 
 
 if __name__ == "__main__":

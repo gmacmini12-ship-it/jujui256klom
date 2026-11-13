@@ -146,13 +146,35 @@ def stage_fenetre(A, fa, fb):
     log("fenetre done")
 
 
-def stage_meta(A, meta_part=None):
-    p = os.path.join(A.out, "matiere_meta_partial.json")
-    d = json.load(open(p))
+def stage_meta(A, film_dir=None):
+    """meta.json: `n` = free grains still dry (not yet reached by the wetting front) for frames 456-503, read from the grain
+    cache (lean or full frames) and the front arrival field Ta; also writes squeegee.json (tip position per frame)."""
+    import glob
+    film_dir = film_dir or sorted(glob.glob(os.path.join(A.work, "film_fpx*")))[0]
+    Ta = np.load(os.path.join(film_dir, "Ta.npy"))
+    ny, nx = Ta.shape
+    fpx = W // nx
+    avail = sorted(int(os.path.basename(p)[1:5]) for p in glob.glob(os.path.join(A.grains, "f[0-9][0-9][0-9][0-9].npz")))
+    last = max(avail)
+    images = {}
+    for f in range(456, 504):
+        d = np.load(os.path.join(A.grains, "f%04d.npz" % min(f, last)))
+        P = d["pos"]
+        if "state" in d.files:
+            P = P[(d["state"] == 0) | (d["state"] == 1)]
+        if f <= 479:
+            n = int(d["n_free"]) if f <= last else int(len(P))
+        else:
+            u = np.clip(((P[:, 0] / PX_M + W / 2) / fpx).astype(int), 0, nx - 1)
+            v = np.clip(((H / 2 - P[:, 1] / PX_M) / fpx).astype(int), 0, ny - 1)
+            n = int(np.sum(Ta[v, u] > f)) if f < 503 else 0
+        images[str(f)] = dict(n=n)
     with open(os.path.join(A.out, "meta.json"), "w") as fo:
-        json.dump(dict(images=d["images"]), fo)
+        json.dump(dict(images=images), fo)
+    sq = {str(f): dict(tip_px=float(tip_y(f))) for f in range(504, 528)}
     with open(os.path.join(A.out, "squeegee.json"), "w") as fo:
-        json.dump(d["squeegee"], fo, indent=1)
+        json.dump(sq, fo, indent=1)
+    log("meta.json written: n(456)=%d n(479)=%d n(503)=%d" % (images["456"]["n"], images["479"]["n"], images["503"]["n"]))
 
 
 def read16(path):
@@ -248,7 +270,7 @@ def main():
     if "fenetre" in st:
         stage_fenetre(A, fa, fb)
     if "meta" in st:
-        stage_meta(A)
+        stage_meta(A, film_dir)
     if "preview" in st:
         stage_preview(A)
 

@@ -87,6 +87,9 @@ case "$ETAPE" in
   rendu01)      # séquences 0 et 1 : papier
     python -u build/seq01/scene.py -- --frames "${IMAGES:-0:71}" --res "$RES" --spp "${SPP01:-128}" --device "$DEVICE" --arret "$ARRET" --reprise 1 --out out/final/seq01 2>&1 | grep --line-buffered -E "^\[f[0-9]+\]|arrêt avant|rror|Traceback" | $LIGNE cut -c1-160
     ;;
+  rendu56)      # séquences 5 et 6 : pigment, encre, raclette (couche de matière 1080 x 1920, alpha direct)
+    python -u build/seq56/scene.py -- --frames "${IMAGES:-456:527}" --res "${RES56:-1080x1920}" --spp "${SPP56:-128}" --device "$DEVICE" --arret "$ARRET" --reprise 1 ${LOD56:+--lod-res "$LOD56"} --out out/final/seq56 2>&1 | grep --line-buffered -E "SEQ56 (image|arret)|rror|Traceback" | $LIGNE cut -c1-180
+    ;;
   paquet)       # paquet <nom> <créneau> <chemins...> : archive sans compression (les PNG le sont déjà) et envoi
     shift; NOM=$1; CRENEAU=$2; shift 2
     python - "$NOM.zip" "$@" <<'PY'
