@@ -176,9 +176,7 @@ def planche(cle):
                              '<path d="M0 118C30 110 70 126 108 114V126C70 138 30 122 0 130Z" class="ref"/>'
                              '<rect x="0" y="98" width="108" height="5" class="fo2"/>'
                              '<rect x="0" y="90" width="108" height="8" class="rc"/><rect x="0" y="88" width="108" height="2.2" class="rc2"/>'),
-        "signature": lambda: (marques() + logo()
-                              + '<text x="54" y="31.5" text-anchor="middle" font-size="5.4" class="sg">Hors-grille.</text>'
-                              + '<text x="54" y="39.5" text-anchor="middle" font-size="5.4" class="sg">Sous contrôle.</text>'),
+        "signature": lambda: marques() + logo(),
     }[cle]
     return ('<svg viewBox="0 0 108 192" role="img" xmlns="http://www.w3.org/2000/svg">'
             '<rect x="0" y="0" width="108" height="192" class="fn"/>' + f() + "</svg>")
@@ -523,7 +521,7 @@ def page():
     o.append('<section><p class="et">F · Stratégie Katana</p><h2>Katana reste en dehors du film</h2><dl class="fiche">'
              + "".join(f"<dt>{e(a)}</dt><dd>{e(b)}</dd>" for a, b in C.KATANA) + "</dl></section>")
 
-    o.append('<section><p class="et">Textes à l\'image</p><h2>Quatre mots de signature, aucune voix</h2><dl class="fiche">'
+    o.append('<section><p class="et">Textes à l\'image</p><h2>Un seul mot, aucune voix</h2><dl class="fiche">'
              + "".join(f"<dt>{e(a)}</dt><dd>{e(b)}</dd>" for a, b in C.TEXTES) + "</dl></section>")
 
     o.append("<footer>OFFGRIDZ · INSOUMISE · dossier fabriqué à partir de timeline/partition.json et de build/dossier/contenu.py</footer></div>")

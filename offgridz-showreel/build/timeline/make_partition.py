@@ -95,10 +95,8 @@ TYPO = [
     bloc("typo", im(5, 3), im(6) - 1, "roulement 3 (enseigne)", arret="instrument-serif-italic"),
     bloc("typo", im(8, 3), im(9) - 1, "roulement 4 (graisse continue)", arret="doto-var"),
     bloc("typo", im(11), im(11, 3) - 1, "lettrage d'origine imprimé"),
-    point("typo", im(11, 3), "« Hors-grille. »"),
-    point("typo", im(11, 4), "« Sous contrôle. »"),
-    bloc("typo", 588, 593, "fondu des lignes"),
-]
+    bloc("typo", 588, 593, "fondu des annotations"),
+]   # aucune ligne de signature : le client a retiré « Hors-grille. Sous contrôle. » le 13/11, le film finit sur le logo seul
 
 MUSIQUE = [
     bloc("musique", 0, 23, "souffle"),

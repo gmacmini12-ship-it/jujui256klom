@@ -355,21 +355,9 @@
   },
   {
    "piste": "typo",
-   "image": 528,
-   "nom": "« Hors-grille. »",
-   "image_s": 17.6
-  },
-  {
-   "piste": "typo",
-   "image": 540,
-   "nom": "« Sous contrôle. »",
-   "image_s": 18.0
-  },
-  {
-   "piste": "typo",
    "debut": 588,
    "fin": 593,
-   "nom": "fondu des lignes",
+   "nom": "fondu des annotations",
    "debut_s": 19.6,
    "fin_s": 19.8
   },

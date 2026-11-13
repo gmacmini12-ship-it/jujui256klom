@@ -7,8 +7,7 @@ Version illustrée (planches, partition graphique) : `preprod/dossier.html`. Les
 ## À valider
 
 1. **Le storyboard et la partition** — Sept séquences calées sur 150 BPM. Dites ce qui doit changer ; sans remarque, je fabrique sur cette base.
-2. **La signature « Hors-grille. Sous contrôle. »** — La première ligne tombe sur le verrouillage du réticule, la seconde un temps plus tard. Aucun identifiant dans l'image : les plateformes affichent déjà celui du compte.
-3. **Le plan de dépense par paliers** — 185 crédits prévus au total, sous votre cible de 200. Chaque palier vous est soumis avant d'être engagé. La prochaine étape, l'animatique et la maquette sonore, ne coûte rien.
+2. **Le plan de dépense par paliers** — 185 crédits prévus au total, sous votre cible de 200. Chaque palier vous est soumis avant d'être engagé. La prochaine étape, l'animatique et la maquette sonore, ne coûte rien.
 
 ## Test GPU (13 novembre)
 
@@ -140,11 +139,11 @@ Estimation du rendu final :
 
 17,60 – 20,00 s · images 528 – 599 · mesure 11, troisième temps, à mesure 12 · logo à plat
 
-- **Composition :** Le logo source, au pixel près. Au-dessus, dans la zone libre de la fenêtre : « Hors-grille. » puis « Sous contrôle. ». Les lignes sont au-dessus du logo et non dessous, pour rester à l'écart des légendes que les plateformes affichent en bas. En marge : STUDIO CRÉATIF · IDENTITÉ · MOTION · 3D · PUBLICITÉ.
+- **Composition :** Le logo source, au pixel près, seul. Aucune phrase de signature. En marge : STUDIO CRÉATIF · IDENTITÉ · MOTION · 3D · PUBLICITÉ.
 - **Caméra :** Fixe.
 - **Matériaux :** L'encre de la bande, encore humide, devient mate en une seconde et demie.
 - **Lumière :** Uniforme ; un dernier reflet glisse sur la bande.
-- **Mouvement :** Image 528 : le réticule verrouille, première ligne. Image 540 : seconde ligne. Images 588 à 593 : les lignes s'effacent. Les six dernières images sont identiques à l'image 0.
+- **Mouvement :** Image 528 : le réticule verrouille. Images 588 à 593 : les annotations de marge reviennent à leur état de départ. Les six dernières images sont identiques à l'image 0.
 - **Simulation :** Séchage : la brillance de l'encre décroît avec le temps.
 - **Transformation :** Retour exact à l'état initial : la boucle est fermée.
 - **Son :** Déclic final à deux notes et accord bref ; second appui à l'image 540 ; queue d'accord et grain de bande.
@@ -210,8 +209,8 @@ Estimation du rendu final :
 | 453 | 15,10 s | Dernier instant avant le déferlement | Silence d'une double-croche |
 | 456 | 15,20 s | Débordement dans les marges | Plein contrôlé |
 | 504 | 16,80 s | La raclette entre | Retrait, frottement seul |
-| 528 | 17,60 s | Verrouillage final, « Hors-grille. » | Déclic à deux notes, accord |
-| 540 | 18,00 s | « Sous contrôle. » | Second appui |
+| 528 | 17,60 s | Verrouillage final sur le logo | Déclic à deux notes, accord |
+| 540 | 18,00 s | L'encre de la bande commence à sécher | Second appui |
 
 ## D. Références de production
 
@@ -298,7 +297,7 @@ Ce qui reste à prouver :
 ## Textes à l'image
 
 - **Dans l'image, avant la signature :** OFFGRIDZ, seul mot du film
-- **Signature :** « Hors-grille. » à 17,60 s, puis « Sous contrôle. » à 18,00 s, au-dessus du logo
+- **Signature :** Le logo seul, sans phrase (ligne retirée à la demande du client)
 - **En marge, à la signature :** STUDIO CRÉATIF · IDENTITÉ · MOTION · 3D · PUBLICITÉ
 - **Annotations de marge :** ÉPREUVE N° 01 · REPÉRAGE : OK / PERDU · CIBLE : BANDE / FLUX / VERRE · ÉTAT : SOLIDE / GRANULAIRE / LIQUIDE / LUMIÈRE · N = nombre de particules · FOND PERDU · BON À TIRER
 - **Voix :** Aucune

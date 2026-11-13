@@ -1,9 +1,9 @@
 {
   "projet": "OFFGRIDZ · INSOUMISE",
-  "phase": 3,
+  "phase": 4,
   "phases": ["Questions", "Concept", "Préproduction", "Production", "Contrôle qualité"],
-  "etape": "Dossier livré. En fond, sans crédit : animatique et maquette sonore",
+  "etape": "Retours sur l'animatique pris en compte : texte de fin retiré, mojito en rendu réaliste, secondes 2 à 7 à revoir",
   "credits": { "depenses": 8.63, "vise": 200, "plafond": 345 },
-  "attente": "Valider le dossier : storyboard, signature « Hors-grille. Sous contrôle. », paliers de dépense",
-  "action": true
+  "attente": "Bientôt : choisir la nouvelle mise en scène des secondes 2 à 7",
+  "action": false
 }
