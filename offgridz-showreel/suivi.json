@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Palier 4, session A terminée : sucre rectifié (47 images sur 47) et mojito (132 images sur 144), machine éteinte. Contrôle des images et préparation de la session B",
+ "etape": "Palier 4 : session A terminée (sucre rectifié 47 sur 47, mojito 132 sur 144, 36,84 crédits). Les 12 images restantes du mojito se calculent sur notre machine, sans frais. Session B prête et répétée",
  "credits": {
   "depenses": 79.29,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien pour l'instant : le compte rendu de la session A arrive",
- "action": false
+ "attente": "Votre décision pour la session B (rendu final du papier et de l'encre) : 14 à 24 crédits estimés, 32 au plus, votre présence pour deux autorisations",
+ "action": true
 }
