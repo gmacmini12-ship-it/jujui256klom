@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Rectification du sucre validée par vous ; recalcul des images 169 à 215 groupé avec le palier 4 ; versement du mojito en calcul (fin vers 14 h UTC)",
+ "etape": "Tout est prêt pour le palier 4 : versement final, papier et encre corrigés, sessions A et B répétées dans un environnement neuf",
  "credits": {
   "depenses": 42.45,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien pour l'instant : je vous soumets le palier 4 (coût et durées mesurées) dès que le versement et les agents ont terminé",
- "action": false
+ "attente": "Deux choses : rétablir le connecteur Higgsfield de cette conversation (lien « Reconnecter »), et valider le palier 4 (34 à 54 crédits attendus, 75 au maximum)",
+ "action": true
 }
