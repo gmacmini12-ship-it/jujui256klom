@@ -10,16 +10,17 @@ Le film est calculé, pas généré : simulations et rendus sont reproductibles 
 
 ## État
 
-Phase 4 (production) en cours. Crédits Higgsfield dépensés : 79,29 (test GPU 8,63 ; palier 3 : 33,82 ; palier 4,
-session A : 36,84). Cible 200, plafond 345 ; chaque palier payant est soumis au client avant d'être engagé.
+Phase 4 (production) en cours. Crédits Higgsfield dépensés : 92,09 avant la session B2 (test GPU 8,63 ; palier 3 :
+33,82 ; palier 4 : session A 36,84, session B 12,80). Cible 200, plafond 345 ; chaque palier payant est soumis au
+client avant d'être engagé.
 
 | Séquence | Images | État |
 |---|---|---|
-| 0 – 1 Épreuve, déchirure | 0 – 71 | scène prête (`build/seq01`), répétée ; rendu final à faire sur GPU (session B) |
+| 0 – 1 Épreuve, déchirure | 0 – 71 | rendue en qualité finale (`out/final/seq01`, session B) |
 | 2 Grains | 72 – 215 | rendue en qualité finale (`out/final/seq2`) : 893 319 grains ; images 169 à 215 refaites en session A (aucun grain hors du verre) |
-| 3 Mojito | 216 – 359 | 132 images finales sur 144 (`out/final/seq3`, 216 à 347) ; restent les images 348 à 359 |
+| 3 Mojito | 216 – 359 | 216 à 308 finales ; 281 à 308 refaites avec le liquide confiné (session B) ; 309 à 359 refaites avec le brin de menthe corrigé (session B2) |
 | 4 Données | 360 – 455 | rendue (`build/seq4`, 6 millions de points) |
-| 5 – 6 Fond perdu, signature | 456 – 599 | scène prête (`build/seq56`), répétée ; rendu final de la matière à faire sur GPU (session B) |
+| 5 – 6 Fond perdu, signature | 456 – 599 | matière rendue en session B2 (`out/final/seq56/matiere`) |
 | Assemblage | 0 – 599 | compositeur opérationnel (`build/final`), repli sur l'animatique pour ce qui n'est pas rendu |
 
 ## Arborescence
@@ -146,3 +147,22 @@ Le rendu s'est arrêté à l'échéance fixée (30 minutes) : 132 images du moji
 rendre. L'estimation (8 à 10 s par image avec liquide) venait d'une mesure faite avec un liquide limpide (4,8 s) ; le
 liquide trouble retenu ensuite diffuse la lumière dans son volume et coûte trois fois plus. À retenir : mesurer le
 temps par image sur l'aspect définitif avant de chiffrer une session.
+
+
+## Corrections du 13 novembre (retours du client) et sessions B et B2
+
+- **Débordement du mojito.** À 510 ml/s (28 cl versés en 0,56 s de temps réel, montrés au ralenti), le liquide simulé
+  s'accumule au-dessus de la glace plus vite qu'il ne s'infiltre : entre les images 284 et 314 son niveau moyen passe
+  jusqu'à 14 mm au-dessus du bord et il sort du verre. `build/mojito/surface.py --confiner 1` tasse verticalement la
+  surface simulée pendant ce trop-plein (niveau affiché plafonné 5 mm sous le bord) et coupe ce qui dépasse du diamètre
+  intérieur au-dessus du bord. Le mouvement reste celui de la simulation, son amplitude verticale est réduite : ce
+  n'est pas une nouvelle simulation. Images refaites : 281 à 320 (`cache/mojito/liquide_r256c`, lues avec
+  `anim.py --variante c`).
+- **Brin de menthe** (« trop plastique, trop présent ») : les quatre feuilles du bas sont retirées, le bouquet descend
+  de 30 mm le long de sa tige et tourne de 180° (contrôle : aucune feuille ne traverse la glace), les feuilles sont
+  plus mates. À l'origine, une des feuilles du bas traversait un glaçon. Images refaites : 309 à 359.
+- **Session B** (17 h 29, 10 min 49 s, 12,80 crédits) : papier à 1,6 s par image (72 images en 131 s), mojito confiné
+  à 14,8 s par image. L'étape de l'encre a échoué en 3 s : sa scène demandait le débruiteur OptiX, qui ne démarre pas
+  sur la machine louée. La répétition locale ne pouvait pas le voir (elle tourne sur processeur, où ce réglage n'est pas
+  pris). À retenir : relire dans chaque scène les branches réservées au GPU, que la répétition n'exécute pas.
+- **Session B2** (17 h 50) : encre avec OpenImageDenoise, 5 s par image avec les grains ; puis mojito 309 à 359.

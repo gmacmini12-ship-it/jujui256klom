@@ -8,12 +8,12 @@
   "Production",
   "Contrôle qualité"
  ],
- "etape": "Palier 4, session B en cours sur la machine GPU depuis 17 h 29 UTC : papier, encre, 28 images corrigées du mojito. En parallèle : correction du brin de menthe",
+ "etape": "Toutes les images finales sont rendues (600 sur 600). Machines éteintes. Assemblage du film final en cours, puis contrôle qualité",
  "credits": {
-  "depenses": 79.29,
+  "depenses": 113.44,
   "vise": 200,
   "plafond": 345
  },
- "attente": "Rien : la machine s'éteint seule à la fin (15 à 22 minutes attendues, 25 au plus)",
+ "attente": "Rien pour l'instant : le film final arrive",
  "action": false
 }
