@@ -41,10 +41,31 @@ def agrandir(nom, dossier, a, b):
     return n
 
 
+def finales(nom, a, b):
+    """Si la séquence est entièrement rendue en résolution finale (out/final/<nom>), on la relie telle quelle."""
+    src = RACINE / "out" / "final" / nom
+    if not all((src / f"f{f:04d}.png").exists() for f in range(a, b + 1)):
+        return False
+    sortie = APERCU / nom
+    if sortie.is_symlink():
+        sortie.unlink()
+    sortie.mkdir(parents=True, exist_ok=True)
+    for f in range(a, b + 1):
+        cible = sortie / f"f{f:04d}.png"
+        if cible.exists() or cible.is_symlink():
+            cible.unlink()
+        os.symlink(src / f"f{f:04d}.png", cible)
+    if (src / "meta.json").exists():
+        shutil.copy(src / "meta.json", sortie / "meta.json")
+    return True
+
+
 if __name__ == "__main__":
     APERCU.mkdir(parents=True, exist_ok=True)
     for nom, (dossier, a, b) in SOURCES.items():
-        if dossier.exists():
+        if finales(nom, a, b):
+            print(f"{nom} : images finales reliées ({b - a + 1})")
+        elif dossier.exists():
             print(f"{nom} : {agrandir(nom, dossier, a, b)} images d'aperçu agrandies")
     for nom in ("seq01", "seq56"):                     # séquences livrées par ailleurs : reliées telles quelles
         src = RACINE / "out" / "final" / nom

@@ -62,9 +62,14 @@ $BL -b -P build/mojito/anim.py -- --frames 216:359 --res 1008x1512 --spp 256 --d
 
 # Séquence 2 — grains
 python build/grains/lettres.py                               # contours des lettres monumentales
-python build/grains/sim.py dalle --scale 0.008 --threads 3   # échelle d'essai ; finale : --arch cuda --scale 0.35
+python build/grains/sim.py dalle --scale 0.008 --threads 3   # échelle d'essai ; finale : --arch cuda --scale 0.12 --leger 1
 python build/grains/sim.py filet --scale 0.008
 $BL -b -P build/grains/scene.py -- --frames 72:215 --res 1008x1512 --spp 128 --device OPTIX --out out/final/seq2
+
+# Session sur la machine GPU louée : une seule commande lance tout (build/gpu/pilote.sh), le suivi se fait sans commande
+python build/gpu/kit.py code                 # archive à déposer : scripts, petites données, adresses de dépôt des résultats
+python build/gpu/surveiller.py <créneaux.json> <dossier> <heure de départ>   # lit les journaux déposés par la machine
+python build/gpu/recevoir.py <créneaux.json>  # récupère, range et contrôle les images, le filet et les journaux
 
 # Assemblage
 python build/final/compose.py               # out/final/master, insoumise_wip.mp4, planche, rapport de contrôles
@@ -81,6 +86,7 @@ python build/final/apercu.py                # aperçu complet à partir des rend
 | Points de la séquence 4 | champ de vecteurs sans divergence, attirés vers des formes cibles |
 | Film d'encre, raclette | couche mince simulée, raclette comme paroi mobile |
 | Caméra, brin de menthe, buée, bulles accrochées, réticule | animés à la main |
+| Grains lointains, hors champ ou enfouis (séquence 2) | mêmes positions simulées ; rendus en sphères dont les facettes viennent de la normale, pas d'une géométrie de cristal (niveau de détail de rendu, aucun grain retiré) |
 
 ## Mesures du test GPU (13 novembre, L40S louée 7 min 17 s)
 
@@ -89,6 +95,27 @@ python build/final/apercu.py                # aperçu complet à partir des rend
 | Verre, glace, liquide, 256 échantillons | 4,8 s par image | environ 11 minutes |
 | 3 millions de grains, 128 échantillons | 1,2 s par image | environ 3 minutes |
 | Solveur de particules | 8,6 ms par pas pour 4 millions | 129 ms par pas pour 400 000 |
+
+## Session GPU des grains (13 novembre, 10 h 08, L40S louée 11 min 17 s, 13,36 crédits)
+
+| Étape | Durée mesurée |
+|---|---|
+| Installation : Python, Taichi, OpenCV ; puis Blender pendant la simulation | 6 s, puis 12 s |
+| Simulation de la dalle : 893 319 grains, 27 661 pas | 85 s |
+| Simulation du filet : 95 images | 35 s |
+| Rendu de l'atelier, images 72 à 167, 128 échantillons | 318 s : 1,8 s par image en plan large, 4,5 à 5 s en gros plan (350 000 cristaux) |
+| Rendu de la descente et du verre, images 168 à 215 | 139 s, soit 2,9 s par image |
+| Envois : six tranches de 24 images (100 à 140 Mo), le filet (221 Mo) | 10 à 20 s chacun |
+
+Trois locations ont été nécessaires ; deux ont échoué (20,46 crédits sans résultat). Ce qu'elles ont appris :
+
+- Chaque commande envoyée à la machine peut attendre une autorisation dans l'application ; pendant ce temps la machine
+  tourne. La session part donc d'une seule commande (`pilote.sh`), se suit sans commande (journaux déposés à heures fixes)
+  et s'arrête seule : le pilote termine le processus d'accueil de la machine, qui s'éteint dans la minute.
+- Une répétition n'est fidèle que dans un environnement créé de zéro par le script d'installation lui-même : la première
+  utilisait l'environnement de production, où OpenCV était déjà présent.
+- Le test de vitesse d'origine rendait des points, pas des cristaux instanciés : un million d'instances demandent 10 s de
+  préparation par image sur un cœur. D'où le niveau de détail automatique (`GrainsMixtes`).
 
 La machine louée demande deux corrections à l'installation, reprises dans `build/gpu/session.sh` :
 `chmod 1777 /tmp` et l'option `-o APT::Sandbox::User=root` pour installer les bibliothèques système de Blender.
