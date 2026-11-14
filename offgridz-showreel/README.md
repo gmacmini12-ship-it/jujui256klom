@@ -10,7 +10,8 @@ Le film est calculé, pas généré : simulations et rendus sont reproductibles 
 
 ## État
 
-Projet terminé : film livré et validé par le client le 13 novembre. Crédits Higgsfield dépensés : 147,68, uniquement en
+Projet terminé : film livré et validé par le client le 13 novembre ; fichier de diffusion réexporté le 14 novembre
+(correction technique, aucun crédit). Crédits Higgsfield dépensés : 147,68, uniquement en
 location de machine de calcul (test GPU 8,63 ; palier 3 : 33,82 ; palier 4 : 70,99 ; session C : 16,98 ; session D : 17,26). Cible 200, plafond 345 ; chaque dépense est soumise au client avant d'être engagée.
 
 | Séquence | Images | État |
@@ -20,7 +21,7 @@ location de machine de calcul (test GPU 8,63 ; palier 3 : 33,82 ; palier 4 : 70,
 | 3 Mojito | 216 – 359 | finale ; liquide confiné, brin de menthe corrigé ; images 265 à 321 refaites pour que rien ne sorte du verre (session D) |
 | 4 Données | 360 – 455 | finale (`build/seq4`, 6 millions de points), gardée telle quelle par le client |
 | 5 – 6 Fond perdu, signature | 456 – 599 | finale (`out/final/seq56/matiere`, session B2) |
-| Assemblage | 0 – 599 | `build/final/compose.py` ; contrôle `build/final/qc.py` |
+| Assemblage | 0 – 599 | `build/final/compose.py` ; contrôle `build/final/qc.py` ; export de diffusion `build/final/exporter.py` |
 
 ## Arborescence
 
@@ -74,6 +75,7 @@ python build/gpu/recevoir.py <créneaux.json>  # récupère, range et contrôle 
 # Assemblage
 python build/final/compose.py               # out/final/master, insoumise_wip.mp4, planche, rapport de contrôles
 python build/final/apercu.py                # aperçu complet à partir des rendus basse définition (out/apercu)
+python build/final/exporter.py --temoin out/livraison/OFFGRIDZ_INSOUMISE_1080x1920.mp4   # export de diffusion depuis out/final/master, puis contrôles
 ```
 
 ## Ce qui est simulé, ce qui est posé à la main
@@ -198,8 +200,38 @@ Rapports complets : `out/qc/relecture_image.md` et `out/qc/relecture_son_techniq
 
 | Fichier | Contenu |
 |---|---|
+| `OFFGRIDZ_INSOUMISE_FINAL_1080x1920.mp4` | diffusion, export du 14 novembre : le fichier à utiliser (voir plus bas) |
 | `OFFGRIDZ_INSOUMISE_1080x1920.mp4` | diffusion : H.264 High, 600 images, 20,000 s ; AAC 320 kb/s, -14,0 LUFS, -1,5 dBTP |
 | `OFFGRIDZ_INSOUMISE_720x1280_leger.mp4` | version légère ; AAC 192 kb/s, -1,6 dBTP |
 | `OFFGRIDZ_INSOUMISE_master_prores422hq.mov` | maître ProRes 422 HQ 10 bits, son PCM 24 bits (-1,2 dBTP) |
 | `OFFGRIDZ_INSOUMISE_son_master.wav`, `_musique.wav`, `_bruitages.wav` | bande son et pistes séparées, 24 bits 48 kHz |
 | `OFFGRIDZ_INSOUMISE_affiche.png` | image 0 : le logo (identique à l'image 599) |
+
+## Réexport du 14 novembre : correction technique, aucun crédit
+
+Le client a mesuré une copie du film à 512 × 910. Constat : le fichier livré le 13 novembre mesure 1080 × 1920
+(FFprobe) et aucune vidéo du projet n'a cette taille. Les fichiers avaient été envoyés dans la conversation avec
+lecture intégrée ; la copie réduite vient vraisemblablement de là ou d'une messagerie, sans que nous puissions le
+vérifier. À retenir : remettre un film en pièce jointe à télécharger et dans une archive `.zip`, et donner son poids
+comme repère.
+
+`build/final/exporter.py` refait l'encodage depuis les 600 images maîtresses et la bande son validée, sans rien
+recomposer, puis contrôle le fichier (rapport : `livraison/controle_qualite/export_final_1080x1920.json`).
+
+- **Résultat** : `OFFGRIDZ_INSOUMISE_FINAL_1080x1920.mp4`, 67,7 Mo, H.264 High niveau 4.1, CRF 12, 26,7 Mb/s ;
+  600 images, 20,000 s, 30 images/s ; décodage sans erreur ni avertissement ; bande son identique au bit près à celle
+  du 13 novembre. Perte d'encodage (PSNR de la luminance face aux images maîtresses) : 50,5 dB en moyenne, 41,9 dB au
+  plus bas ; le fichier du 13 novembre : 49,5 et 40,9 dB.
+- **Plafond de débit.** Un premier essai plafonné à 40 Mb/s dégradait le film d'encre (39,1 dB au plus bas, moins bien
+  que le fichier validé) : cette séquence demande jusqu'à 114 Mb/s sur une seconde. Le plafond retenu est celui du
+  niveau 4.1 (62,5 Mb/s, tampon de 78,125 Mb), que le flux respecte : le tampon du décodeur ne descend jamais sous
+  18,4 Mb. Un niveau ne limite pas chaque seconde au débit maximal ; il faut simuler le tampon.
+- **Test « est-ce un agrandissement ? »** Le fichier est réduit à 512 × 910 puis ragrandi, et comparé à lui-même.
+  Étalonnage : le vrai film donne 34,8 dB en médiane (de 31,6 à 39,1 dB) ; deux faux, fabriqués en agrandissant une
+  version 512 × 910, donnent 46,9 et 47,3 dB (jamais moins de 44,0). Le seuil du contrôle est à 38 dB.
+- **Ce qui est natif.** Les 600 images maîtresses viennent toutes des rendus finaux (aucune doublure) : fenêtre
+  1008 × 1512 posée sans mise à l'échelle, matière du fond perdu en 1080 × 1920, logo source de 1254 px réduit à
+  1008 px. Deux éléments sont moins définis que l'image depuis l'origine et n'ont pas été refaits, pour ne pas
+  changer des images validées : les textures de la feuille quand la caméra s'en approche (images 24 à 62, jusqu'à
+  6 % avant la plongée dans le O, bien plus pendant) ; l'épaisseur du film d'encre, simulée sur une grille de 4 puis
+  6 pixels par maille (`cache/seq56/.../film_fpx4_*`), l'image étant calculée en 1080 × 1920 à partir de ce champ.

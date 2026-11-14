@@ -1,12 +1,13 @@
 # OFFGRIDZ — « INSOUMISE »
 
-Showreel de 20 secondes, vertical. Livraison du 13 novembre 2026.
+Showreel de 20 secondes, vertical. Livraison du 13 novembre 2026 ; fichier de diffusion réexporté le 14 novembre.
 
 ## Fichiers
 
 | Fichier | Usage | Caractéristiques |
 |---|---|---|
-| `OFFGRIDZ_INSOUMISE_1080x1920.mp4` | diffusion | H.264 High, 1080 × 1920, 30 images/s, 600 images, 20,000 s ; son AAC 320 kb/s, -14,0 LUFS, crête -1,5 dBTP |
+| `OFFGRIDZ_INSOUMISE_FINAL_1080x1920.mp4` | **diffusion : le fichier à utiliser** (67,7 Mo) | H.264 High niveau 4.1, 1080 × 1920, 30 images/s, 600 images, 20,000 s, 26,7 Mb/s ; son AAC 320 kb/s, -14,0 LUFS, crête -1,5 dBTP |
+| `OFFGRIDZ_INSOUMISE_1080x1920.mp4` | diffusion, export du 13 novembre (58,4 Mo) | le même film, même taille d'image, 23,0 Mb/s ; même bande son |
 | `OFFGRIDZ_INSOUMISE_720x1280_leger.mp4` | messagerie, téléphone | même film en 720 × 1280 ; son AAC 192 kb/s, crête -1,6 dBTP |
 | `OFFGRIDZ_INSOUMISE_master_prores422hq.mov` | maître, montage, réencodages | ProRes 422 HQ 10 bits ; son PCM 24 bits 48 kHz, -14,0 LUFS, crête -1,2 dBTP |
 | `OFFGRIDZ_INSOUMISE_son_master.wav` | bande son seule | 24 bits, 48 kHz, stéréo |
@@ -14,6 +15,29 @@ Showreel de 20 secondes, vertical. Livraison du 13 novembre 2026.
 | `OFFGRIDZ_INSOUMISE_affiche.png` | vignette | image 0 du film : le logo, identique à l'image 599 |
 
 Le film boucle : la dernière image est identique à la première, et le son se raccorde.
+
+## Réexport du 14 novembre (correction technique)
+
+Une copie du film mesurait 512 × 910. Le fichier livré le 13 novembre mesure bien 1080 × 1920 et aucun fichier du
+projet n'a cette taille : elle vient d'une copie recompressée en route (lecteur intégré d'une application,
+messagerie), ce que nous ne pouvons pas vérifier d'ici. **Repère simple : le bon fichier pèse 67,7 Mo.** Une copie de
+quelques mégaoctets est une version réduite ; prendre alors l'archive `.zip`, qui ne peut pas être recompressée.
+
+- Fait : nouvel encodage depuis les 600 images maîtresses (1080 × 1920, 16 bits) et la bande son validée. Aucune
+  image n'est redimensionnée ni recalculée ; même conversion de couleur ; la bande son est identique, au bit près, à
+  celle du 13 novembre. Qualité d'encodage un cran au-dessus (26,7 Mb/s au lieu de 23,0).
+- Vérifié sur le fichier (FFprobe et décodage complet) : 1080 × 1920, 600 images, 20,000 s, 30 images/s constantes,
+  son présent, aucune erreur ni avertissement. Rapport : `controle_qualite/export_final_1080x1920.json`.
+- Ce n'est pas un agrandissement. Mesure : réduit à 512 × 910 puis ragrandi, le film perd nettement (34,8 dB), alors
+  qu'un fichier fabriqué par agrandissement en sort presque intact (47 dB).
+- Rien n'a été agrandi pour cet export, et toutes les images du film sont calculées à leur taille d'affichage. Deux
+  éléments sont, depuis l'origine, moins définis que l'image ; ils n'ont pas été touchés, car les refaire changerait
+  des images validées :
+  - ouverture, images 24 à 62 : la caméra s'approche de la feuille puis plonge dans le O. Les textures de la
+    feuille, dont le logo (source de 1254 px, posé à 1008 px), sont alors vues de plus près que leur définition :
+    6 % au plus jusqu'à l'image 47, bien davantage pendant la plongée, dans le flou de mouvement ;
+  - film d'encre, 15,2 à 17,6 s : l'épaisseur de l'encre est simulée sur une grille de 4 à 6 pixels par maille ;
+    l'image, elle, est calculée en 1080 × 1920 à partir de ce champ.
 
 ## Contenu
 

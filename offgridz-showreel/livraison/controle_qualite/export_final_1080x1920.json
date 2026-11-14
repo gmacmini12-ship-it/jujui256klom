@@ -1,0 +1,146 @@
+{
+ "fichier": "OFFGRIDZ_INSOUMISE_FINAL_1080x1920.mp4",
+ "octets": 67689768,
+ "sha256": "d8afb3d1685b517cfcc54181b24ec75ed282efeba88cd970fb4a67d42336a919",
+ "debit_total_kbps": 27076,
+ "video": {
+  "codec": "h264",
+  "profil": "High",
+  "niveau": 41,
+  "largeur": 1080,
+  "hauteur": 1920,
+  "pixels": "yuv420p",
+  "cadence": "30/1",
+  "images": 600,
+  "duree_s": 20.0,
+  "debit_kbps": 26727,
+  "debit_maximal_sur_une_seconde_kbps": 114444,
+  "marge_minimale_du_tampon_kb": 18399,
+  "espace": "bt709",
+  "plage": "tv"
+ },
+ "son": {
+  "codec": "aac",
+  "profil": "LC",
+  "frequence": 48000,
+  "canaux": 2,
+  "debit_kbps": 339,
+  "duree_s": 20.0,
+  "lufs": -14.0,
+  "crete_dbtp": -1.5
+ },
+ "perte_encodage_psnr_y_db": {
+  "moyen": 50.53,
+  "minimal": 41.87,
+  "image_la_plus_faible": 482,
+  "par_sequence": {
+   "0 Épreuve": {
+    "moyen": 50.65,
+    "minimal": 48.95,
+    "image": 16
+   },
+   "1 Déchirure": {
+    "moyen": 50.68,
+    "minimal": 47.81,
+    "image": 48
+   },
+   "2 Grains": {
+    "moyen": 51.24,
+    "minimal": 48.31,
+    "image": 128
+   },
+   "3 Mojito": {
+    "moyen": 50.16,
+    "minimal": 47.78,
+    "image": 267
+   },
+   "4 Données": {
+    "moyen": 48.51,
+    "minimal": 44.63,
+    "image": 379
+   },
+   "5 Fond perdu": {
+    "moyen": 46.92,
+    "minimal": 41.87,
+    "image": 482
+   },
+   "6 Signature": {
+    "moyen": 55.98,
+    "minimal": 49.51,
+    "image": 599
+   }
+  }
+ },
+ "aller_retour_512x910_psnr_y_db": {
+  "mediane": 34.8,
+  "minimal": 31.6,
+  "maximal": 39.08
+ },
+ "decodage": {
+  "code": 0,
+  "erreurs": ""
+ },
+ "temoin": {
+  "fichier": "OFFGRIDZ_INSOUMISE_1080x1920.mp4",
+  "psnr_y_db": {
+   "moyen": 49.53,
+   "minimal": 40.89,
+   "image_la_plus_faible": 482,
+   "par_sequence": {
+    "0 Épreuve": {
+     "moyen": 50.13,
+     "minimal": 48.31,
+     "image": 16
+    },
+    "1 Déchirure": {
+     "moyen": 49.9,
+     "minimal": 47.05,
+     "image": 48
+    },
+    "2 Grains": {
+     "moyen": 50.51,
+     "minimal": 47.98,
+     "image": 128
+    },
+    "3 Mojito": {
+     "moyen": 49.3,
+     "minimal": 46.99,
+     "image": 267
+    },
+    "4 Données": {
+     "moyen": 47.61,
+     "minimal": 43.86,
+     "image": 379
+    },
+    "5 Fond perdu": {
+     "moyen": 46.42,
+     "minimal": 40.89,
+     "image": 482
+    },
+    "6 Signature": {
+     "moyen": 53.27,
+     "minimal": 48.69,
+     "image": 597
+    }
+   }
+  },
+  "images_ou_le_nouveau_est_meilleur": 551,
+  "flux_son_identique": true
+ },
+ "controles": {
+  "résolution 1080 × 1920": true,
+  "aucune rotation ni pixel non carré": true,
+  "30 images par seconde, constantes": true,
+  "600 images": true,
+  "durée de 20 secondes": true,
+  "H.264 High niveau 4.1, yuv420p": true,
+  "débit dans les limites du niveau 4.1 (le tampon du décodeur ne se vide jamais)": true,
+  "son AAC stéréo 48 kHz présent, 20 secondes": true,
+  "décodage complet sans erreur": true,
+  "perte d'encodage : PSNR minimal au-dessus de 40 dB sur les 600 images": true,
+  "détail natif : aller-retour par 512 × 910 sous 38 dB (médiane)": true,
+  "son : -14 LUFS, crête sous -1 dBTP": true,
+  "au moins aussi fidèle que OFFGRIDZ_INSOUMISE_1080x1920.mp4, séquence par séquence": true,
+  "bande son identique à celle de OFFGRIDZ_INSOUMISE_1080x1920.mp4 (même flux AAC)": true
+ }
+}

@@ -10,5 +10,13 @@
   "media_id": "0dd4d793-45ea-4b0c-a5e8-fdd6e8c56a2a",
   "octets": 343124652,
   "sha256": "04bc6ba6f0b384e24102b310dbb28335f9977df13ada2e4775e56d55bfeaf8ef"
+ },
+ "OFFGRIDZ_INSOUMISE_FINAL_1080x1920.zip": {
+  "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3K4BbsUGKUaFKRpjhVL9YaLwms9/c8206902-1e15-45dc-a977-296956c1ec99.zip",
+  "media_id": "c8206902-1e15-45dc-a977-296956c1ec99",
+  "octets": 67689942,
+  "sha256": "a83d6ba4d7e231a44c81f381e4fc157838f675babe43732f0237b8209f2e96e4",
+  "contenu": "OFFGRIDZ_INSOUMISE_FINAL_1080x1920.mp4, export du 14 novembre (67 689 768 octets)",
+  "sha256_du_film": "d8afb3d1685b517cfcc54181b24ec75ed282efeba88cd970fb4a67d42336a919"
  }
 }
