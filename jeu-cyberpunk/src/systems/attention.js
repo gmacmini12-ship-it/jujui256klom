@@ -67,7 +67,8 @@ export const attention = {
 
   plancher() {
     const t = this.jeu.etat.transgressions || {};
-    return FACTEUR_PLANCHER * Object.values(t).filter((n) => n > 0).length;
+    // seuls comptent les types qui pèsent sur l'Attention (T7, T13 et T15 valent 0 : ce ne sont pas des écarts)
+    return FACTEUR_PLANCHER * Object.entries(t).filter(([id, n]) => n > 0 && (MONTANTS[id] ?? 0) > 0).length;
   },
 
   /** Écrit la valeur, met à jour le maximum, émet change puis palier. */

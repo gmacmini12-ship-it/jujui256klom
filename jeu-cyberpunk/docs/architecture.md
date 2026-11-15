@@ -85,6 +85,10 @@ Ville (`jeu.zones.get('kasumi')`) :
 - Sorties : `attention:change { valeur, delta, id }` (id = Tn, `decroissance`, `fixer`, `nouvelle`), `attention:palier { palier, ancien }` (montée et descente).
 - Aucune jauge ; `?attention` dans l'URL affiche une ligne de débogage en haut à gauche.
 
+### La conversation du palier 4 (src/systems/conversation.js, textes dans data/dialogues-attention.js et data/conversation.js)
+
+Quand `jeu.reactions.appelActif` (Attention ≥ 85), Mima pose la question dans sa bande ; rien ne s'ouvre sans E. Invite « E — Répondre à R-4 » devant un hologramme proche, l'écran du Kiosque ou un écran déclaré par `jeu.conversation.ajouterEcran({ zone, position, rayon })` (cabines d'un lieu futur), et, tant que la question attend, une invite libre partout en ville. L'invite ouvre un dialogue à deux choix. Refus : `etat.conversation.refus` +1, réplique, rappel après 3 min de temps de jeu (`texteRappel(refus)`), Attention inchangée. Acceptation : `DIALOGUES_ATTENTION[choisirConversation(etat)]` ; si elle va à son terme, `jeu.attention.fixer(60)` (l'appel cesse) puis `conversation:fin { dormir, chaise }` (drapeaux `palier4_dormir` / `palier4_chaise`, laissés posés ; aucune fin n'est lancée ici). Évènements : `conversation:debut`, `conversation:fin`, `conversation:interrompue` (dialogue quitté avant la fin : l'appel reste), `conversation:refus { refus }`, `conversation:rappel { refus }`. API : `jeu.conversation` = `{ disponible, enCours, enAttente, refus, rappelRestant, ajouterEcran, proposer(), accepter(), refuser() }`. État sauvegardé : `etat.conversation = { refus, rappelRestant (s), enAttente }` ; l'appel dérive de l'Attention, donc reprend après rechargement. Sourdine : ni invite, ni question, ni minuteur. Si l'Attention redescend sous 85 sans conversation, la question et le minuteur sont annulés (le compteur de refus reste).
+
 ## Ajouter un objet interactif
 
 ```js

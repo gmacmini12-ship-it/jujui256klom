@@ -601,10 +601,11 @@ export const reactions = {
     if (!Array.isArray(portes)) return;
     const cam = this.jeu.camera.position;
     for (const d of portes) {
-      if (!d || d.ouverte || typeof d.ouvrir !== 'function') continue;
-      const q = d.position;
-      if (!q || Math.hypot(q.x - cam.x, q.z - cam.z) > 22) continue;
-      try { d.ouvrir({ source: 'reactions', avance: true }); } catch (e) { console.error('[reactions] porte :', e); }
+      if (!d || d.ouverte) continue;
+      const q = d.position ?? d;
+      if (!Number.isFinite(q.x) || Math.hypot(q.x - cam.x, q.z - cam.z) > 22) continue;
+      // ouverte d'avance : ce n'est pas le joueur qui force, rien n'est compté
+      try { this.jeu.transgressions.ouvrirPorte(d, 'auto', false); } catch (e) { console.error('[reactions] porte :', e); }
     }
   },
 };
