@@ -201,7 +201,7 @@ function texturePancarte(lignes) {
   g.textBaseline = 'middle';
   g.shadowColor = '#ff2bd6';
   g.shadowBlur = 10;
-  g.font = '700 30px ui-monospace, "DejaVu Sans Mono", monospace';
+  g.font = '700 23px ui-monospace, "DejaVu Sans Mono", monospace';
   g.fillText(lignes[0], 256, 44);
   g.font = '700 34px ui-monospace, "DejaVu Sans Mono", monospace';
   g.fillText(lignes[1], 256, 90);
@@ -782,6 +782,7 @@ export const transgressions = {
     boite(lueur, 0.12, 0.05, L, x + 3.1, 0.12, zc, 0x4a7dff);
     boite(lueur, 0.22, 0.06, L, x, 5.55, zc, 0xff2bd6);
     boite(lueur, 9.4, 0.1, 0.1, x, 5.55, z0 + 0.05, 0xff2bd6);
+    boite(lueur, 6.4, 4.6, 0.1, x, 2.5, z1 - 0.5, 0x6a4aa8); // la lumière au bout du couloir
     for (let i = 0; i < 6; i++) boite(lueur, 6.6, 0.05, 0.12, x, 5.5, z0 + 3.2 + i * 3, i % 2 ? 0x4a7dff : 0xc44bff);
     const mS = new THREE.Mesh(mergeGeometries(solide), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.35 }));
     const mL = new THREE.Mesh(mergeGeometries(lueur), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
