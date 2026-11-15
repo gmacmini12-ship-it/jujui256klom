@@ -25,6 +25,7 @@ import { TEXTES_TOITS, ENSEIGNES_TOITS } from '../data/toits.js';
 //    neutralisés pendant l'assise, et la position sauvegardée est celle où l'on se relève.
 
 const ZONE = 'kasumi';
+const COUCHE_TOITS = 1;
 const LEVRE = 0.3; // acrotère bas : praticable (≤ 0,35 m), on peut le franchir et tomber
 const SURELEVATION = 0.02; // décor posé juste au-dessus du revêtement
 
@@ -1066,7 +1067,7 @@ const ASSISES = [
   { id: 'chaine-est', toit: 'C1', bord: 'e', coord: 112.0, yaw: -0.95, pitch: 0.03 },
   { id: 'chaine-haut', toit: 'C2E', bord: 'w', coord: 115.0, yaw: Math.PI / 2, pitch: 0.05 },
   // toit du karaoké (Bond) : rebord nord, vers la tour par-dessus le toit de la clinique
-  { id: 'karaoke', toit: 'K', bord: 'n', coord: 74.5, yaw: 0.9, pitch: 0.03 },
+  { id: 'karaoke', toit: 'K', bord: 'n', coord: 74.5, yaw: 0.78, pitch: 0.1 },
   // étage technique du toit A (Bond)
   { id: 'clinique-haut', toit: 'AE', bord: 'n', coord: 66.5, yaw: 0.55, pitch: 0.08 },
 ];
@@ -1289,6 +1290,10 @@ export const toits = {
       racine.add(this.bouleMesh);
       this.stats.lots += 1;
     }
+    // Couche 1 : la caméra du joueur la voit, pas le miroir du sol (Reflector, caméra virtuelle sur la couche 0).
+    // Le décor des toits n'apparaît jamais dans le reflet de la rue ; ça évite de le dessiner deux fois.
+    racine.traverse((o) => o.layers.set(COUCHE_TOITS));
+    jeu.camera.layers.enable(COUCHE_TOITS);
     zone.scene.add(racine);
     this.racine = racine;
   },
