@@ -436,6 +436,7 @@ export const veilleur = {
   rattrapageAutorise() {
     const e = this.jeu.etat;
     if (this.jeu.sourdine?.actif) return false; // les Veilleurs perdent leur cible
+    if (this.jeu.silence?.muette) return false; // fin 5 : plus de Veilleurs
     return !e.rattrapageCoupe && (e.chutes || 0) < RATTRAPAGES;
   },
 

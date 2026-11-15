@@ -213,7 +213,7 @@ export const reactions = {
     if (jeu.sourdine?.actif) { this.surSourdine(dt, t); return; } // tout reste figé, sauf ce qui perd sa cible
     this._enSourdine = false;
     if (this._reprise > 0) this._reprise = Math.max(0, this._reprise - dt);
-    const p = jeu.attention?.palier ?? 0;
+    const p = jeu.silence?.muette ? 0 : jeu.attention?.palier ?? 0; // fin 5 : Mima s'est tue, tout se défait
     this.palier = p;
     const N = this.niveaux;
     const k = REGLAGES.vitesseNiveau;

@@ -438,7 +438,8 @@ export const calque = {
     dt = d;
     if (borne?.mat) respirer(borne.mat, t, possede() ? 0.5 : 1.8);
 
-    if (jeu.jouable && jeu.input.pressed('KeyC') && possede()) calque.basculer();
+    if (jeu.jouable && jeu.input.pressed('KeyC') && possede() && !jeu.silence?.muette) calque.basculer(); // fin 5 : plus de lignes
+    if (active && jeu.silence?.muette) calque.basculer(false);
     if (active && !possede()) calque.basculer(false); // nouvelle partie, état rechargé
 
     const montre = active && jeu.enPartie && !jeu.suspensions.has('dialogue') && !jeu.suspensions.has('frise') && !jeu.suspensions.has('ouverture');

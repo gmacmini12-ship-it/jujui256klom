@@ -55,8 +55,10 @@ export function createInteract({ camera, input, hud, jeu }) {
     camera.getWorldDirection(dir);
     let meilleur = null;
     let score = Infinity;
+    const filtre = api.filtre;
     for (const o of objets) {
       if (o.zone && o.zone !== zone) continue;
+      if (filtre && !filtre(o)) continue;
       if (!estVisible(o)) continue;
       vers.subVectors(o.position, p);
       const d = vers.length();
@@ -93,7 +95,9 @@ export function createInteract({ camera, input, hud, jeu }) {
     }
   }
 
-  return {
+  const api = {
+    /** Facultatif : (objet) => booléen ; faux = l'objet est ignoré (fin 5 : l'aube n'offre aucune interaction). */
+    filtre: null,
     ajouter,
     retirer,
     update,
@@ -106,4 +110,5 @@ export function createInteract({ camera, input, hud, jeu }) {
       return cible;
     },
   };
+  return api;
 }

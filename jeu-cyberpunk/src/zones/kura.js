@@ -1261,6 +1261,8 @@ export function creerKura(jeu) {
     /** Position (une fois) des bornes etc. : voir systems/kura.js. */
     salle: () => etatAtmos.salle,
     ondulationLocale: () => fm.ondLocale,
+    /** Ondulation ajoutée par systems/profondeurs.js (jauge de chaleur) ; 0 = rien. */
+    ondulationExtra: 0,
     /** Nouvelle partie : la ville se rallume, Sept et les écrans de l'Interrupteur reviennent à leur veille, le levier se relève. */
     remettre() {
       panorama.tout(1);
@@ -1345,7 +1347,7 @@ export function creerKura(jeu) {
       fm.ondLocale = chaleur;
       if (j.film) {
         const base = etatAtmos.cible.ond;
-        const cible = Math.min(1.4, base + chaleur * 0.9);
+        const cible = Math.min(1.9, base + chaleur * 0.9 + this.ondulationExtra);
         const u = j.film.uniforms.ondulation;
         u.value += (cible - u.value) * Math.min(1, dt * 3);
       }

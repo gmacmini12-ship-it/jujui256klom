@@ -19,9 +19,9 @@ export function createRain(count = 9000) {
   const mat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: { time: { value: 0 }, cam: { value: new THREE.Vector3() } },
+    uniforms: { time: { value: 0 }, cam: { value: new THREE.Vector3() }, densite: { value: 1 } },
     vertexShader: /* glsl */ `
-      uniform float time; uniform vec3 cam;
+      uniform float time; uniform vec3 cam; uniform float densite;
       attribute float end;
       varying float vAlpha;
       void main() {
@@ -31,7 +31,7 @@ export function createRain(count = 9000) {
         p.x = mod(p.x - cam.x, ${BOX.toFixed(1)}) - ${(BOX / 2).toFixed(1)} + cam.x + end * 0.05;
         p.z = mod(p.z - cam.z, ${BOX.toFixed(1)}) - ${(BOX / 2).toFixed(1)} + cam.z;
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
-        vAlpha = 0.24 * smoothstep(${(BOX / 2).toFixed(1)}, 6.0, -mv.z);
+        vAlpha = 0.24 * smoothstep(${(BOX / 2).toFixed(1)}, 6.0, -mv.z) * densite;
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */ `
@@ -46,18 +46,21 @@ export function createRain(count = 9000) {
       mat.uniforms.time.value = t;
       mat.uniforms.cam.value.copy(camera.position);
     },
+    /** Fin 5 (l'aube) : la pluie faiblit. 1 = pluie normale. */
+    get densite() { return mat.uniforms.densite.value; },
+    set densite(v) { mat.uniforms.densite.value = Math.max(0, v); },
   };
 }
 
 // Passe finale, en espace écran : aberration chromatique, vignette, étalonnage violet
 // et réduction du nombre de teintes avec tramage (rendu « dessiné »).
 export const FilmShader = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, levels: { value: 14 }, sourdine: { value: 0 }, halo: { value: 0 }, ondulation: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, levels: { value: 14 }, sourdine: { value: 0 }, halo: { value: 0 }, ondulation: { value: 0 }, aube: { value: 0 } },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform float time; uniform float levels; uniform float sourdine; uniform float halo; uniform float ondulation;
+    uniform sampler2D tDiffuse; uniform float time; uniform float levels; uniform float sourdine; uniform float halo; uniform float ondulation; uniform float aube;
     varying vec2 vUv;
     void main() {
       vec2 d = vUv - 0.5;
@@ -82,7 +85,14 @@ export const FilmShader = {
       vec3 mid = vec3(0.5, 0.16, 0.92);
       vec3 hi = vec3(1.0, 0.72, 0.99);
       vec3 duo = lum < 0.5 ? mix(sh, mid, lum * 2.0) : mix(mid, hi, lum * 2.0 - 1.0);
-      col = mix(col, duo, 0.42 * (1.0 - 0.5 * sourdine));
+      // Aube de la fin 5 (0 = rendu inchangé) : l'étalonnage violet se retire devant le gris d'aube
+      float duoMix = 0.42 * (1.0 - 0.5 * sourdine);
+      if (aube > 0.0) duoMix *= 1.0 - 0.78 * aube;
+      col = mix(col, duo, duoMix);
+      if (aube > 0.0) {
+        float l2 = dot(col, vec3(0.299, 0.587, 0.114));
+        col = mix(col, vec3(l2) * vec3(0.97, 0.985, 1.03), 0.38 * aube);
+      }
       // Sourdine : couleurs désaturées, la ville « brute »
       col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), 0.55 * sourdine);
       // Halo du Sceau (fin « Rester », 0 = rendu inchangé) : couleurs réchauffées, vignette rose-violet
@@ -108,6 +118,8 @@ export const FilmShader = {
 // (nappe coupée en `duree` s, pluie plus présente, filtre ouvert) : la Sourdine (bible §4.3).
 // `ronflement(volume, duree)` : couche grave de Kura (0 = absente, rien n'est créé ni changé ; 0,15 = fort), fondue en `duree` s.
 // `tonalite({ de, vers, duree, volume, type })`, `souffle({ de, vers, duree, volume, q })` : sons brefs des pouvoirs.
+// Fin 5 (systems/silence.js) : `nappeNotes([g0..g3], duree)` éteint les notes de la nappe une à une (1 = inchangé),
+// `ronflementTimbre(k, duree)` change le ronflement (0 = d'origine). Pluie : `rain.densite`. Image : uniform `aube`.
 const ACCORDS = { defaut: [55, 55.35, 82.4, 110.3], majeur: [55, 69.3, 82.4, 138.6] };
 export function createAudio() {
   let ctx = null;
@@ -124,6 +136,11 @@ export function createAudio() {
   const NAPPE = 0.09; // volume de la nappe grave
   let ronflVol = 0; // couche de ronflement (Kura) : volume voulu
   let ronflGain = null;
+  // Fin 5 : la nappe se défait note par note (un gain par oscillateur, 1 = inchangé) ; le ronflement change de timbre.
+  const notesNappe = [1, 1, 1, 1];
+  const gainsNotes = [];
+  let timbreRonfl = 0; // 0 = ronflement d'origine ; 1 = les battements cessent, l'harmonique se tait
+  const ronflParts = { battement: null, harmonique: null, filtre: null };
   // valeurs effectives : la ville brute a une pluie plus présente (×1,6) et un filtre ouvert
   const pluieEff = () => reglage.pluie * (1 + 0.6 * (1 - accomp));
   const filtreEff = () => reglage.filtre + (20000 - reglage.filtre) * (1 - accomp);
@@ -162,14 +179,17 @@ export function createAudio() {
     lp.connect(droneGain).connect(filtre);
     droneFiltre = lp;
     lp.frequency.value = accordNom === 'majeur' ? 420 : 240;
-    for (const f of ACCORDS[accordNom]) {
+    ACCORDS[accordNom].forEach((f, i) => {
       const o = ctx.createOscillator();
       o.type = 'sawtooth';
       o.frequency.value = f;
       droneOsc.push(o);
-      o.connect(lp);
+      const g = ctx.createGain();
+      g.gain.value = notesNappe[i] ?? 1;
+      gainsNotes.push(g);
+      o.connect(g).connect(lp);
       o.start();
-    }
+    });
     const lfo = ctx.createOscillator();
     lfo.frequency.value = 0.07;
     const lfoGain = ctx.createGain();
@@ -192,17 +212,20 @@ export function createAudio() {
     bruit.loop = true;
     const lpR = ctx.createBiquadFilter();
     lpR.type = 'lowpass';
-    lpR.frequency.value = 110;
+    lpR.frequency.value = 110 - 40 * timbreRonfl;
+    ronflParts.filtre = lpR;
     bruit.connect(lpR).connect(ronflGain);
     bruit.start();
     for (const [f, g] of [[41, 0.8], [41.7, 0.6], [82.4, 0.25]]) {
       const o = ctx.createOscillator();
       o.type = 'sine';
-      o.frequency.value = f;
+      o.frequency.value = f === 41.7 ? 41.7 - 0.7 * timbreRonfl : f;
       const og = ctx.createGain();
-      og.gain.value = g;
+      og.gain.value = f === 82.4 ? g * (1 - timbreRonfl) : g;
       o.connect(og).connect(ronflGain);
       o.start();
+      if (f === 41.7) ronflParts.battement = o;
+      if (f === 82.4) ronflParts.harmonique = og;
     }
     ronflGain.connect(filtre);
   }
@@ -214,6 +237,27 @@ export function createAudio() {
     const t = ctx.currentTime;
     ronflGain.gain.cancelScheduledValues(t);
     ronflGain.gain.setTargetAtTime(ronflVol, t, Math.max(0.05, duree) / 3);
+  }
+  // Fin 5 : gains (0..1) des quatre notes de la nappe, fondus en `duree` s (1, 1, 1, 1 = nappe d'origine).
+  function nappeNotes(gains = [1, 1, 1, 1], duree = 1) {
+    gains.forEach((g, i) => { if (i < notesNappe.length) notesNappe[i] = Math.max(0, Math.min(1, +g || 0)); });
+    if (!ctx || !gainsNotes.length) return;
+    const t = ctx.currentTime;
+    gainsNotes.forEach((g, i) => {
+      g.gain.cancelScheduledValues(t);
+      g.gain.setTargetAtTime(notesNappe[i], t, Math.max(0.02, duree) / 3);
+    });
+  }
+  // Fin 5 : timbre du ronflement de Kura, 0 = d'origine, 1 = les deux sinus ne battent plus, l'harmonique se tait,
+  // le grave se ferme (les baies brillent toujours ; elles ne s'adressent plus à personne).
+  function ronflementTimbre(k = 0, duree = 2) {
+    timbreRonfl = Math.max(0, Math.min(1, k));
+    if (!ctx || !ronflParts.filtre) return;
+    const t = ctx.currentTime;
+    const tc = Math.max(0.05, duree) / 3;
+    ronflParts.battement.frequency.setTargetAtTime(41.7 - 0.7 * timbreRonfl, t, tc);
+    ronflParts.harmonique.gain.setTargetAtTime(0.25 * (1 - timbreRonfl), t, tc);
+    ronflParts.filtre.frequency.setTargetAtTime(110 - 40 * timbreRonfl, t, tc);
   }
   function toggle() {
     muted = !muted;
@@ -315,6 +359,8 @@ export function createAudio() {
     regler,
     accompagnement,
     ronflement,
+    nappeNotes,
+    ronflementTimbre,
     accord,
     bip,
     tonalite,
@@ -326,6 +372,9 @@ export function createAudio() {
     get frequencesNappe() { return droneOsc.map((o) => +o.frequency.value.toFixed(2)); },
     get niveauAccompagnement() { return accomp; },
     get ronflementActuel() { return ronflGain ? ronflGain.gain.value : 0; },
+    /** Diagnostic (tests) : gains courants des quatre notes de la nappe et timbre du ronflement (fin 5). */
+    get notesNappe() { return gainsNotes.length ? gainsNotes.map((g) => +g.gain.value.toFixed(3)) : [...notesNappe]; },
+    get timbreRonflement() { return timbreRonfl; },
     /** Diagnostic (tests) : gains courants de la nappe, de la pluie et fréquence du filtre. */
     get diagnostic() { return ctx ? { nappe: droneGain.gain.value, pluie: rainGain.gain.value, filtre: filtre.frequency.value, accomp } : { accomp }; },
   };

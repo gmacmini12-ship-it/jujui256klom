@@ -1085,6 +1085,8 @@ export const robots = {
   nom: 'robots',
   delaiRedressement: 30,
   actif: true,
+  /** Fin 5 (l'aube) : les machines s'arrêtent là où elles sont (elles restent dessinées). */
+  fige: false,
 
   liste() { return toutes; },
 
@@ -1143,7 +1145,7 @@ export const robots = {
       if (r.zone !== nom) { if (r.etiq) { r.etiq.retirer(); r.etiq = null; r.sigEtiq = ''; } continue; }
       const dx = r.x - cam.x, dz = r.z - cam.z;
       r.d2 = dx * dx + dz * dz;
-      majRobot(r, dt, cam);
+      majRobot(r, this.fige ? 0 : dt, cam);
       majEtiquette(r);
       eveilles.push(r);
     }

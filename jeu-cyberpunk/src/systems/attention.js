@@ -36,7 +36,7 @@ export const attention = {
       get valeur() { return systeme.valeurBrute(); },
       get palier() { return palierDe(systeme.valeurBrute()); },
       get plancher() { return systeme.plancher(); },
-      get enPause() { return !!jeu.sourdine?.actif; },
+      get enPause() { return !!jeu.sourdine?.actif || !!jeu.silence?.muette; }, // fin 5 : Mima s'est tue
       ajouter: (points, infos) => systeme.ajouter(points, infos),
       fixer: (v) => systeme.fixer(v),
     };
@@ -92,7 +92,7 @@ export const attention = {
 
   ajouter(points, { id = 'ajout', source } = {}) {
     const jeu = this.jeu;
-    if (jeu.sourdine?.actif) return 0;
+    if (jeu.sourdine?.actif || jeu.silence?.muette) return 0;
     if (points > 0) this.calme = 0;
     if (!points) return 0;
     return this.ecrire(Math.max(this.valeurBrute() + points, Math.min(this.plancher(), MAX)), id);
@@ -105,7 +105,7 @@ export const attention = {
 
   update(dt, t, jeu) {
     if (!jeu.enPartie) return;
-    if (jeu.sourdine?.actif) { this.maj(); return; }
+    if (jeu.sourdine?.actif || jeu.silence?.muette) { this.maj(); return; }
     this.calme += dt;
     while (this.calme >= PERIODE_DECROISSANCE) {
       this.calme -= PERIODE_DECROISSANCE;

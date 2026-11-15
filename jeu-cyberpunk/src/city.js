@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { rng, windowTexture, signTexture, shopTexture, puddleTexture, skyTexture } from './textures.js';
 import { SIGNS_H as SIGN_DATA_H, SIGNS_V as SIGN_DATA_V } from './data/signs.js';
+import { eteignable, uniformsExtinction, GLSL_EXTINCTION, quartierDe, cielAube } from './extinction.js';
 
 export const BLOCKS = 9; // pâtés de maisons par côté
 export const BLOCK = 44; // largeur d'un pâté (trottoir compris)
@@ -136,6 +137,7 @@ export function buildCity(scene, options = {}) {
       emissiveMap: v.tex,
       emissiveIntensity: 1.15,
     });
+    eteignable(mat, 'fenetres'); // fin 5 : fenêtres éteintes par quartier (extinction.js ; inchangé sinon)
     scene.add(new THREE.Mesh(mergeGeometries(v.geos), mat));
   }
   scene.add(
@@ -158,12 +160,12 @@ export function buildCity(scene, options = {}) {
     if (!signMats.has(key)) {
       signMats.set(
         key,
-        new THREE.MeshBasicMaterial({
+        eteignable(new THREE.MeshBasicMaterial({
           map: signTexture(text, color, vertical),
           transparent: true,
           side: THREE.DoubleSide,
           toneMapped: false,
-        })
+        }), 'enseignes', { plancher: 0.05 })
       );
     }
     return signMats.get(key);
@@ -220,7 +222,7 @@ export function buildCity(scene, options = {}) {
   }
   for (const s of shops) {
     scene.add(
-      new THREE.Mesh(mergeGeometries(s.geos), new THREE.MeshBasicMaterial({ map: s.tex, toneMapped: false }))
+      new THREE.Mesh(mergeGeometries(s.geos), eteignable(new THREE.MeshBasicMaterial({ map: s.tex, toneMapped: false }), 'fenetres', { plancher: 0.1 }))
     );
   }
 
@@ -232,7 +234,7 @@ export function buildCity(scene, options = {}) {
     .filter((_, i) => i % 2 === 0)
     .slice(0, 22)
     .forEach(({ f, angle, b }, i) => {
-      const mat = holoMaterial(NEON[i % NEON.length], NEON[(i + 2) % NEON.length], i);
+      const mat = holoMaterial(NEON[i % NEON.length], NEON[(i + 2) % NEON.length], i, quartierDe(f.cx, f.cz));
       const m = new THREE.Mesh(holoGeo, mat);
       m.position.set(f.cx + f.nx * 0.5, Math.min(b.h - 8, 22 + (i % 4) * 5), f.cz + f.nz * 0.5);
       m.rotation.y = angle;
@@ -250,7 +252,7 @@ export function buildCity(scene, options = {}) {
   );
   const bulbs = new THREE.InstancedMesh(
     new THREE.SphereGeometry(0.3, 10, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff9cf2, toneMapped: false }),
+    eteignable(new THREE.MeshBasicMaterial({ color: 0xff9cf2, toneMapped: false }), 'halos', { plancher: 0.1 }),
     lampCount
   );
   const dummy = new THREE.Object3D();
@@ -335,6 +337,7 @@ export function buildCity(scene, options = {}) {
   moon.position.set(-60, 120, 40);
   scene.add(moon);
   // Quelques lumières colorées près du point de départ, au pied des enseignes.
+  const lumieres = []; // exposées (fin 5 : éteintes avec les enseignes de leur quartier)
   lightSpots
     .sort((a, b) => Math.hypot(a.x - 30, a.z - 30) - Math.hypot(b.x - 30, b.z - 30))
     .filter((_, i) => i % 2 === 0)
@@ -343,12 +346,13 @@ export function buildCity(scene, options = {}) {
       const l = new THREE.PointLight(s.color, 70, 46, 1.8);
       l.position.set(s.x, 6.5, s.z);
       scene.add(l);
+      lumieres.push(l);
     });
 
   // ---------- Ciel ----------
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(640, 32, 16),
-    new THREE.MeshBasicMaterial({ map: skyTexture(rand), side: THREE.BackSide, fog: false, depthWrite: false })
+    cielAube(new THREE.MeshBasicMaterial({ map: skyTexture(rand), side: THREE.BackSide, fog: false, depthWrite: false })) // l'aube de la fin 5
   );
   sky.renderOrder = -1;
   scene.add(sky);
@@ -358,6 +362,7 @@ export function buildCity(scene, options = {}) {
     immeubles,
     enseignes: signs, // groupe des enseignes de façade (un module peut en retirer)
     hologrammes, // panneaux holographiques : [{ mesh, mat }] ; mat.uniforms.msg (texture) et msgMix (0..1) superposent une image
+    lumieres, // PointLight colorées au pied des enseignes
     mirror, // sol réfléchissant (coupé par le gestionnaire de zones selon l'ambiance)
     sky,
     update(t, camera) {
@@ -404,7 +409,7 @@ function streetFaces(b) {
 const MSG_VIDE = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
 MSG_VIDE.needsUpdate = true;
 
-function holoMaterial(c1, c2, seed) {
+function holoMaterial(c1, c2, seed, quartier = -1) {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
@@ -417,6 +422,7 @@ function holoMaterial(c1, c2, seed) {
       seed: { value: seed * 1.37 },
       msg: { value: MSG_VIDE }, // image superposée (réactions de l'Attention) ; msgMix 0 = panneau d'origine
       msgMix: { value: 0 },
+      ...uniformsExtinction('hologrammes', quartier), // fin 5 (extinction.js) : sans effet tant que uExtActif = 0
     },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
@@ -427,6 +433,7 @@ function holoMaterial(c1, c2, seed) {
     fragmentShader: /* glsl */ `
       uniform float time; uniform float seed; uniform vec3 c1; uniform vec3 c2;
       uniform sampler2D msg; uniform float msgMix;
+      ${GLSL_EXTINCTION}
       varying vec2 vUv;
       void main() {
         float t = time + seed;
@@ -442,6 +449,7 @@ function holoMaterial(c1, c2, seed) {
         vec3 base = col * a * e.x * e.y;
         vec3 img = texture2D(msg, vUv).rgb * (0.92 + 0.08 * sin(t * 2.6)) * e.x * e.y;
         gl_FragColor = vec4(mix(base, img, msgMix), 1.0);
+        if (uExtActif > 0.5) gl_FragColor.rgb *= extNiveau(vec2(0.0));
       }`,
   });
 }

@@ -6,6 +6,7 @@ import { calque } from './calque.js';
 import { marche } from './marche.js';
 import * as D from '../data/npc.js';
 import * as C from '../data/calque.js';
+import { niveau } from '../extinction.js';
 
 // Système « npc » : les habitants de Kasumi (bible §2.4, §2.5, §3.2 « silhouettes »).
 //
@@ -55,7 +56,9 @@ const RAYON_FUMEE = 17;
 // Réactions de l'Attention (systems/reactions.js) : crochets lus par la simulation et le dessin, tous à 0 au palier 0.
 //   halo  0..1 : les halos proches se tournent vers le joueur (plus vifs, teintés, décalés vers lui) et les têtes aussi ;
 //   ecart 0..1 : les habitants s'écartent de sa trajectoire, plus tôt et plus largement, en ralentissant (palier 3).
-const REA = { halo: 0, ecart: 0, teinte: new THREE.Color(0xff7ae6) };
+//   aube  0..1 : fin 5 (systems/silence.js) : les habitants s'arrêtent là où ils sont, un sur trois lève la tête vers le
+//                ciel, plus de bribes ; à 0, rien ne change. Les halos suivent l'extinction des quartiers (extinction.js).
+const REA = { halo: 0, ecart: 0, teinte: new THREE.Color(0xff7ae6), aube: 0 };
 
 // ---------------------------------------------------------------- utilitaires
 const aleatoire = (seed) => {
@@ -896,6 +899,7 @@ function simuler(dt, t) {
       }
     }
 
+    if (REA.aube > 0) vcible *= 1 - REA.aube; // l'aube de la fin 5 : on s'arrête
     // --- mouvement
     const a = vcible < n.speed ? 7 : 2.4;
     n.speed += (vcible - n.speed) * Math.min(1, dt * a);
@@ -967,7 +971,8 @@ function dessiner(t, camera) {
     const mouv = n.mouv || 0;
     const bob = Math.abs(Math.sin(n.phase)) * 0.034 * mouv + Math.sin(t * 1.3 + n.id) * 0.004;
     const roulis = Math.sin(n.phase) * 0.04 * mouv;
-    const tangage = 0.05 * mouv;
+    let tangage = 0.05 * mouv;
+    if (REA.aube > 0 && n.id % 3 === 0) tangage -= 0.2 * REA.aube; // il lève la tête vers le ciel
     const m = ms[n.variante];
     const i = compte[n.variante]++;
     ecrireInstance(m, i, n.x, n.y + bob, n.z, n.ry, tangage, roulis, sc);
@@ -976,6 +981,7 @@ function dessiner(t, camera) {
     _c.copy(n.halo);
     if (n.etat === REGARD || n.etat === APPROCHE) _c.lerp(_c2.setHex(D.HALO_SURPRIS), 0.55);
     let f = n.intensite * n.haloBoost * (1 - 0.6 * Math.min(1, n.dip));
+    f *= niveau('halos', n.x, n.z); // fin 5 : 1 tant que rien n'est éteint
     // palier 1 : le halo se tourne vers le joueur (plus vif, rosé, avancé vers lui, un peu plus large)
     let hx = n.x, hz = n.z, hs = 1;
     if (REA.halo > 0.01 && d < 40) {
@@ -1055,7 +1061,7 @@ function majCalque(dt) {
 let accBribe = 0;
 function majBribes(dt, t) {
   creerDom();
-  const calme = jeu.enPartie && !jeu.suspensions.has('ouverture') && !jeu.suspensions.has('dialogue') && !jeu.suspensions.has('frise') && jeu.zones.nom === 'kasumi';
+  const calme = !(REA.aube > 0) && jeu.enPartie && !jeu.suspensions.has('ouverture') && !jeu.suspensions.has('dialogue') && !jeu.suspensions.has('frise') && jeu.zones.nom === 'kasumi';
   accBribe += dt;
   if (calme && accBribe >= 0.25) {
     accBribe = 0;
@@ -1212,7 +1218,8 @@ function majPersonnages(dt, t) {
     const resp = Math.sin(t * 1.1 + p.id.length) * 0.006;
     ecrireInstance(p.corps, 0, pos.x, pos.y + resp, pos.z, p.ry, p.penche + Math.sin(t * 0.9 + p.id.length) * 0.012, Math.sin(t * 0.7) * 0.006, sc);
     // halo qui vacille : une flamme près d'une fenêtre
-    const vac = p.vacille ? 1 + p.vacille * (Math.sin(t * 6.1 + p.id.length) * 0.5 + Math.sin(t * 2.3) * 0.5) * (0.6 + 0.4 * Math.sin(t * 0.8)) : 1;
+    let vac = p.vacille ? 1 + p.vacille * (Math.sin(t * 6.1 + p.id.length) * 0.5 + Math.sin(t * 2.3) * 0.5) * (0.6 + 0.4 * Math.sin(t * 0.8)) : 1;
+    if (p.zone === 'kasumi') vac *= niveau('halos', pos.x, pos.z); // fin 5
     const ud = p.corps.userData;
     ud.aHalo.array[0] = p.halo.r * 0.8 * vac;
     ud.aHalo.array[1] = p.halo.g * 0.8 * vac;
@@ -1267,6 +1274,8 @@ export const npc = {
   /** Crochets des réactions de l'Attention : { halo, ecart, teinte } (voir en-tête de REA). */
   reaction: REA,
   get fumee() { return fumee; },
+  /** Fait dire `texte` à l'habitant `n` (bribe flottante) ; faux si aucune place. */
+  dire: (n, texte) => afficherBribe(n, texte),
   BRIBES: D.BRIBES,
 
   init() {

@@ -15,7 +15,14 @@ export const TEMPS = { value: 0 }; // temps partagé de tous les shaders de la z
 
 const FOG_UNIFORMS = THREE.UniformsLib.fog;
 /** UniformsUtils.merge clone les uniformes : on rattache le temps partagé après coup. */
-const lier = (m) => { m.uniforms.uT = TEMPS; return m; };
+const lier = (m) => { m.uniforms.uT = TEMPS; if (m.uniforms.uEteint) m.uniforms.uEteint = ETEINT; return m; };
+
+/**
+ * Quatre zones d'extinction partagées par toutes les baies (câbles arrachés, systems/profondeurs.js) :
+ * `value[i]` = Vector4(x, z, rayon, force) ; force > 0 : les baies à moins de `rayon` s'éteignent (bord adouci) ;
+ * force < 0 : elles brillent plus fort (la lumière qui « déménage ») ; force 0 : rien (rendu inchangé).
+ */
+export const ETEINT = { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, 1, 0)) };
 
 /** Partie commune des GLSL : hachage, houle, brouillard à deux densités. */
 const COMMUN = /* glsl */ `
@@ -52,6 +59,7 @@ export function materielBaies({
       uForce: { value: force },
       uHaut: { value: haut },
       uRapide: { value: rapide },
+      uEteint: { value: [] },
     }]),
     vertexShader: /* glsl */ `
       varying vec3 vLoc; varying vec3 vNor; varying vec3 vWld; varying vec3 vCtr; varying float vDist; varying vec3 vNW;
@@ -70,6 +78,7 @@ export function materielBaies({
       ${COMMUN}
       uniform vec3 uCorps; uniform vec3 uA; uniform vec3 uB; uniform vec2 uDir;
       uniform float uK; uniform float uS; uniform float uForce; uniform float uHaut; uniform float uRapide;
+      uniform vec4 uEteint[4];
       varying vec3 vLoc; varying vec3 vNor; varying vec3 vWld; varying vec3 vCtr; varying float vDist; varying vec3 vNW;
 
       float houle(vec3 p) {
@@ -114,6 +123,15 @@ export function materielBaies({
         }
         float g = glow + mean * (1.0 - proche) * 0.8;
         g *= uForce;
+        // zones éteintes (force > 0) ou ravivées (force < 0) : câbles arrachés
+        float etn = 0.0, viv = 0.0;
+        for (int i = 0; i < 4; i++) {
+          vec4 z = uEteint[i];
+          float m = 1.0 - smoothstep(z.z * 0.7, z.z, length(vCtr.xz - z.xy));
+          etn = max(etn, m * max(z.w, 0.0));
+          viv = max(viv, m * max(-z.w, 0.0));
+        }
+        g = g * (1.0 - etn) + viv * (0.55 + 0.45 * sin(uT * 2.3 + vCtr.x * 0.21 + vCtr.z * 0.17));
         vec3 em = uA * g * 0.8 + uB * pow(g, 2.2) * 0.8;
         float f1 = brume(vDist, 1.0);
         float f2 = brume(vDist, 0.4);

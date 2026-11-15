@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { uniformsExtinction, GLSL_EXTINCTION } from '../extinction.js';
 
 // Système « hashira » : la tour du Registre, un fût de 400 m au centre exact de
 // la ville. Extérieur seulement (l'intérieur viendra plus tard). Un seul grand
@@ -32,6 +33,7 @@ const FRAG = /* glsl */ `
   uniform vec3 uFog;
   uniform float uDens;
   uniform float uHauteur;
+  ${GLSL_EXTINCTION}
   varying vec2 vUv;
   varying vec3 vVue;
   varying float vY;
@@ -79,14 +81,17 @@ const FRAG = /* glsl */ `
     float pulse = 0.75 + 0.25 * sin(uT * 2.0 + rang * 0.9);
     float fond = 0.45 + 0.55 * smoothstep(0.0, 0.08, haut); // plus discret au pied
     float ciel = mix(0.55, 1.0, smoothstep(0.0, 0.7, haut));
-    col += c * ligne * pulse * 2.8 * fond * ciel;
+    // fin 5 (extinction.js) : les lignes du Registre s'éteignent avec les hologrammes du quartier de la tour
+    float ext = 1.0;
+    if (uExtActif > 0.5) ext = extNiveau(vec2(0.0));
+    col += c * ligne * pulse * 2.8 * fond * ciel * ext;
 
     // veines verticales fines (côtes du fût)
     float cote = abs(fract(vUv.x * 16.0) - 0.5);
-    col += vec3(0.20, 0.25, 0.85) * (1.0 - smoothstep(0.0, 0.018, cote)) * 0.30 * fond;
+    col += vec3(0.20, 0.25, 0.85) * (1.0 - smoothstep(0.0, 0.018, cote)) * 0.30 * fond * ext;
 
     // lueur de pied, magenta, pour l'ancrer au sol
-    col += vec3(0.8, 0.12, 0.7) * exp(-y * 0.07) * 0.22;
+    col += vec3(0.8, 0.12, 0.7) * exp(-y * 0.07) * 0.22 * ext;
 
     // brouillard plus clair que celui de la ville
     float d = length(vVue);
@@ -116,6 +121,7 @@ export const hashira = {
         uFog: { value: FOG.clone() },
         uDens: { value: DENSITE_BROUILLARD },
         uHauteur: { value: HAUTEUR },
+        ...uniformsExtinction('hologrammes', 9), // quartier 9 : la tour
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
