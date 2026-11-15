@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Néon District</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #05030c; overflow: hidden; }
+      canvas { display: block; }
+      #overlay {
+        position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 18px;
+        background: radial-gradient(ellipse at center, rgba(10, 4, 30, 0.55), rgba(3, 2, 10, 0.92));
+        color: #e8f6ff; font-family: "Helvetica Neue", Arial, sans-serif;
+        text-align: center; cursor: pointer; user-select: none;
+      }
+      #overlay.hidden { display: none; }
+      #overlay h1 {
+        margin: 0; font-size: clamp(36px, 7vw, 92px); letter-spacing: 0.18em; font-weight: 800;
+        color: #fff; text-shadow: 0 0 12px #ff2bd6, 0 0 42px #ff2bd6, 0 0 90px #7a2bff;
+      }
+      #overlay .sub { color: #5ef2ff; letter-spacing: 0.4em; font-size: 14px; text-shadow: 0 0 10px #00e5ff; }
+      #overlay .go {
+        margin-top: 10px; padding: 12px 28px; border: 1px solid #5ef2ff; border-radius: 2px;
+        letter-spacing: 0.25em; font-size: 15px; box-shadow: 0 0 18px rgba(0, 229, 255, 0.45) inset, 0 0 18px rgba(0, 229, 255, 0.35);
+      }
+      #overlay table { border-collapse: collapse; font-size: 14px; opacity: 0.85; margin-top: 8px; }
+      #overlay td { padding: 3px 12px; text-align: left; }
+      #overlay td:first-child { color: #ffd166; text-align: right; }
+      #crosshair {
+        position: fixed; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+        border-radius: 50%; background: rgba(255, 255, 255, 0.55); pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="crosshair"></div>
+    <div id="overlay">
+      <div class="sub">SECTEUR 7 // 02:47</div>
+      <h1>NÉON DISTRICT</h1>
+      <div class="go">CLIQUER POUR ENTRER</div>
+      <table>
+        <tr><td>ZQSD / flèches</td><td>se déplacer</td></tr>
+        <tr><td>Souris</td><td>regarder</td></tr>
+        <tr><td>Maj</td><td>courir</td></tr>
+        <tr><td>Espace</td><td>sauter</td></tr>
+        <tr><td>M</td><td>couper / remettre le son</td></tr>
+        <tr><td>Échap</td><td>pause</td></tr>
+      </table>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
