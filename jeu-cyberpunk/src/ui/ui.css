@@ -208,3 +208,17 @@
 @media (prefers-reduced-motion: reduce) {
   .ui-sceau::before, .ui-sceau::after, .ui-dialogue-suite { animation: none; }
 }
+
+/* ---------- Séquence d'ouverture : noir, date, fondu ---------- */
+.ui-ouverture {
+  position: fixed; inset: 0; z-index: 49; background: #02010a; opacity: 0;
+  display: none; pointer-events: none;
+  font-family: var(--ui-police); color: var(--ui-texte);
+  -webkit-font-smoothing: none;
+}
+.ui-ouverture.actif { display: flex; align-items: center; justify-content: center; }
+.ui-ouverture-lignes { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.ui-ouverture-ligne { opacity: 0; transition: opacity 1.4s ease; letter-spacing: 0.32em; text-align: center; }
+.ui-ouverture-ligne.visible { opacity: 1; }
+.ui-ouverture-ligne.date { font-size: clamp(20px, 3vw, 30px); color: #f4ecff; text-shadow: 0 0 14px rgba(196, 75, 255, 0.55); }
+.ui-ouverture-ligne.heure { font-size: 14px; color: var(--ui-doux); }

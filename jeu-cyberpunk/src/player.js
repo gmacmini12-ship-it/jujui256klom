@@ -4,35 +4,38 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 const EYE = 1.75;
 const RADIUS = 0.6;
 
-export function createPlayer(camera, dom, colliders, limit) {
+// Joueur : marche, course, saut, collisions 2D (boîtes au sol).
+// Les touches viennent de input.js (event.code : ZQSD sur AZERTY = WASD).
+// `bornes` : nombre (carré centré de demi-côté `bornes`) ou { minX, maxX, minZ, maxZ }.
+export function createPlayer(camera, dom, colliders, bornes, input) {
   const controls = new PointerLockControls(camera, dom);
-  const keys = new Set();
   const velocity = new THREE.Vector3();
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
   const pos = new THREE.Vector3(30, 0, 30); // position des pieds
+  const euler = new THREE.Euler(0, 0, 0, 'YXZ');
   let onGround = true;
   let bob = 0;
+  let limites = normaliser(bornes);
 
-  // event.code désigne la touche physique : ZQSD sur AZERTY = WASD sur QWERTY.
-  addEventListener('keydown', (e) => {
-    keys.add(e.code);
-    if (e.code === 'Space') e.preventDefault();
-  });
-  addEventListener('keyup', (e) => keys.delete(e.code));
-  addEventListener('blur', () => keys.clear());
+  function normaliser(b) {
+    if (typeof b === 'number') return { minX: -b, maxX: b, minZ: -b, maxZ: b };
+    return b || { minX: -Infinity, maxX: Infinity, minZ: -Infinity, maxZ: Infinity };
+  }
+
+  const down = (...codes) => codes.some((c) => input.isDown(c));
 
   const blocked = (x, z) => {
     for (const c of colliders) {
       if (x > c.minX - RADIUS && x < c.maxX + RADIUS && z > c.minZ - RADIUS && z < c.maxZ + RADIUS) return true;
     }
-    return Math.abs(x) > limit || Math.abs(z) > limit;
+    return x < limites.minX || x > limites.maxX || z < limites.minZ || z > limites.maxZ;
   };
 
   function update(dt) {
-    const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-    const s = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-    const speed = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 11 : 5;
+    const f = (down('KeyW', 'ArrowUp') ? 1 : 0) - (down('KeyS', 'ArrowDown') ? 1 : 0);
+    const s = (down('KeyD', 'ArrowRight') ? 1 : 0) - (down('KeyA', 'ArrowLeft') ? 1 : 0);
+    const speed = down('ShiftLeft', 'ShiftRight') ? 11 : 5;
 
     camera.getWorldDirection(forward);
     forward.y = 0;
@@ -53,7 +56,7 @@ export function createPlayer(camera, dom, colliders, limit) {
     if (!blocked(pos.x, nz)) pos.z = nz;
     else velocity.z = 0;
 
-    if (onGround && keys.has('Space')) {
+    if (onGround && down('Space')) {
       velocity.y = 6.5;
       onGround = false;
     }
@@ -67,9 +70,51 @@ export function createPlayer(camera, dom, colliders, limit) {
 
     const moving = Math.hypot(velocity.x, velocity.z);
     if (onGround && moving > 0.5) bob += dt * moving * 1.6;
+    placerCamera();
+  }
+
+  function placerCamera() {
     camera.position.set(pos.x, pos.y + EYE + (onGround ? Math.sin(bob) * 0.045 : 0), pos.z);
   }
 
-  camera.position.set(pos.x, EYE, pos.z);
-  return { controls, update, position: pos };
+  /** Remplace les colliders (tableau gardé par référence) et les bornes. */
+  function setColliders(liste, b) {
+    colliders = liste;
+    limites = normaliser(b);
+  }
+
+  /** Place les pieds en (x, y, z) et arrête le mouvement. `yaw` (radians, 0 = regarde vers -z) optionnel. */
+  function teleporter(x, y, z, yaw, pitch = 0) {
+    pos.set(x, y, z);
+    velocity.set(0, 0, 0);
+    onGround = y <= 0;
+    if (yaw !== undefined && yaw !== null) regarder(yaw, pitch);
+    placerCamera();
+  }
+
+  /** Oriente la caméra : yaw autour de y (0 = vers -z, π/2 = vers -x), pitch vers le haut si positif. */
+  function regarder(yaw, pitch = 0) {
+    euler.set(pitch, yaw, 0, 'YXZ');
+    camera.quaternion.setFromEuler(euler);
+  }
+
+  /** Orientation actuelle { yaw, pitch }. */
+  function orientation() {
+    euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    return { yaw: euler.y, pitch: euler.x };
+  }
+
+  placerCamera();
+  return {
+    controls,
+    update,
+    position: pos,
+    velocity,
+    get auSol() { return onGround; },
+    setColliders,
+    teleporter,
+    regarder,
+    orientation,
+    bloque: blocked,
+  };
 }

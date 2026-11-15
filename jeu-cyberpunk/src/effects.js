@@ -85,17 +85,27 @@ export const FilmShader = {
 };
 
 // Ambiance sonore synthétisée : pluie + nappe grave. Aucun fichier audio.
+// `regler({ pluie, filtre })` : volume de la pluie (0..1, 0.07 en ville) et
+// fréquence de coupure du filtre général (Hz ; bas = « comme sous l'eau »).
+// `bip()` : bip médical court (séquence d'ouverture).
 export function createAudio() {
   let ctx = null;
   let master = null;
+  let filtre = null;
+  let rainGain = null;
   let muted = false;
+  const reglage = { pluie: 0.07, filtre: 20000 };
   function start() {
     if (ctx) return ctx.resume();
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.6;
+    master.gain.value = muted ? 0 : 0.6;
+    filtre = ctx.createBiquadFilter();
+    filtre.type = 'lowpass';
+    filtre.frequency.value = reglage.filtre;
+    filtre.connect(master);
     master.connect(ctx.destination);
 
     const buf = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
@@ -107,9 +117,9 @@ export function createAudio() {
     const hp = ctx.createBiquadFilter();
     hp.type = 'highpass';
     hp.frequency.value = 1400;
-    const rainGain = ctx.createGain();
-    rainGain.gain.value = 0.07;
-    noise.connect(hp).connect(rainGain).connect(master);
+    rainGain = ctx.createGain();
+    rainGain.gain.value = reglage.pluie;
+    noise.connect(hp).connect(rainGain).connect(filtre);
     noise.start();
 
     const lp = ctx.createBiquadFilter();
@@ -117,7 +127,7 @@ export function createAudio() {
     lp.frequency.value = 240;
     const droneGain = ctx.createGain();
     droneGain.gain.value = 0.09;
-    lp.connect(droneGain).connect(master);
+    lp.connect(droneGain).connect(filtre);
     for (const f of [55, 55.35, 82.4, 110.3]) {
       const o = ctx.createOscillator();
       o.type = 'sawtooth';
@@ -136,5 +146,36 @@ export function createAudio() {
     muted = !muted;
     if (master) master.gain.value = muted ? 0 : 0.6;
   }
-  return { start, toggle };
+  function regler({ pluie, filtre: f, duree = 1.2 } = {}) {
+    if (pluie !== undefined) reglage.pluie = pluie;
+    if (f !== undefined) reglage.filtre = f;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    rainGain.gain.cancelScheduledValues(t);
+    rainGain.gain.setTargetAtTime(reglage.pluie, t, duree / 3);
+    filtre.frequency.cancelScheduledValues(t);
+    filtre.frequency.setTargetAtTime(reglage.filtre, t, duree / 3);
+  }
+  function bip({ frequence = 1046, duree = 0.16, volume = 0.12 } = {}) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = frequence;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(volume, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + duree);
+    o.connect(g).connect(master); // le bip n'est pas filtré : il est « dans la pièce »
+    o.start(t);
+    o.stop(t + duree + 0.05);
+  }
+  return {
+    start,
+    toggle,
+    regler,
+    bip,
+    get demarre() { return !!ctx; },
+    get coupe() { return muted; },
+  };
 }

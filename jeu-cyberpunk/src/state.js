@@ -54,7 +54,8 @@ export function etatInitial() {
     questionsPosees: [],
     zonesVisitees: [],
     zone: 'clinique',
-    position: null,
+    position: null,               // { x, y, z, yaw } dans la zone `zone`, mis à jour par la boucle
+    ouvertureVue: false,          // la séquence d'ouverture a été jouée (sinon : nouvelle partie)
     trajet: [],                   // [x, z, t, évènement] toutes les 0,5 s, plafonné
     rencontres: {},
     finsVues: [],

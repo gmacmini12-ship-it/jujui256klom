@@ -18,8 +18,12 @@ const SIGNS_V = SIGN_DATA_V.map((s) => s.text);
 const blockCenter = (i) => (i - (BLOCKS - 1) / 2) * PITCH;
 export const streetCenter = (i) => blockCenter(i) + PITCH / 2;
 
-export function buildCity(scene) {
+// options.blocsReserves : [[i, j], …] pâtés laissés vides (trottoir seul, sans collider),
+// pour qu'un autre module y construise autre chose (Hashira au centre : [4, 4]).
+// Le tirage aléatoire est consommé à l'identique : le reste de la ville ne change pas.
+export function buildCity(scene, options = {}) {
   const rand = rng(20771);
+  const reserves = new Set((options.blocsReserves || []).map(([i, j]) => `${i},${j}`));
   const pick = (arr) => arr[Math.floor(rand() * arr.length)];
   const colliders = [];
   const animated = [];
@@ -85,19 +89,23 @@ export function buildCity(scene) {
         );
 
       const centerDist = Math.hypot(bx, bz) / HALF;
+      const reserve = reserves.has(`${bi},${bj}`);
       for (const [ox, oz, lw, ld] of lots) {
         const tower = rand() < 0.16;
         const h = tower ? 90 + rand() * 80 : 16 + rand() * 52 * (1.15 - centerDist * 0.4);
-        const b = { x: bx + ox, z: bz + oz, w: lw, d: ld, h, bx, bz };
+        const b = { x: bx + ox, z: bz + oz, w: lw, d: ld, h, bx, bz, reserve };
         buildings.push(b);
-        colliders.push({ minX: b.x - lw / 2, maxX: b.x + lw / 2, minZ: b.z - ld / 2, maxZ: b.z + ld / 2 });
-        pick(variants).geos.push(buildingGeometry(b, rand));
+        if (!reserve) colliders.push({ minX: b.x - lw / 2, maxX: b.x + lw / 2, minZ: b.z - ld / 2, maxZ: b.z + ld / 2 });
+        const variante = pick(variants);
+        const geo = buildingGeometry(b, rand);
+        if (!reserve) variante.geos.push(geo);
         // étage technique sur le toit
         if (rand() < 0.5) {
           const top = { x: b.x, z: b.z, w: lw * 0.5, d: ld * 0.5, h: 4 + rand() * 10 };
           const g = buildingGeometry(top, rand);
           g.translate(0, h, 0);
-          pick(variants).geos.push(g);
+          const v2 = pick(variants);
+          if (!reserve) v2.geos.push(g);
         }
       }
     }
@@ -160,7 +168,8 @@ export function buildCity(scene) {
       for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * reps);
       g.rotateY(angle);
       g.translate(f.cx + f.nx * 0.06, 2.0, f.cz + f.nz * 0.06);
-      pick(shops).geos.push(g);
+      const vitrine = pick(shops);
+      if (!b.reserve) vitrine.geos.push(g);
 
       const tx = -f.nz; // tangente de la façade
       const tz = f.nx;
@@ -173,8 +182,10 @@ export function buildCity(scene) {
         m.scale.set(w, w / 4, 1);
         m.position.set(f.cx + f.nx * 0.3 + tx * t, 5.2 + rand() * 1.5, f.cz + f.nz * 0.3 + tz * t);
         m.rotation.y = angle;
-        signs.add(m);
-        lightSpots.push({ x: m.position.x + f.nx * 3, z: m.position.z + f.nz * 3, color });
+        if (!b.reserve) {
+          signs.add(m);
+          lightSpots.push({ x: m.position.x + f.nx * 3, z: m.position.z + f.nz * 3, color });
+        }
       }
       // enseignes verticales en drapeau
       const count = rand() < 0.55 ? 1 + Math.floor(rand() * 2) : 0;
@@ -186,9 +197,9 @@ export function buildCity(scene) {
         m.scale.set(hgt / 4, hgt, 1);
         m.position.set(f.cx + f.nx * 1.3 + tx * t, 7 + hgt / 2 + rand() * 6, f.cz + f.nz * 1.3 + tz * t);
         m.rotation.y = angle + Math.PI / 2;
-        signs.add(m);
+        if (!b.reserve) signs.add(m);
       }
-      if (b.h > 48 && f.len > 17) holoSpots.push({ f, angle, b });
+      if (b.h > 48 && f.len > 17 && !b.reserve) holoSpots.push({ f, angle, b });
     }
   }
   for (const s of shops) {
@@ -326,6 +337,8 @@ export function buildCity(scene) {
 
   return {
     colliders,
+    mirror, // sol réfléchissant (coupé par le gestionnaire de zones selon l'ambiance)
+    sky,
     update(t, camera) {
       if (camera) sky.position.copy(camera.position);
       animated.forEach((fn) => fn(t));

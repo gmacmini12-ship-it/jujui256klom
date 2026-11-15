@@ -285,6 +285,7 @@ export function createSmoking(camera, scene) {
 
   function go(s) { state = s; st = 0; }
 
+  // Renvoie l'action déclenchée : 'allumage', 'bouffee' ou null (rien à faire).
   function trigger() {
     lastPress = clock;
     if (state === 'idle' || state === 'discard') {
@@ -294,9 +295,12 @@ export function createSmoking(camera, scene) {
       hand.visible = true;
       from = POSE.off; glow = 0; lighter.visible = true;
       go('lighting');
+      return 'allumage';
     } else if (state === 'hold') {
       go('puff');
+      return 'bouffee';
     }
+    return null;
   }
   function killHeld() { /* rien à libérer : la main est simplement réinitialisée */ }
 
@@ -476,5 +480,19 @@ export function createSmoking(camera, scene) {
   }
   const puff = { exhaled: false };
 
-  return { trigger, update };
+  // Changement de zone : la fumée et le mégot suivent le joueur dans la nouvelle scène.
+  function attacher(nouvelleScene) {
+    nouvelleScene.add(smoke);
+    nouvelleScene.add(stub.group);
+  }
+
+  return {
+    trigger,
+    update,
+    attacher,
+    /** 'idle' | 'lighting' | 'hold' | 'puff' | 'discard' */
+    get etat() { return state; },
+    /** Nombre de bouffées de la cigarette en cours. */
+    get bouffees() { return puffs; },
+  };
 }
