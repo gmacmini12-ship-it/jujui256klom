@@ -495,6 +495,7 @@ export const marche = {
   centre: new THREE.Vector3(X_PLACE, 0, AXE),
   entrees: [],
   ancres: {},
+  etals: [], // tous les étals : { type, cote: 'N'|'S', cx, mur, w, plateforme, R } (R.pt(u, y, v) → point monde)
   approches: {},
   pointsFragments: [],
   allees: [],
@@ -521,6 +522,7 @@ export const marche = {
     const emetteurs = []; // vapeur : { x, y, z, taux }
     const planches = []; // { cle, w, h, x, y, z, rx, ry, rz }
     const interactions = [];
+    const etals = []; // exposés (this.etals) : { type, cote, cx, mur, w, R } ; R.pt(u, y, v) donne un point monde
 
     const { tex: atlasTex, rects } = construireAtlas();
 
@@ -809,6 +811,7 @@ export const marche = {
     const etal = (cote, cx, type, w = LARGEUR_ETAL - 0.35, opts = {}) => {
       const R = repere(cote, cx, opts.mur ?? null);
       TYPES[type](R, w, opts);
+      etals.push({ type, cote, cx, mur: R.mur, w, plateforme: !!opts.plateforme, R });
       if (opts.interaction) {
         const p = R.pt(0, 0.9, 2.4);
         interactions.push({ cle: opts.interaction, position: p });
@@ -1416,6 +1419,7 @@ export const marche = {
       // 19 : sur la tablette du Kiosque, devant la veste bleue
       { id: 19, position: v(kiosque.X(0.3), 1.4, kiosque.Z(3.0)), acces: v(kiosque.X(0.3), 0, kiosque.Z(4.4)), note: 'sur la tablette du Kiosque' },
     ];
+    this.etals = etals;
     this.centre.set(X_PLACE, 0, AXE);
     // Les allées où l'on marche (segments [début, fin], axes x ou z, au sol de la chaussée) : deux allées
     // est-ouest entre les rangées d'étals (3,5 m de la façade des étals de chaque côté, de part et d'autre

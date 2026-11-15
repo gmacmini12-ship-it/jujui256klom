@@ -50,3 +50,7 @@ import { mainsCourantes } from './mainsCourantes.js';
 jeu.enregistrer(attention);
 jeu.enregistrer(transgressions);
 jeu.enregistrer(mainsCourantes);
+
+import { reactions } from './reactions.js';
+
+jeu.enregistrer(reactions);
