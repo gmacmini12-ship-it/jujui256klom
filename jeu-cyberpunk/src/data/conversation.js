@@ -3,7 +3,7 @@
 
 export const CONVERSATION = {
   // Invite « E — … » devant un écran qui appelle, ou en attente de réponse partout dans la ville.
-  libelle: 'Répondre à R-4',
+  libelle: 'Répondre',
   // Locuteur du petit dialogue à deux choix.
   qui: 'Mima',
 };
