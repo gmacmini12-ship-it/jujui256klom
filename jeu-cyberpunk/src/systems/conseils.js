@@ -185,7 +185,8 @@ export const conseils = {
     if (idle && !m.idle) m.idleDepuis = t;
     m.idle = idle;
 
-    if (!jeu.jouable) { m.bloqueDepuis = t; return; }
+    // Sourdine : Mima se tait, rien n'est mesuré ni observé (le délai de reprise s'applique à la fin)
+    if (!jeu.jouable || jeu.sourdine?.actif) { m.bloqueDepuis = t; return; }
     mesurer(dt, t, jeu);
     observer(dt, jeu);
 

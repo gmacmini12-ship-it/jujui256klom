@@ -92,7 +92,7 @@ export const T4 = {
   },
   // Noms de zones où fumer est déplacé (intérieurs : clinique, Médiathèque, Refuge, cabines de consultation).
   // Les zones à venir sont reconnues par fragment de nom.
-  zones: ['clinique', 'mediatheque', 'refuge', 'cabine', 'consultation', 'conseils'],
+  zones: ['clinique', 'mediatheque', 'refuge', 'cabine', 'consultation', 'conseils', 'maison'],
 };
 
 // ---------------------------------------------------------------------------

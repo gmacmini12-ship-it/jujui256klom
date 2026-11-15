@@ -1,4 +1,5 @@
 import { ACCUEIL, COMMANDES } from '../data/interface.js';
+import { TEXTES_FINS } from '../data/fins.js';
 
 // Écran d'accueil et de pause (#overlay dans index.html).
 // Modes : 'titre' (premier lancement), 'pause' (Échap), 'souris' (la souris n'a pas pu être reprise).
@@ -20,6 +21,7 @@ export function createAccueil({ input, surJouer, surNouvelle }) {
   el('h1', null, racine, ACCUEIL.titre);
   const etatEl = el('div', 'etat', racine, '');
   const boutons = el('div', 'boutons', racine);
+  const finsEl = el('div', 'fins', racine, ''); // nombre de fins déjà vues (sans leurs noms)
   const bJouer = el('button', 'go', boutons, ACCUEIL.commencer);
   bJouer.type = 'button';
   const bNouvelle = el('button', 'go secondaire', boutons, ACCUEIL.nouvellePartie);
@@ -29,6 +31,7 @@ export function createAccueil({ input, surJouer, surNouvelle }) {
   let aUnePartie = false;
   let confirmation = false;
   let mode = 'titre';
+  let nbFins = 0;
 
   function remplirCommandes() {
     table.textContent = '';
@@ -55,6 +58,7 @@ export function createAccueil({ input, surJouer, surNouvelle }) {
     }
     bNouvelle.style.display = aUnePartie || mode !== 'titre' ? '' : 'none';
     sur.style.display = '';
+    finsEl.textContent = mode === 'titre' && nbFins > 0 ? TEXTES_FINS.finsVues(nbFins) : '';
   }
 
   bJouer.addEventListener('click', (e) => {
@@ -91,6 +95,10 @@ export function createAccueil({ input, surJouer, surNouvelle }) {
     },
     set aUnePartie(v) {
       aUnePartie = !!v;
+      maj();
+    },
+    set nbFins(n) {
+      nbFins = n | 0;
       maj();
     },
     remplirCommandes,

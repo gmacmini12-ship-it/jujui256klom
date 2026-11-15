@@ -52,12 +52,12 @@ export function createRain(count = 9000) {
 // Passe finale, en espace écran : aberration chromatique, vignette, étalonnage violet
 // et réduction du nombre de teintes avec tramage (rendu « dessiné »).
 export const FilmShader = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, levels: { value: 14 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, levels: { value: 14 }, sourdine: { value: 0 }, halo: { value: 0 } },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform float time; uniform float levels;
+    uniform sampler2D tDiffuse; uniform float time; uniform float levels; uniform float sourdine; uniform float halo;
     varying vec2 vUv;
     void main() {
       vec2 d = vUv - 0.5;
@@ -67,14 +67,23 @@ export const FilmShader = {
         texture2D(tDiffuse, vUv).g,
         texture2D(tDiffuse, vUv - off).b
       );
-      col *= smoothstep(0.95, 0.3, length(d));
+      // Sourdine (0 = rendu inchangé) : vignette plus serrée
+      col *= smoothstep(0.95 - 0.22 * sourdine, 0.3, length(d));
       // étalonnage : ombres indigo, tons moyens violets, hautes lumières roses
       float lum = dot(col, vec3(0.299, 0.587, 0.114));
       vec3 sh = vec3(0.05, 0.015, 0.14);
       vec3 mid = vec3(0.5, 0.16, 0.92);
       vec3 hi = vec3(1.0, 0.72, 0.99);
       vec3 duo = lum < 0.5 ? mix(sh, mid, lum * 2.0) : mix(mid, hi, lum * 2.0 - 1.0);
-      col = mix(col, duo, 0.42);
+      col = mix(col, duo, 0.42 * (1.0 - 0.5 * sourdine));
+      // Sourdine : couleurs désaturées, la ville « brute »
+      col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), 0.55 * sourdine);
+      // Halo du Sceau (fin « Rester », 0 = rendu inchangé) : couleurs réchauffées, vignette rose-violet
+      if (halo > 0.0) {
+        col = mix(col, col * vec3(1.16, 0.95, 0.86) + vec3(0.03, 0.012, 0.0), halo * 0.7);
+        float bord = smoothstep(0.22, 0.78, length(d));
+        col += vec3(0.78, 0.2, 0.9) * bord * bord * halo * 0.62;
+      }
       // tramage ordonné 4x4 puis palette réduite
       ivec2 pi = ivec2(mod(gl_FragCoord.xy, 4.0));
       const float bayer[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
@@ -88,14 +97,26 @@ export const FilmShader = {
 // `regler({ pluie, filtre })` : volume de la pluie (0..1, 0.07 en ville) et
 // fréquence de coupure du filtre général (Hz ; bas = « comme sous l'eau »).
 // `bip()` : bip médical court (séquence d'ouverture).
+// `accompagnement(niveau, duree)` : niveau 1 = ville « accompagnée » (nappe + pluie voilée), 0 = ville brute
+// (nappe coupée en `duree` s, pluie plus présente, filtre ouvert) : la Sourdine (bible §4.3).
 // `tonalite({ de, vers, duree, volume, type })`, `souffle({ de, vers, duree, volume, q })` : sons brefs des pouvoirs.
+const ACCORDS = { defaut: [55, 55.35, 82.4, 110.3], majeur: [55, 69.3, 82.4, 138.6] };
 export function createAudio() {
   let ctx = null;
   let master = null;
   let filtre = null;
   let rainGain = null;
+  let droneGain = null;
   let muted = false;
+  let accordNom = 'defaut'; // accord de la nappe (voir accord())
+  const droneOsc = [];
+  let droneFiltre = null;
+  let accomp = 1; // niveau de la couche « accompagnée » (Sourdine : 0)
   const reglage = { pluie: 0.07, filtre: 20000 };
+  const NAPPE = 0.09; // volume de la nappe grave
+  // valeurs effectives : la ville brute a une pluie plus présente (×1,6) et un filtre ouvert
+  const pluieEff = () => reglage.pluie * (1 + 0.6 * (1 - accomp));
+  const filtreEff = () => reglage.filtre + (20000 - reglage.filtre) * (1 - accomp);
   function start() {
     if (ctx) return ctx.resume();
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -105,7 +126,7 @@ export function createAudio() {
     master.gain.value = muted ? 0 : 0.6;
     filtre = ctx.createBiquadFilter();
     filtre.type = 'lowpass';
-    filtre.frequency.value = reglage.filtre;
+    filtre.frequency.value = filtreEff();
     filtre.connect(master);
     master.connect(ctx.destination);
 
@@ -119,20 +140,23 @@ export function createAudio() {
     hp.type = 'highpass';
     hp.frequency.value = 1400;
     rainGain = ctx.createGain();
-    rainGain.gain.value = reglage.pluie;
+    rainGain.gain.value = pluieEff();
     noise.connect(hp).connect(rainGain).connect(filtre);
     noise.start();
 
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.value = 240;
-    const droneGain = ctx.createGain();
-    droneGain.gain.value = 0.09;
+    droneGain = ctx.createGain();
+    droneGain.gain.value = NAPPE * accomp;
     lp.connect(droneGain).connect(filtre);
-    for (const f of [55, 55.35, 82.4, 110.3]) {
+    droneFiltre = lp;
+    lp.frequency.value = accordNom === 'majeur' ? 420 : 240;
+    for (const f of ACCORDS[accordNom]) {
       const o = ctx.createOscillator();
       o.type = 'sawtooth';
       o.frequency.value = f;
+      droneOsc.push(o);
       o.connect(lp);
       o.start();
     }
@@ -153,9 +177,36 @@ export function createAudio() {
     if (!ctx) return;
     const t = ctx.currentTime;
     rainGain.gain.cancelScheduledValues(t);
-    rainGain.gain.setTargetAtTime(reglage.pluie, t, duree / 3);
+    rainGain.gain.setTargetAtTime(pluieEff(), t, duree / 3);
     filtre.frequency.cancelScheduledValues(t);
-    filtre.frequency.setTargetAtTime(reglage.filtre, t, duree / 3);
+    filtre.frequency.setTargetAtTime(filtreEff(), t, duree / 3);
+  }
+  // Couche « accompagnée » : 1 = normale, 0 = coupée (nappe muette, pluie brute). Le réglage de zone reste respecté.
+  function accompagnement(niveau = 1, duree = 0.5) {
+    accomp = Math.max(0, Math.min(1, niveau));
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const k = Math.max(0.01, duree) / 3;
+    droneGain.gain.cancelScheduledValues(t);
+    droneGain.gain.setTargetAtTime(NAPPE * accomp, t, k);
+    rainGain.gain.cancelScheduledValues(t);
+    rainGain.gain.setTargetAtTime(pluieEff(), t, k);
+    filtre.frequency.cancelScheduledValues(t);
+    filtre.frequency.setTargetAtTime(filtreEff(), t, k);
+  }
+  // Accord de la nappe : 'defaut' (quinte grave, un peu désaccordée) ou 'majeur' (fin « Rester » : la nappe se résout).
+  // Les oscillateurs glissent vers l'accord en `duree` s ; le filtre de la nappe s'ouvre un peu.
+  function accord(nom = 'defaut', duree = 4) {
+    if (!ACCORDS[nom]) return;
+    accordNom = nom;
+    if (!ctx || !droneOsc.length) return;
+    const t = ctx.currentTime;
+    droneOsc.forEach((o, i) => {
+      o.frequency.cancelScheduledValues(t);
+      o.frequency.setValueAtTime(o.frequency.value, t);
+      o.frequency.linearRampToValueAtTime(ACCORDS[nom][i], t + Math.max(0.05, duree));
+    });
+    droneFiltre.frequency.setTargetAtTime(nom === 'majeur' ? 420 : 240, t, Math.max(0.05, duree) / 3);
   }
   function bip({ frequence = 1046, duree = 0.16, volume = 0.12 } = {}) {
     if (!ctx) return;
@@ -214,10 +265,18 @@ export function createAudio() {
     start,
     toggle,
     regler,
+    accompagnement,
+    accord,
     bip,
     tonalite,
     souffle,
     get demarre() { return !!ctx; },
     get coupe() { return muted; },
+    get accordActuel() { return accordNom; },
+    /** Diagnostic (tests) : fréquences courantes des oscillateurs de la nappe. */
+    get frequencesNappe() { return droneOsc.map((o) => +o.frequency.value.toFixed(2)); },
+    get niveauAccompagnement() { return accomp; },
+    /** Diagnostic (tests) : gains courants de la nappe, de la pluie et fréquence du filtre. */
+    get diagnostic() { return ctx ? { nappe: droneGain.gain.value, pluie: rainGain.gain.value, filtre: filtre.frequency.value, accomp } : { accomp }; },
   };
 }

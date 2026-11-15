@@ -473,7 +473,8 @@ export const veilleur = {
       const n = this.compterChute();
       // Mima ne parle qu'à la première chute qu'elle ne rattrape pas (3e, bible §7.3)
       const parole = n === RATTRAPAGES + 1 && !jeu.sourdine?.actif;
-      jeu.etat.rattrapageCoupe = true;
+      // en Sourdine, la chute n'est pas rattrapée mais ne coupe pas le rattrapage pour la suite
+      if (!jeu.sourdine?.actif || n > RATTRAPAGES) jeu.etat.rattrapageCoupe = true;
       jeu.sauver?.();
       this.echec('chute', { parole });
     }

@@ -76,6 +76,33 @@ export const POSITIONS_FRAGMENTS = [
   // 19 : sur la tablette du Kiosque à la veste bleue (côté nord, partie ouest, face à la clinique), à droite de l'écran.
   { id: 19, zone: 'kasumi', position: [49.35, 1.4, 22.0], rayon: 2.6, invite: 'Regarder la tablette' },
 
+  // ---- Maison des Conseils (zone 'maison', repère de zones/maison.js ; LIEUX et la bible §5.4, §6) ----
+  // Médiathèque des Avant (aile est) : un fragment devant chacun des quatre écrans du mur est (x = 27,8), à hauteur de regard.
+  { id: 5, zone: 'maison', position: [26.4, 1.75, -8], rayon: 2.9, invite: "Lire l'archive de 2021" },
+  { id: 6, zone: 'maison', position: [26.4, 1.75, -3], rayon: 2.9, invite: "Lire l'archive de 2025" },
+  { id: 7, zone: 'maison', position: [26.4, 1.75, 2], rayon: 2.9, invite: "Lire l'archive de 2026" },
+  { id: 9, zone: 'maison', position: [26.4, 1.75, 7], rayon: 2.9, invite: "Lire l'archive de 2033" },
+  // 14 : sous le fronton intérieur de la nef, la Charte gravée sur la poutre (z = 5).
+  { id: 14, zone: 'maison', position: [-2.6, 2.4, 4.3], rayon: 3.2, invite: 'Lire la Charte' },
+  // 15 : la vitrine de la séance 1 812, contre le mur ouest de la nef.
+  { id: 15, zone: 'maison', position: [-7.3, 1.45, -8], rayon: 2.9, invite: 'Regarder la vitrine' },
+  // Clinique du Jugement (étage, y = 4,2) : l'affiche du mur est, la table basse, le bureau de la docteure.
+  {
+    id: 20, zone: 'maison', position: [13.1, 6.25, -24], rayon: 3.0,
+    support: { type: 'affiche', position: [13.78, 6.25, -24], yaw: -Math.PI / 2 },
+    invite: "Regarder l'affiche",
+  },
+  {
+    id: 21, zone: 'maison', position: [-11.7, 5.3, -21.2], rayon: 2.8,
+    support: { type: 'papier', position: [-11.7, 4.99, -21.2], yaw: 0.3 },
+    invite: 'Lire la note',
+  },
+  {
+    id: 22, zone: 'maison', position: [0, 5.05, -23.8], rayon: 2.8,
+    support: { type: 'papier', position: [-0.2, 4.67, -23.8], yaw: -0.4 },
+    invite: 'Lire la fiche',
+  },
+
   // 10 : « Le dividende » n'est PAS à ramasser : c'est un souvenir qu'Oba raconte. Il entre dans la frise à
   // la fin de son dialogue (systems/personnages.js, drapeau 'oba_dividende'). Il n'a donc pas de ligne
   // ci-dessus (fragments.js en ferait un éclat prenable) : voir POSITIONS_PAR_DIALOGUE plus bas.

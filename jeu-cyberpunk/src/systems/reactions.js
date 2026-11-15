@@ -194,6 +194,8 @@ export const reactions = {
 
   /** Nouvelle partie : tout est effacé (l'Attention revient à 0 ; les paquets pris sont oubliés avec l'état). */
   remettre() {
+    this._enSourdine = false;
+    this._reprise = 0;
     for (const k of Object.keys(this.niveaux)) this.niveaux[k] = 0;
     for (const v of this.veilleurs) { v.pos = null; v.alpha = 0; v.v.groupe.visible = false; }
     for (const g of this.portes) this.fermerPorte(g, false, true);
@@ -207,8 +209,10 @@ export const reactions = {
   // =====================================================================
   update(dt, t, jeu) {
     if (!this._scene) return;
-    if (jeu.sourdine?.actif) return; // la Sourdine met tout en pause : l'état reste tel quel
     dt = Math.min(dt, 0.1);
+    if (jeu.sourdine?.actif) { this.surSourdine(dt, t); return; } // tout reste figé, sauf ce qui perd sa cible
+    this._enSourdine = false;
+    if (this._reprise > 0) this._reprise = Math.max(0, this._reprise - dt);
     const p = jeu.attention?.palier ?? 0;
     this.palier = p;
     const N = this.niveaux;
@@ -233,6 +237,19 @@ export const reactions = {
     this.appliquerKiosque(N.appel > 0.5);
     this.ouvrirPortesDeService(p);
     this.majAppel(p >= 4);
+  },
+
+  /**
+   * Pendant la Sourdine (bible §4.3) : niveaux, enseignes, hologrammes et paquets restent figés. Le joueur reste suivi
+   * (pour qu'aucun saut de position n'apparaisse à la fin), les Veilleurs perdent leur cible et dérivent, et les
+   * rideaux « pour entretien » se relèvent sans jamais se refermer.
+   */
+  surSourdine(dt, t) {
+    this._enSourdine = true;
+    this._reprise = REGLAGES.veilleurPerdu.reprise;
+    this.suivreJoueur(dt);
+    this.majVeilleurs(dt, t);
+    this.majPortes(dt, t);
   },
 
   /** Position et vitesse horizontales lissées du joueur (le joueur est suivi dans toutes les zones). */
@@ -411,16 +428,33 @@ export const reactions = {
       this._cap = { x: _w.x / fl, z: _w.z / fl };
     }
     const fx = this._cap.x, fz = this._cap.z;
+    const perdu = this._enSourdine || this._reprise > 0; // sans cible : Sourdine, puis le temps de retrouver sa trace
+    const P = REGLAGES.veilleurPerdu;
     this.veilleurs.forEach((s, i) => {
       const cible = i < voulu ? 1 : 0;
-      s.alpha = vers(s.alpha, cible * this.niveaux.veilleurs, dt, 3);
+      s.alpha = vers(s.alpha, cible * this.niveaux.veilleurs * (perdu ? P.alpha : 1), dt, 3);
       if (s.alpha < 0.01 && !cible) { s.v.groupe.visible = false; s.pos = null; return; }
+      if (perdu) {
+        if (!s.pos) { s.v.groupe.visible = false; return; }
+        // il s'arrête et dérive : un cap lent qui tourne, sans plus regarder où est le joueur
+        s.cap = (s.cap ?? (i * 2.4 + 1)) + dt * (0.35 + 0.2 * i) * (i ? -1 : 1);
+        s.pos.x += Math.cos(s.cap) * P.derive * dt;
+        s.pos.z += Math.sin(s.cap) * P.derive * dt;
+        s.pos.y += Math.sin(t * 0.9 + i * 2) * 0.18 * dt;
+        s.v.groupe.position.copy(s.pos);
+        s.v.groupe.visible = this.enVille;
+        base.fixerVeilleur(s.v, s.alpha, 1, t + i);
+        return;
+      }
       // derrière le joueur, de part et d'autre : 6 m
       const ang = Math.atan2(-fx, -fz) + s.cote * decalage;
       const cx = pl.x + Math.sin(ang) * distance;
       const cz = pl.z + Math.cos(ang) * distance;
       const cy = pl.y + hauteur + Math.sin(t * 0.9 + i * 2) * 0.18;
-      if (!s.pos || s.pos.distanceTo(_v.set(cx, cy, cz)) > 40) s.pos = new THREE.Vector3(cx, cy, cz);
+      if (!s.pos || s.pos.distanceTo(_v.set(cx, cy, cz)) > 40) {
+        if (s.pos) s.alpha = 0; // resté très loin (Sourdine, téléportation) : il reparaît derrière lui en fondu
+        s.pos = new THREE.Vector3(cx, cy, cz);
+      }
       const r = 1 - Math.exp(-dt * 2.4);
       s.pos.x += (cx - s.pos.x) * r;
       s.pos.y += (cy - s.pos.y) * r;
@@ -428,7 +462,9 @@ export const reactions = {
       // jamais plus loin que 7,5 m (il suit), jamais à moins de 4,5 m
       let dx = s.pos.x - pl.x, dz = s.pos.z - pl.z;
       const d = Math.hypot(dx, dz) || 1;
-      const dd = clamp(d, 4.5, distance + 1.5);
+      // trop loin : il se rapproche vite (25 m/s) plutôt que de sauter, comme au retour d'une Sourdine
+      const dmax = distance + 1.5;
+      const dd = d > dmax ? Math.max(dmax, d - 25 * dt) : Math.max(d, 4.5);
       if (dd !== d) { s.pos.x = pl.x + (dx / d) * dd; s.pos.z = pl.z + (dz / d) * dd; }
       s.v.groupe.position.copy(s.pos);
       s.v.groupe.visible = this.enVille;
@@ -485,7 +521,7 @@ export const reactions = {
     const enVille = this.enVille;
     for (const g of this.portes) {
       if (g.ferme) {
-        let rouvrir = this.niveaux.portes < 0.5 || !enVille;
+        let rouvrir = this.niveaux.portes < 0.5 || !enVille || this._enSourdine; // Sourdine : « pour entretien » cesse
         const dist = Math.abs(pl.x - g.x);
         if (v > R.vitesseMin) {
           const dh = Math.atan2(Math.sin(Math.atan2(vit.x, vit.z) - g.h0), Math.cos(Math.atan2(vit.x, vit.z) - g.h0));
@@ -496,7 +532,7 @@ export const reactions = {
           this.fermerPorte(g, false);
           g.libreJusqua = t + R.grace; // après une attente, on le laisse passer
         }
-      } else if (this.niveaux.portes > 0.5 && enVille && t > g.libreJusqua && v > R.vitesseMin) {
+      } else if (this.niveaux.portes > 0.5 && enVille && !this._enSourdine && t > g.libreJusqua && v > R.vitesseMin) {
         const dist = Math.abs(pl.x - g.x);
         const versPorte = Math.sign(g.x - pl.x) * vit.x / v;
         if (dist > R.distanceMin && dist < R.distanceMax && Math.abs(pl.z - g.z) < 10 && pl.y < 3 && versPorte > R.cosVers) this.fermerPorte(g, true);

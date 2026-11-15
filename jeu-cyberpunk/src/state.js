@@ -46,6 +46,7 @@ export function etatInitial() {
     doutesSemes: [],              // habitants à qui l'on a parlé
     soin: 0,                      // aider un Glaneur renversé, parler aux anciens, écouter le Refuge…
     sourdineUsages: 0,
+    sourdineTemps: 0,             // secondes cumulées de Sourdine
     echoUsages: 0,
     cigarettes: { fumees: 0, paquet: 9, reapprovisionnements: 0, decouvert: false, donne: null, arret: false },
     chutes: 0,

@@ -1,4 +1,5 @@
 import './ui.css';
+import { TEXTES_FINS } from '../data/fins.js';
 
 const AN_MIN = 2026;
 const AN_MAX = 2076;
@@ -102,6 +103,7 @@ export function createFrise({ fragments = [], etat = {}, onOuvert, onFerme } = {
       el('div', 'ui-fragment-an', b, f.annee == null ? 'SANS DATE' : String(f.annee));
       el('h2', 'ui-fragment-titre', b, f.titre);
       if (f.lieu) el('div', 'ui-fragment-lieu', b, f.lieu);
+      if ((etat.fragmentsConnus || []).includes(f.id)) el('div', 'ui-fragment-connu', b, TEXTES_FINS.dejaConnu);
       el('div', 'ui-fragment-texte', b, f.texte);
     }
     fiche.scrollTop = 0;

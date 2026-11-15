@@ -18,6 +18,9 @@ export const REGLAGES = {
   enseignes: { rayon: 46, plein: 12, gain: 0.85 },   // au-delà de `rayon` m : rien ; en deçà de `plein` : gain complet (+85 %)
   // palier 3 : Veilleurs
   veilleur: { distance: 6, hauteur: 2.3, decalage: 0.5, seuilDeux: 75, echelle: 2.7 },
+  // Sourdine : les Veilleurs perdent leur cible : ils s'arrêtent, dérivent (m/s), s'estompent (opacité) ;
+  // à la fin ils mettent `reprise` s à retrouver sa trace.
+  veilleurPerdu: { derive: 0.5, alpha: 0.55, reprise: 2.5 },
   // palier 3 : hologrammes
   holo: { rayonAppel: 150 },   // palier 4 : les panneaux à moins de 150 m affichent l'appel, les autres restent sur おかえり
   // palier 3 : portes « pour entretien » (entrées est et ouest du Marché des Mains)

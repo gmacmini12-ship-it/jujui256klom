@@ -131,6 +131,14 @@ export function createHud() {
 
   return {
     mima(texte, { duree = 6 } = {}) { file.push({ texte: String(texte), duree }); },
+    /** Vide la file de la bande de Mima ; avec `courant`, coupe aussi la réplique en cours (la voix se tait net). */
+    viderMima({ courant = false } = {}) {
+      file.length = 0;
+      if (courant && cur) {
+        cur = null;
+        bandeau.classList.remove('visible');
+      }
+    },
     masquerMima(b) {
       masque = !!b;
       bandeau.classList.toggle('masque', masque);

@@ -20,6 +20,7 @@ import { createZoneManager } from './zones/manager.js';
 import { creerClinique } from './zones/clinique.js';
 import { creerKasumi } from './zones/kasumi.js';
 import { creerMainsCourantes } from './zones/mainsCourantes.js';
+import { creerMaison } from './zones/maison.js';
 import { FRAGMENTS } from './data/fragments.js';
 import { OUVERTURE } from './data/ouverture.js';
 import { TITRES_ZONES } from './data/interface.js';
@@ -178,6 +179,7 @@ function nouvellePartie() {
 }
 
 const accueil = createAccueil({ input, surJouer: jouer, surNouvelle: nouvellePartie });
+Object.assign(jeu, { accueil, nouvellePartie }); // utilisés par les fins (systems/fins.js)
 input.init().then(() => accueil.remplirCommandes());
 
 // ---------- Cigarette ----------
@@ -205,6 +207,7 @@ jeu._preparerSystemes();
 zones.enregistrer('clinique', creerClinique);
 zones.enregistrer('kasumi', creerKasumi);
 zones.enregistrer('mains-courantes', creerMainsCourantes);
+zones.enregistrer('maison', creerMaison);
 
 const sauvegarde = charger();
 accueil.aUnePartie = sauvegarde && etat.ouvertureVue;

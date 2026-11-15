@@ -1,0 +1,45 @@
+/* Écran de fin (src/ui/fin.js), pastille de l'écran titre et mention « déjà connu » de la frise. */
+.ui-fin {
+  position: fixed; inset: 0; z-index: 70; background: #000; opacity: 0; display: none; cursor: pointer;
+  align-items: center; justify-content: center; transition-property: opacity; transition-timing-function: ease-in-out;
+  font-family: var(--ui-police); color: var(--ui-texte); -webkit-font-smoothing: none; user-select: none;
+}
+.ui-fin.present { display: flex; }
+.ui-fin.noir { opacity: 1; }
+.ui-fin-page {
+  width: min(660px, calc(100vw - 48px)); display: flex; flex-direction: column; gap: 26px; text-align: left;
+  transition: opacity 0.7s ease; opacity: 1;
+}
+.ui-fin-page.sortie { opacity: 0; }
+.ui-fin-unite { display: flex; flex-direction: column; gap: 12px; }
+.ui-fin-ligne {
+  margin: 0; opacity: 0; transition: opacity 2.6s ease; line-height: 1.85; font-size: clamp(15px, 1.9vw, 20px); color: #e8dcff;
+}
+.ui-fin-ligne.visible { opacity: 1; }
+.ui-fin-ligne.mima { font-style: italic; color: var(--ui-doux); }
+.ui-fin-ligne.titre { letter-spacing: 0.3em; text-transform: uppercase; font-size: 13px; color: var(--ui-doux); }
+.ui-fin-page.bilan .ui-fin-ligne { font-size: clamp(14px, 1.6vw, 17px); line-height: 1.7; color: #cdbfee; transition-duration: 1.6s; }
+.ui-fin-page.profil .ui-fin-ligne.nom { font-size: clamp(20px, 3vw, 30px); letter-spacing: 0.25em; text-transform: uppercase; color: #fff; text-shadow: 0 0 14px rgba(196, 75, 255, 0.6); }
+.ui-fin-suite {
+  position: absolute; bottom: 6vh; left: 50%; transform: translateX(-50%); font-size: 14px; color: var(--ui-doux);
+  opacity: 0; transition: opacity 0.8s ease; animation: ui-fin-clignote 1.8s ease-in-out infinite;
+}
+.ui-fin-suite.visible { opacity: 0.8; }
+@keyframes ui-fin-clignote { 50% { transform: translate(-50%, 4px); } }
+
+/* Écran titre : fins déjà vues (nombre seulement) */
+#overlay .fins { color: #a898d4; letter-spacing: 0.3em; font-size: 12px; min-height: 0; }
+#overlay .fins:empty { display: none; }
+
+/* Frise : fragment retrouvé dans une partie précédente */
+.ui-fragment-connu { margin-top: 4px; font-size: 12px; letter-spacing: 0.12em; font-style: italic; color: var(--ui-doux); }
+
+/* Saluts des habitants et invitation d'Itsuki (fin « Rester ») : même allure que les bribes de la foule */
+.fin-bulle {
+  position: fixed; left: 0; top: 0; z-index: 40; pointer-events: none; max-width: 270px; text-align: center;
+  font-family: var(--ui-police); font-size: 14px; line-height: 1.35; font-style: italic; color: #fff0ff;
+  padding: 4px 10px 5px; background: rgba(12, 5, 28, 0.74); border-bottom: 2px solid rgba(255, 90, 208, 0.6);
+  text-shadow: 0 1px 2px #000, 0 0 8px rgba(196, 75, 255, 0.6); opacity: 0; display: none; will-change: transform, opacity;
+  -webkit-font-smoothing: none;
+}
+.fin-bulle.itsuki { max-width: 330px; border-bottom-color: rgba(94, 242, 255, 0.75); }

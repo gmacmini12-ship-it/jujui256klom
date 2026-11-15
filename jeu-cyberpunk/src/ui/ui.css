@@ -222,3 +222,16 @@
 .ui-ouverture-ligne.visible { opacity: 1; }
 .ui-ouverture-ligne.date { font-size: clamp(20px, 3vw, 30px); color: #f4ecff; text-shadow: 0 0 14px rgba(196, 75, 255, 0.55); }
 .ui-ouverture-ligne.heure { font-size: 14px; color: var(--ui-doux); }
+
+/* ---------- Sourdine : indicateur discret (usage et recharge seulement) ---------- */
+.ui-sourdine {
+  position: absolute; left: 22px; bottom: 22px; display: flex; align-items: center; gap: 10px;
+  font-size: 11px; letter-spacing: 0.22em; color: var(--ui-doux);
+  opacity: 0; transition: opacity 0.4s ease; pointer-events: none;
+}
+.ui-sourdine.visible { opacity: 0.9; }
+.ui-sourdine.recharge { opacity: 0; color: var(--ui-doux); }
+.ui-sourdine.recharge.visible { opacity: 0.45; }
+.ui-sourdine-barre { position: relative; width: 74px; height: 3px; background: rgba(168, 152, 212, 0.25); }
+.ui-sourdine-barre > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ui-doux); }
+.ui-sourdine:not(.recharge) .ui-sourdine-barre > span { background: var(--ui-texte); }
