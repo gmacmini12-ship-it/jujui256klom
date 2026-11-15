@@ -419,7 +419,7 @@ function creerRobot(type, path, { s = 0, dir = 1, vitesse, zone = 'kasumi', id }
     tPasSon: 0, tDetresse: 0, tFinSon: 0,
     caractere: {
       complaisance: +(0.55 + rnd() * 0.3).toFixed(2), hostilite: +(rnd() * 0.05).toFixed(2),
-      fabulation: +(rnd() * 0.1).toFixed(2), detresse: type === 'porteur' && rnd() < 0.12 ? +(0.15 + rnd() * 0.2).toFixed(2) : 0,
+      fabulation: +(rnd() * 0.1).toFixed(2), detresse: type === 'porteur' && compteurId % 4 === 3 ? +(0.15 + rnd() * 0.2).toFixed(2) : 0, // vieux Porteurs (1 sur 4, par ordre de création : stable) ; lus par la Lecture
     },
     charge: CP.charges[Math.floor(rnd() * CP.charges.length)],
     destination: CP.destinations[Math.floor(rnd() * CP.destinations.length)],

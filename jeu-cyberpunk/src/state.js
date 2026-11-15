@@ -52,6 +52,11 @@ export function etatInitial() {
     chutes: 0,
     rattrapageCoupe: false,
     invarianceVerifiee: false,    // Lecture + Sourdine sur un écran de Mima
+    lectures: {},                 // Lecture : { type: nombre de lectures }
+    lecturesSousSourdine: 0,      // lectures faites avec la Sourdine ouverte
+    lectureMima: { observe: false, nonObserve: false }, // Mima lue dans chacun des deux états
+    detresseVue: false,           // une Détresse non nulle (hors Mima) a été lue
+    detresseMimaVue: false,       // la Détresse de Mima a été lue (bilan de la fin 5)
     questionsPosees: [],
     zonesVisitees: [],
     zone: 'clinique',

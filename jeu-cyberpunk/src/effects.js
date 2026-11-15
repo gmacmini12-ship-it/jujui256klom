@@ -52,20 +52,27 @@ export function createRain(count = 9000) {
 // Passe finale, en espace écran : aberration chromatique, vignette, étalonnage violet
 // et réduction du nombre de teintes avec tramage (rendu « dessiné »).
 export const FilmShader = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, levels: { value: 14 }, sourdine: { value: 0 }, halo: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, levels: { value: 14 }, sourdine: { value: 0 }, halo: { value: 0 }, ondulation: { value: 0 } },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform float time; uniform float levels; uniform float sourdine; uniform float halo;
+    uniform sampler2D tDiffuse; uniform float time; uniform float levels; uniform float sourdine; uniform float halo; uniform float ondulation;
     varying vec2 vUv;
     void main() {
       vec2 d = vUv - 0.5;
       vec2 off = d * dot(d, d) * 0.012;
+      // Air chaud (Kura ; 0 = rendu inchangé) : l'image ondule, surtout vers l'horizon
+      vec2 uv = vUv;
+      if (ondulation > 0.0) {
+        float bande = 0.35 + 0.65 * exp(-pow((vUv.y - 0.5) / 0.3, 2.0));
+        uv += vec2(sin(vUv.y * 60.0 + time * 2.2) * 0.0042 + sin(vUv.y * 23.0 - time * 1.3) * 0.0025,
+                   cos(vUv.x * 41.0 + time * 1.7) * 0.0022) * ondulation * bande;
+      }
       vec3 col = vec3(
-        texture2D(tDiffuse, vUv + off).r,
-        texture2D(tDiffuse, vUv).g,
-        texture2D(tDiffuse, vUv - off).b
+        texture2D(tDiffuse, uv + off).r,
+        texture2D(tDiffuse, uv).g,
+        texture2D(tDiffuse, uv - off).b
       );
       // Sourdine (0 = rendu inchangé) : vignette plus serrée
       col *= smoothstep(0.95 - 0.22 * sourdine, 0.3, length(d));
@@ -99,6 +106,7 @@ export const FilmShader = {
 // `bip()` : bip médical court (séquence d'ouverture).
 // `accompagnement(niveau, duree)` : niveau 1 = ville « accompagnée » (nappe + pluie voilée), 0 = ville brute
 // (nappe coupée en `duree` s, pluie plus présente, filtre ouvert) : la Sourdine (bible §4.3).
+// `ronflement(volume, duree)` : couche grave de Kura (0 = absente, rien n'est créé ni changé ; 0,15 = fort), fondue en `duree` s.
 // `tonalite({ de, vers, duree, volume, type })`, `souffle({ de, vers, duree, volume, q })` : sons brefs des pouvoirs.
 const ACCORDS = { defaut: [55, 55.35, 82.4, 110.3], majeur: [55, 69.3, 82.4, 138.6] };
 export function createAudio() {
@@ -114,6 +122,8 @@ export function createAudio() {
   let accomp = 1; // niveau de la couche « accompagnée » (Sourdine : 0)
   const reglage = { pluie: 0.07, filtre: 20000 };
   const NAPPE = 0.09; // volume de la nappe grave
+  let ronflVol = 0; // couche de ronflement (Kura) : volume voulu
+  let ronflGain = null;
   // valeurs effectives : la ville brute a une pluie plus présente (×1,6) et un filtre ouvert
   const pluieEff = () => reglage.pluie * (1 + 0.6 * (1 - accomp));
   const filtreEff = () => reglage.filtre + (20000 - reglage.filtre) * (1 - accomp);
@@ -166,6 +176,44 @@ export function createAudio() {
     lfoGain.gain.value = 110;
     lfo.connect(lfoGain).connect(lp.frequency);
     lfo.start();
+    if (ronflVol > 0) creerRonflement();
+  }
+  // Ronflement des baies : bruit brun très filtré + deux sinus graves qui battent lentement. Créé au premier besoin.
+  function creerRonflement() {
+    if (!ctx || ronflGain) return;
+    ronflGain = ctx.createGain();
+    ronflGain.gain.value = 0;
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    let acc = 0;
+    for (let i = 0; i < data.length; i++) { acc = (acc + (Math.random() * 2 - 1) * 0.04) / 1.02; data[i] = acc * 9; }
+    const bruit = ctx.createBufferSource();
+    bruit.buffer = buf;
+    bruit.loop = true;
+    const lpR = ctx.createBiquadFilter();
+    lpR.type = 'lowpass';
+    lpR.frequency.value = 110;
+    bruit.connect(lpR).connect(ronflGain);
+    bruit.start();
+    for (const [f, g] of [[41, 0.8], [41.7, 0.6], [82.4, 0.25]]) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const og = ctx.createGain();
+      og.gain.value = g;
+      o.connect(og).connect(ronflGain);
+      o.start();
+    }
+    ronflGain.connect(filtre);
+  }
+  function ronflement(volume = 0, duree = 1.5) {
+    ronflVol = Math.max(0, volume);
+    if (!ctx) return;
+    if (ronflVol > 0) creerRonflement();
+    if (!ronflGain) return;
+    const t = ctx.currentTime;
+    ronflGain.gain.cancelScheduledValues(t);
+    ronflGain.gain.setTargetAtTime(ronflVol, t, Math.max(0.05, duree) / 3);
   }
   function toggle() {
     muted = !muted;
@@ -266,6 +314,7 @@ export function createAudio() {
     toggle,
     regler,
     accompagnement,
+    ronflement,
     accord,
     bip,
     tonalite,
@@ -276,6 +325,7 @@ export function createAudio() {
     /** Diagnostic (tests) : fréquences courantes des oscillateurs de la nappe. */
     get frequencesNappe() { return droneOsc.map((o) => +o.frequency.value.toFixed(2)); },
     get niveauAccompagnement() { return accomp; },
+    get ronflementActuel() { return ronflGain ? ronflGain.gain.value : 0; },
     /** Diagnostic (tests) : gains courants de la nappe, de la pluie et fréquence du filtre. */
     get diagnostic() { return ctx ? { nappe: droneGain.gain.value, pluie: rainGain.gain.value, filtre: filtre.frequency.value, accomp } : { accomp }; },
   };
