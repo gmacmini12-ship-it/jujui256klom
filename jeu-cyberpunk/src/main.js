@@ -115,7 +115,7 @@ jeu.ouvrirDialogue = (d) => dialogue.ouvrir(d);
 jeu.memoriserPosition = () => {
   const p = player.position;
   const { yaw } = player.orientation();
-  etat.position = { x: +p.x.toFixed(2), y: 0, z: +p.z.toFixed(2), yaw: +yaw.toFixed(3) };
+  etat.position = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +yaw.toFixed(3) };
 };
 
 // ---------- Souris ----------
@@ -209,7 +209,7 @@ accueil.aUnePartie = sauvegarde && etat.ouvertureVue;
 jeu._initSystemes();
 if (etat.ouvertureVue && zones.connait(etat.zone)) {
   const p = etat.position;
-  zones.installer(etat.zone, p ? { position: [p.x, 0, p.z], yaw: p.yaw ?? 0 } : undefined);
+  zones.installer(etat.zone, p ? { position: [p.x, p.y ?? 0, p.z], yaw: p.yaw ?? 0 } : undefined);
 } else {
   zones.installer('clinique');
 }
@@ -296,10 +296,13 @@ window.__game = {
   arreter() {
     renderer.setAnimationLoop(null);
   },
-  /** Place le joueur dans la zone `zone` (installée sans fondu si besoin) en (x, z), orienté `yaw`. */
-  teleport(zone, x, z, yaw = 0, pitch = 0) {
-    if (zone && zone !== zones.nom) zones.installer(zone, { position: [x, 0, z], yaw, pitch });
-    else player.teleporter(x, 0, z, yaw, pitch);
+  /**
+   * Place le joueur dans la zone `zone` (installée sans fondu si besoin) en (x, z), orienté `yaw`.
+   * `y` : hauteur des pieds (0 par défaut ; posé sur le sol s'il est juste dessous, sinon il tombe).
+   */
+  teleport(zone, x, z, yaw = 0, pitch = 0, y = 0) {
+    if (zone && zone !== zones.nom) zones.installer(zone, { position: [x, y, z], yaw, pitch });
+    else player.teleporter(x, y, z, yaw, pitch);
   },
   regarder: (yaw, pitch = 0) => player.regarder(yaw, pitch),
   /** Appuie sur une touche pendant une image (event.code), puis la relâche. */

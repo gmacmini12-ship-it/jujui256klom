@@ -58,6 +58,10 @@ export function etatInitial() {
     ouvertureVue: false,          // la séquence d'ouverture a été jouée (sinon : nouvelle partie)
     trajet: [],                   // [x, z, t, évènement] toutes les 0,5 s, plafonné
     rencontres: {},
+    drapeaux: [],                 // posés par les dialogues (dialogues à usage unique)
+    bondPropose: false,
+    doutesHeure: {},              // identifiant → horodatage du doute semé
+    conseilsDits: [],
     finsVues: [],
     messagePourLeN5: null         // laissé dans la fin « Rester », réapparaît aux parties suivantes
   };

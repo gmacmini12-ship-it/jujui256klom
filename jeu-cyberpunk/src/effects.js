@@ -88,6 +88,7 @@ export const FilmShader = {
 // `regler({ pluie, filtre })` : volume de la pluie (0..1, 0.07 en ville) et
 // fréquence de coupure du filtre général (Hz ; bas = « comme sous l'eau »).
 // `bip()` : bip médical court (séquence d'ouverture).
+// `tonalite({ de, vers, duree, volume, type })`, `souffle({ de, vers, duree, volume, q })` : sons brefs des pouvoirs.
 export function createAudio() {
   let ctx = null;
   let master = null;
@@ -170,11 +171,52 @@ export function createAudio() {
     o.start(t);
     o.stop(t + duree + 0.05);
   }
+  // Tonalité glissée (pouvoirs) : de `de` à `vers` Hz en `duree` s. Passe par le filtre de zone.
+  function tonalite({ de = 90, vers = 160, duree = 0.4, volume = 0.05, type = 'sine' } = {}) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(de, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(1, vers), t + duree);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(volume, t + Math.min(0.05, duree / 3));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + duree);
+    o.connect(g).connect(filtre);
+    o.start(t);
+    o.stop(t + duree + 0.05);
+  }
+  // Souffle (bruit filtré dont la fréquence glisse de `de` à `vers` Hz), pour une impulsion, un impact.
+  function souffle({ de = 300, vers = 1800, duree = 0.35, volume = 0.12, q = 1.2 } = {}) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const n = Math.ceil(ctx.sampleRate * (duree + 0.05));
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = q;
+    bp.frequency.setValueAtTime(de, t);
+    bp.frequency.exponentialRampToValueAtTime(Math.max(20, vers), t + duree);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(volume, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + duree);
+    src.connect(bp).connect(g).connect(filtre);
+    src.start(t);
+    src.stop(t + duree + 0.05);
+  }
   return {
     start,
     toggle,
     regler,
     bip,
+    tonalite,
+    souffle,
     get demarre() { return !!ctx; },
     get coupe() { return muted; },
   };

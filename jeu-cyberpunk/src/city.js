@@ -9,6 +9,7 @@ export const BLOCK = 44; // largeur d'un pâté (trottoir compris)
 export const STREET = 16;
 export const PITCH = BLOCK + STREET;
 export const HALF = (BLOCKS * PITCH) / 2;
+export const TROTTOIR = 0.3; // hauteur des trottoirs
 
 // Palette de la direction artistique : magenta, violet, bleu électrique.
 const NEON = ['#ff2bd6', '#c44bff', '#3d6bff', '#8a5cff', '#ff5ad0', '#4aa8ff'];
@@ -64,6 +65,10 @@ export function buildCity(scene, options = {}) {
   ];
   const sidewalkGeos = [];
   const buildings = [];
+  // Immeubles construits (hors pâtés réservés) : { x, z, w, d, h, hMax, etage, bloc }
+  //   h : hauteur du toit principal ; etage : { x, z, w, d, h0, h1 } étage technique ou null ;
+  //   hMax : sommet réel (étage technique compris).
+  const immeubles = [];
 
   for (let bi = 0; bi < BLOCKS; bi++) {
     for (let bj = 0; bj < BLOCKS; bj++) {
@@ -72,6 +77,8 @@ export function buildCity(scene, options = {}) {
       const sw = new THREE.BoxGeometry(BLOCK, 0.3, BLOCK);
       sw.translate(bx, 0.15, bz);
       sidewalkGeos.push(sw);
+      // trottoir : une marche de 30 cm (praticable sans sauter)
+      colliders.push({ minX: bx - BLOCK / 2, maxX: bx + BLOCK / 2, minZ: bz - BLOCK / 2, maxZ: bz + BLOCK / 2, minY: 0, maxY: TROTTOIR });
 
       // Découpage du pâté : 1, 2 ou 4 immeubles.
       const zone = 38;
@@ -95,17 +102,26 @@ export function buildCity(scene, options = {}) {
         const h = tower ? 90 + rand() * 80 : 16 + rand() * 52 * (1.15 - centerDist * 0.4);
         const b = { x: bx + ox, z: bz + oz, w: lw, d: ld, h, bx, bz, reserve };
         buildings.push(b);
-        if (!reserve) colliders.push({ minX: b.x - lw / 2, maxX: b.x + lw / 2, minZ: b.z - ld / 2, maxZ: b.z + ld / 2 });
+        // Boîte 3D : le toit est praticable (voir player.js).
+        if (!reserve) colliders.push({ minX: b.x - lw / 2, maxX: b.x + lw / 2, minZ: b.z - ld / 2, maxZ: b.z + ld / 2, minY: 0, maxY: h });
         const variante = pick(variants);
         const geo = buildingGeometry(b, rand);
         if (!reserve) variante.geos.push(geo);
         // étage technique sur le toit
+        let etage = null;
         if (rand() < 0.5) {
           const top = { x: b.x, z: b.z, w: lw * 0.5, d: ld * 0.5, h: 4 + rand() * 10 };
           const g = buildingGeometry(top, rand);
           g.translate(0, h, 0);
           const v2 = pick(variants);
           if (!reserve) v2.geos.push(g);
+          etage = { x: top.x, z: top.z, w: top.w, d: top.d, h0: h, h1: h + top.h };
+          if (!reserve) {
+            colliders.push({ minX: top.x - top.w / 2, maxX: top.x + top.w / 2, minZ: top.z - top.d / 2, maxZ: top.z + top.d / 2, minY: h, maxY: h + top.h });
+          }
+        }
+        if (!reserve) {
+          immeubles.push({ x: b.x, z: b.z, w: lw, d: ld, h, hMax: etage ? etage.h1 : h, etage, bloc: [bi, bj] });
         }
       }
     }
@@ -337,6 +353,8 @@ export function buildCity(scene, options = {}) {
 
   return {
     colliders,
+    immeubles,
+    enseignes: signs, // groupe des enseignes de façade (un module peut en retirer)
     mirror, // sol réfléchissant (coupé par le gestionnaire de zones selon l'ambiance)
     sky,
     update(t, camera) {

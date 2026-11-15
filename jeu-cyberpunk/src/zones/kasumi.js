@@ -3,6 +3,7 @@ import { buildCity, HALF } from '../city.js';
 import { signTexture } from '../textures.js';
 import { INVITES, ENSEIGNES } from '../data/interface.js';
 import { boite, materiauSceau, respirer } from './decor.js';
+import { construireEscaliers } from './escaliers.js';
 
 // Kasumi : la ville du prototype (city.js), enveloppée comme zone.
 // Construite une seule fois ; on y revient sans la reconstruire.
@@ -19,6 +20,8 @@ export function creerKasumi(jeu) {
   scene.fog = new THREE.FogExp2(FOG, 0.0075);
 
   const city = buildCity(scene, { blocsReserves: jeu.config.ville.blocsReserves });
+  // Escaliers de secours vers quelques toits (boîtes 3D praticables), voir escaliers.js.
+  const escaliers = construireEscaliers(scene, city.immeubles, city.colliders, { enseignes: city.enseignes });
   const animes = [];
 
   // ---------- Façade de la clinique ----------
@@ -71,6 +74,10 @@ export function creerKasumi(jeu) {
     scene,
     city,
     colliders: city.colliders,
+    // Immeubles { x, z, w, d, h, hMax, etage, bloc } (h : toit principal ; etage : étage technique ou null)
+    immeubles: city.immeubles,
+    // Escaliers de secours { nom, pied, yawMontee, sommet, toits, … } (voir zones/escaliers.js)
+    escaliers,
     bornes: HALF + 20,
     // point historique du prototype : le carrefour (30, 30), regard vers le nord
     apparition: { position: [30, 0, 30], yaw: 0, pitch: 0.018 },
