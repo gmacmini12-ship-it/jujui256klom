@@ -32,3 +32,12 @@ jeu.enregistrer(bond);
 jeu.enregistrer(marche);
 jeu.enregistrer(npc);
 jeu.enregistrer(robots);
+
+// Étape 2, seconde vague
+import { personnages } from './personnages.js';
+import { toits } from './toits.js';
+import { veilleur } from './veilleur.js';
+
+jeu.enregistrer(personnages);
+jeu.enregistrer(toits);
+jeu.enregistrer(veilleur);
