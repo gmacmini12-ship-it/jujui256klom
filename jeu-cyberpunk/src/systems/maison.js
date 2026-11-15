@@ -1,9 +1,10 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TITRES_ZONES } from '../data/interface.js';
 import {
   TITRE_ZONE, FACADE, PERSONNAGES as TEXTES, APPARENCES, INVITES, SCEAU,
 } from '../data/maison.js';
-import { LIEUX, Y_ETAGE } from '../zones/maison.js';
+import { LIEUX } from '../zones/maison.js';
 import { npc } from './npc.js';
 
 // Système « maison » (étape 4) : la Maison des Conseils, côté ville et côté personnages (bible §5.4, §9).
@@ -118,8 +119,6 @@ function textureMurs() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
-
-const copie = (v) => JSON.parse(JSON.stringify(v));
 
 export const maison = {
   nom: 'maison',
@@ -253,10 +252,8 @@ export const maison = {
     g.name = 'maison-des-conseils';
     const colliders = k.colliders;
 
-    const mur = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.1 });
-    const murTex = textureMurs();
-    const faces = [];
     // volume : 6 matériaux (est, ouest, dessus, dessous, sud, nord) ; les côtés portent les fenêtres
+    const murTex = textureMurs();
     const matCote = (rx, ry) => {
       const t = murTex.clone();
       t.needsUpdate = true;
@@ -264,114 +261,82 @@ export const maison = {
       return new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.55, roughness: 0.8 });
     };
     const matToit = new THREE.MeshStandardMaterial({ color: 0x0f1428, roughness: 0.9 });
-    faces.push(matCote(5, 3), matCote(5, 3), matToit, matToit, matCote(5, 3), matCote(5, 3));
-    const volume = new THREE.Mesh(new THREE.BoxGeometry(DEMI * 2, H, DEMI * 2), faces);
+    const cote = matCote(5, 3);
+    const volume = new THREE.Mesh(new THREE.BoxGeometry(DEMI * 2, H, DEMI * 2), [cote, cote, matToit, matToit, cote, cote]);
     volume.position.set(CX, SOL + H / 2, CZ);
     g.add(volume);
-    void mur;
     colliders.push({ minX: CX - DEMI, maxX: CX + DEMI, minZ: CZ - DEMI, maxZ: CZ + DEMI, minY: 0, maxY: SOL + H });
 
-    const bois = new THREE.MeshStandardMaterial({ color: 0x3a2a22, roughness: 0.7, metalness: 0.1 });
+    // Décor fusionné par matériau : bois (colonnes), pierre (socles, entablement, fronton, mât), lumière (filets).
+    const bois = new THREE.MeshStandardMaterial({ color: 0x5a3e2e, roughness: 0.7, metalness: 0.1 });
     const pierre = new THREE.MeshStandardMaterial({ color: 0x1a2038, roughness: 0.6, metalness: 0.2 });
-    const lumiere = new THREE.MeshBasicMaterial({ color: 0x6f8cff, toneMapped: false });
-    const pale = new THREE.MeshBasicMaterial({ color: 0xcfdcff, toneMapped: false });
+    const lumiere = new THREE.MeshBasicMaterial({ color: 0x4f94ff, toneMapped: false });
+    const lots = { bois: [], pierre: [], lumiere: [] };
+    const poser = (lot, geo, x, y, z, rz = 0) => {
+      const n = geo.index ? geo.toNonIndexed() : geo;
+      if (rz) n.rotateZ(rz);
+      n.translate(x, y, z);
+      lots[lot].push(n);
+    };
+    const boite = (lot, w, h, d, x, y, z, rz = 0) => poser(lot, new THREE.BoxGeometry(w, h, d), x, y, z, rz);
 
     // portique : six colonnes sur le trottoir, entablement, fronton
     const zc = Z_FACADE + 2.2; // −98,8 (le trottoir finit à −98)
-    const colonnes = [-11.6, -7.6, -3.6, 3.6, 7.6, 11.6];
-    const geoCol = new THREE.CylinderGeometry(0.6, 0.7, 10, 18);
-    for (const x of colonnes) {
-      const c = new THREE.Mesh(geoCol, bois);
-      c.position.set(CX + x, SOL + 5, zc);
-      g.add(c);
-      const socle = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.5, 18), pierre);
-      socle.position.set(CX + x, SOL + 0.25, zc);
-      g.add(socle);
+    for (const x of [-11.6, -7.6, -3.6, 3.6, 7.6, 11.6]) {
+      poser('bois', new THREE.CylinderGeometry(0.6, 0.7, 10, 14), CX + x, SOL + 5, zc);
+      poser('pierre', new THREE.CylinderGeometry(0.95, 0.95, 0.5, 14), CX + x, SOL + 0.25, zc);
       colliders.push({ minX: CX + x - 0.85, maxX: CX + x + 0.85, minZ: zc - 0.85, maxZ: zc + 0.85, minY: 0, maxY: SOL + 10.5 });
     }
-    const entab = new THREE.Mesh(new THREE.BoxGeometry(27.6, 3.4, 2.6), pierre);
-    entab.position.set(CX, SOL + 11.7, zc);
-    g.add(entab);
+    boite('pierre', 27.6, 3.4, 2.6, CX, SOL + 11.7, zc);
+    for (const dy of [-1.74, 1.74]) boite('lumiere', 27.8, 0.12, 2.7, CX, SOL + 11.7 + dy, zc);
     const frise = new THREE.Mesh(new THREE.PlaneGeometry(26, 3.0), new THREE.MeshBasicMaterial({ map: textureFronton(), toneMapped: false }));
     frise.position.set(CX, SOL + 11.7, zc + 1.32);
     g.add(frise);
-    // listel lumineux sous l'entablement et sur le dessus
-    for (const dy of [-1.74, 1.74]) {
-      const l = new THREE.Mesh(new THREE.BoxGeometry(27.8, 0.12, 2.7), lumiere);
-      l.position.set(CX, SOL + 11.7 + dy, zc);
-      g.add(l);
-    }
     // fronton triangulaire
     const tri = new THREE.Shape();
     tri.moveTo(-14.2, 0);
     tri.lineTo(14.2, 0);
     tri.lineTo(0, 5.2);
     tri.closePath();
-    const geoTri = new THREE.ExtrudeGeometry(tri, { depth: 2.6, bevelEnabled: false });
-    const fronton = new THREE.Mesh(geoTri, pierre);
-    fronton.position.set(CX, SOL + 13.4, zc - 1.3);
-    g.add(fronton);
+    poser('pierre', new THREE.ExtrudeGeometry(tri, { depth: 2.6, bevelEnabled: false }), CX, SOL + 13.4, zc - 1.3);
     const tymp = new THREE.Mesh(
       new THREE.PlaneGeometry(6, 2),
       new THREE.MeshBasicMaterial({ map: signeTympan(), transparent: true, toneMapped: false })
     );
     tymp.position.set(CX, SOL + 15.1, zc + 1.33);
     g.add(tymp);
-    // le joint du fronton, en lumière
-    for (const s of [-1, 1]) {
-      const long = Math.hypot(14.2, 5.2);
-      const r = new THREE.Mesh(new THREE.BoxGeometry(long, 0.12, 0.12), lumiere);
-      r.position.set(CX + s * 7.1, SOL + 13.4 + 2.6, zc + 1.33);
-      r.rotation.z = -s * Math.atan2(5.2, 14.2);
-      g.add(r);
-    }
+    // les rampants du fronton, en lumière
+    const long = Math.hypot(14.2, 5.2);
+    for (const s of [-1, 1]) boite('lumiere', long, 0.12, 0.12, CX + s * 7.1, SOL + 13.4 + 2.6, zc + 1.33, -s * Math.atan2(5.2, 14.2));
 
     // porte : un portail bleu dans le mur
     const portail = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 6.2), new THREE.MeshBasicMaterial({ color: 0x1c2c66, toneMapped: false }));
     portail.position.set(CX, SOL + 3.1, Z_FACADE - 0.02);
-    portail.rotation.y = Math.PI;
-    portail.rotation.y = 0;
     g.add(portail);
-    for (const s of [-1, 1]) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.16, 6.4, 0.22), lumiere);
-      m.position.set(CX + s * 1.88, SOL + 3.2, Z_FACADE - 0.05);
-      g.add(m);
-    }
-    const linteau = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.16, 0.22), lumiere);
-    linteau.position.set(CX, SOL + 6.4, Z_FACADE - 0.05);
-    g.add(linteau);
-    // sceau de Mima au-dessus de la porte
+    for (const s of [-1, 1]) boite('lumiere', 0.16, 6.4, 0.22, CX + s * 1.88, SOL + 3.2, Z_FACADE - 0.05);
+    boite('lumiere', 3.9, 0.16, 0.22, CX, SOL + 6.4, Z_FACADE - 0.05);
+    // deux filets au sol qui mènent à la porte
+    for (const s of [-1, 1]) boite('lumiere', 0.14, 0.02, 6.6, CX + s * 1.6, SOL + 0.02, Z_FACADE + 3.3);
+    // lueur au-dessus de la porte
     const lueur = new THREE.Mesh(new THREE.PlaneGeometry(8, 3), new THREE.MeshBasicMaterial({
       map: lueurTexture(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
     }));
     lueur.position.set(CX, SOL + 3.6, Z_FACADE - 0.03);
     g.add(lueur);
-    // marches du porche : deux filets au sol qui mènent à la porte
-    for (const s of [-1, 1]) {
-      const f = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 6.6), lumiere);
-      f.rotation.x = -Math.PI / 2;
-      f.position.set(CX + s * 1.6, SOL + 0.02, Z_FACADE + 3.3);
-      g.add(f);
-    }
 
     // pylône à l'enseigne : visible de loin, au coin sud-est, au-dessus des toits
     const px = CX + DEMI + 0.9, pz = Z_FACADE - 0.9;
-    const mat0 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 40, 0.5), pierre);
-    mat0.position.set(px, SOL + 20, pz);
-    g.add(mât);
-    const enseigne = enseigneVerticale();
+    boite('pierre', 0.5, 40, 0.5, px, SOL + 20, pz);
+    boite('lumiere', 0.7, 0.7, 0.7, px, SOL + 40.4, pz);
+    colliders.push({ minX: px - 0.3, maxX: px + 0.3, minZ: pz - 0.3, maxZ: pz + 0.3, minY: 0, maxY: SOL + 40 });
+    const matEnseigne = new THREE.MeshBasicMaterial({ map: enseigneVerticale(), transparent: true, toneMapped: false, side: THREE.DoubleSide });
     for (const ry of [0, Math.PI / 2]) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 11.5), new THREE.MeshBasicMaterial({
-        map: enseigne, transparent: true, toneMapped: false, side: THREE.DoubleSide,
-      }));
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 11.5), matEnseigne);
       p.position.set(px, SOL + 33, pz);
       p.rotation.y = ry;
       g.add(p);
     }
-    const lampe = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), pale);
-    lampe.position.set(px, SOL + 40.4, pz);
-    g.add(lampe);
-    colliders.push({ minX: px - 0.3, maxX: px + 0.3, minZ: pz - 0.3, maxZ: pz + 0.3, minY: 0, maxY: SOL + 40 });
+    for (const [nom, mat] of [['bois', bois], ['pierre', pierre], ['lumiere', lumiere]]) g.add(new THREE.Mesh(mergeGeometries(lots[nom]), mat));
 
     k.scene.add(g);
     this.facade = g;
@@ -435,5 +400,3 @@ function enseigneVerticale() {
   return tex(c);
 }
 
-void copie;
-void Y_ETAGE;

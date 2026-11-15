@@ -79,7 +79,7 @@ function textureParquet() {
   for (let i = 0; i < lames; i++) {
     const y = (i * 512) / lames;
     const t = 0.78 + ((i * 37) % 11) / 50;
-    g.fillStyle = `rgb(${Math.round(46 * t)},${Math.round(32 * t)},${Math.round(30 * t)})`;
+    g.fillStyle = `rgb(${Math.round(74 * t)},${Math.round(48 * t)},${Math.round(36 * t)})`;
     g.fillRect(0, y + 1, 512, 512 / lames - 2);
     // joints courts, décalés d'une lame à l'autre
     g.fillStyle = 'rgba(8,6,14,0.75)';
@@ -137,7 +137,7 @@ function textureCharte() {
   const [c, g] = toile(2048, 400);
   g.fillStyle = '#0b1026';
   g.fillRect(0, 0, 2048, 400);
-  g.strokeStyle = '#6f8cff';
+  g.strokeStyle = '#4f94ff';
   g.lineWidth = 5;
   g.strokeRect(14, 14, 2020, 372);
   g.textAlign = 'center';
@@ -146,11 +146,13 @@ function textureCharte() {
   g.font = `600 64px ${SERIF}`;
   g.fillText(CHARTE_FRONTON.titre, 1024, 66);
   g.textAlign = 'left';
-  g.font = `500 54px ${SERIF}`;
   g.fillStyle = '#e4ecff';
   CHARTE_FRONTON.articles.forEach((a, i) => {
     const col = i % 2, lig = Math.floor(i / 2);
-    g.fillText(a, 70 + col * 1000, 180 + lig * 110);
+    g.font = `500 54px ${SERIF}`;
+    const k = adapter(g, a, 940);
+    g.font = `500 ${Math.round(54 * k)}px ${SERIF}`;
+    g.fillText(a, 70 + col * 1000, 190 + lig * 110);
   });
   return texture(c, { aniso: 8 });
 }
@@ -221,14 +223,14 @@ export function creerMaison(jeu) {
   // ---------- Matériaux ----------
   const parquet = textureParquet();
   const M = {
-    mur: new THREE.MeshStandardMaterial({ color: 0x2c1f1d, roughness: 0.88, metalness: 0.0 }),
-    bois: new THREE.MeshStandardMaterial({ color: 0x4a3326, roughness: 0.75, metalness: 0.05 }),
-    boisClair: new THREE.MeshStandardMaterial({ color: 0x6a4a36, roughness: 0.7, metalness: 0.05 }),
-    pierre: new THREE.MeshStandardMaterial({ color: 0x1a2038, roughness: 0.6, metalness: 0.2 }),
+    mur: new THREE.MeshStandardMaterial({ color: 0x7a5238, roughness: 0.85, metalness: 0.0 }),
+    bois: new THREE.MeshStandardMaterial({ color: 0x8a5a3c, roughness: 0.75, metalness: 0.05 }),
+    boisClair: new THREE.MeshStandardMaterial({ color: 0xa06a44, roughness: 0.7, metalness: 0.05 }),
+    pierre: new THREE.MeshStandardMaterial({ color: 0x2a3458, roughness: 0.6, metalness: 0.2 }),
     plafond: new THREE.MeshStandardMaterial({ color: 0x0f1428, roughness: 0.95 }),
     cuir: new THREE.MeshStandardMaterial({ color: 0x1e2c4c, roughness: 0.55, metalness: 0.1 }),
     verre: new THREE.MeshBasicMaterial({ color: 0x4a6aff, transparent: true, opacity: 0.12, depthWrite: false, toneMapped: false }),
-    lumiere: new THREE.MeshBasicMaterial({ color: 0x6f8cff, toneMapped: false }),
+    lumiere: new THREE.MeshBasicMaterial({ color: 0x4f94ff, toneMapped: false }),
     lumierePale: new THREE.MeshBasicMaterial({ color: 0xcfdcff, toneMapped: false }),
   };
 
@@ -264,7 +266,7 @@ export function creerMaison(jeu) {
     g.translate((x0 + x1) / 2, y, (z0 + z1) / 2);
     return g;
   };
-  const matSol = new THREE.MeshStandardMaterial({ color: 0xffffff, map: parquet, roughness: 0.42, metalness: 0.12 });
+  const matSol = new THREE.MeshStandardMaterial({ color: 0xffffff, map: parquet, roughness: 0.62, metalness: 0.04 });
   const geosSol = [
     sol(-28.2, 28.2, -34.2, 18.2, 0, 4),                // tout le rez-de-chaussée
     sol(-14, 14, -34, -12, Y_ETAGE + 0.005, 4),         // la dalle de l'étage
@@ -484,6 +486,12 @@ export function creerMaison(jeu) {
   col(-12.3, -11.7, -7.5, -3.5, 0, 0.5);
 
   // ---------- Médiathèque des Avant ----------
+  // un socle lumineux devant chacun des quatre écrans du mur est : l'éclat (fragments 5, 6, 7, 9) flotte au-dessus
+  for (const z of [-8, -3, 2, 7]) {
+    BE(M.boisClair, 26.6, 27.4, 0, 0.5, z - 0.4, z + 0.4);
+    BE(M.lumiere, 26.6, 27.4, 0.5, 0.54, z - 0.4, z + 0.4);
+    col(26.6, 27.4, z - 0.4, z + 0.4, 0, 0.55);
+  }
   // deux tables de lecture au centre, des écrans aux murs
   for (const z of [-2, 4]) {
     BE(M.boisClair, 14, 22, 0.76, 0.82, z - 0.55, z + 0.55);
@@ -550,7 +558,7 @@ export function creerMaison(jeu) {
   const A = LIEUX.accueil;
   plan(1.3, A.x, A.y, A.z, Math.PI / 2);
   // le Sceau : un grand anneau au sol et un petit sur le socle
-  const gSol = new THREE.PlaneGeometry(6, 6);
+  const gSol = new THREE.PlaneGeometry(4.4, 4.4);
   gSol.rotateX(-Math.PI / 2);
   gSol.translate(0, 0.03, -25);
   geosAnneaux.push(gSol);
@@ -576,7 +584,7 @@ export function creerMaison(jeu) {
   plaque(PLAQUES.sceau, 0, 3.35, SZ1 + 0.22, 0, 2.5, 0.62);
 
   // ---------- Lumières (peu : le décor est surtout émissif) ----------
-  scene.add(new THREE.HemisphereLight(0x7a96ff, 0x1a1210, 0.85));
+  scene.add(new THREE.HemisphereLight(0xb4c4ff, 0x6a4630, 4.2));
   const lampe = (couleur, i, d, x, y, z) => {
     const l = new THREE.PointLight(couleur, i, d, 1.6);
     l.position.set(x, y, z);
@@ -587,7 +595,7 @@ export function creerMaison(jeu) {
   lampe(0x7f9cff, 40, 26, 0, 6.0, -6);
   lampe(0x6f8cff, 26, 20, -17, 3.4, 1);
   lampe(0x6f8cff, 26, 20, 18, 3.4, 1);
-  lampe(0x5a78ff, 22, 14, 0, 3.0, -24);
+  lampe(0x5a78ff, 10, 14, 0, 3.0, -24);
   lampe(0x8aa8ff, 34, 22, 0, Y_ETAGE + 3.2, -24);
 
   // ---------- Interactions ----------

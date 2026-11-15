@@ -77,11 +77,11 @@ export const POSITIONS_FRAGMENTS = [
   { id: 19, zone: 'kasumi', position: [49.35, 1.4, 22.0], rayon: 2.6, invite: 'Regarder la tablette' },
 
   // ---- Maison des Conseils (zone 'maison', repère de zones/maison.js ; LIEUX et la bible §5.4, §6) ----
-  // Médiathèque des Avant (aile est) : un fragment devant chacun des quatre écrans du mur est (x = 27,8), à hauteur de regard.
-  { id: 5, zone: 'maison', position: [26.4, 1.75, -8], rayon: 2.9, invite: "Lire l'archive de 2021" },
-  { id: 6, zone: 'maison', position: [26.4, 1.75, -3], rayon: 2.9, invite: "Lire l'archive de 2025" },
-  { id: 7, zone: 'maison', position: [26.4, 1.75, 2], rayon: 2.9, invite: "Lire l'archive de 2026" },
-  { id: 9, zone: 'maison', position: [26.4, 1.75, 7], rayon: 2.9, invite: "Lire l'archive de 2033" },
+  // Médiathèque des Avant (aile est) : un fragment sur le socle lumineux devant chacun des quatre écrans du mur est (x = 27,8).
+  { id: 5, zone: 'maison', position: [27.0, 0.95, -8], rayon: 2.9, invite: "Lire l'archive de 2021" },
+  { id: 6, zone: 'maison', position: [27.0, 0.95, -3], rayon: 2.9, invite: "Lire l'archive de 2025" },
+  { id: 7, zone: 'maison', position: [27.0, 0.95, 2], rayon: 2.9, invite: "Lire l'archive de 2026" },
+  { id: 9, zone: 'maison', position: [27.0, 0.95, 7], rayon: 2.9, invite: "Lire l'archive de 2033" },
   // 14 : sous le fronton intérieur de la nef, la Charte gravée sur la poutre (z = 5).
   { id: 14, zone: 'maison', position: [-2.6, 2.4, 4.3], rayon: 3.2, invite: 'Lire la Charte' },
   // 15 : la vitrine de la séance 1 812, contre le mur ouest de la nef.

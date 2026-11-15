@@ -25,6 +25,8 @@ const PAR_PAGE = MAX_CHOIX - 2; // + « (Autres questions.) » + « (Ne rien dem
 export const questions = {
   nom: 'questions',
   enCours: false,
+  /** La banque de questions (remplaçable pour les tests). */
+  banque: QUESTIONS,
 
   /** Ids des questions déjà posées (`etat.questionsPosees`). */
   get posees() {
@@ -43,7 +45,7 @@ export const questions = {
   /** Les questions que le joueur peut poser maintenant, non posées d'abord. */
   disponibles() {
     const etat = this.jeu.etat;
-    const ok = QUESTIONS.filter((q) => {
+    const ok = this.banque.filter((q) => {
       try { return !q.si || q.si(etat); } catch (e) { return false; }
     });
     const dites = this.posees;
