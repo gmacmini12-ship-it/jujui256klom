@@ -69,3 +69,14 @@ jeu.enregistrer(sourdine);
 jeu.enregistrer(questions);
 jeu.enregistrer(maison);
 jeu.enregistrer(fins);
+
+// Étape 5
+import { kura } from './kura.js';
+import { lecture } from './lecture.js';
+import { profondeurs } from './profondeurs.js';
+import { silence } from './silence.js';
+
+jeu.enregistrer(kura);
+jeu.enregistrer(lecture);
+jeu.enregistrer(profondeurs);
+jeu.enregistrer(silence);
