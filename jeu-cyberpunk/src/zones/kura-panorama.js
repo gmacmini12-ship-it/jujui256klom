@@ -64,6 +64,7 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
   const brume = /* glsl */ `
     ${HAZE}
     vec3 voile(vec3 col, float d) { float a = uHazeD * d; return mix(col, uHaze, 1.0 - exp(-a * a)); }
+    float attenue(float d) { float a = uHazeD * d; return exp(-a * a); }
   `;
   const hache = /* glsl */ `
     float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -228,7 +229,7 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
         float balayage = 0.45 + 0.55 * step(0.5, fract(vUv.y * 22.0 - uT * (0.6 + vC)));
         float bord = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.5);
         float a = (0.08 + 0.5 * bord) * balayage * smoothstep(0.0, 0.2, vUv.y) * (1.0 - 0.6 * vUv.y) * k;
-        gl_FragColor = vec4(voile(teinte * a * 2.2, vD) * step(0.001, k), a);
+        gl_FragColor = vec4(teinte * 2.2, a * attenue(vD) * step(0.001, k));
       }`,
   }), hol.length);
   hol.forEach((h, k) => {
@@ -293,7 +294,7 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
         float r = length(d) * 2.0;
         float g = pow(max(1.0 - r, 0.0), 2.2) + 0.5 * pow(max(1.0 - r * 3.0, 0.0), 2.0);
         vec3 teinte = vC < 0.45 ? vec3(1.0, 0.7, 0.4) : vC < 0.75 ? vec3(0.55, 0.8, 1.0) : vec3(1.0, 0.4, 0.9);
-        gl_FragColor = vec4(voile(teinte * g * k * 1.1, vD), g * k);
+        gl_FragColor = vec4(teinte * 1.1, g * k * attenue(vD));
       }`,
   }), hal.length);
   for (let k = 0; k < hal.length; k++) halos.setMatrixAt(k, M.identity());
@@ -309,7 +310,7 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
       varying vec2 vUv; varying vec3 vP; varying float vD;
       void main() {
         vUv = uv; vP = position;
-        vec4 mv = viewMatrix * modelMatrix * vec4(position + vec3(0.0, ${(H_TOUR / 2).toFixed(1)}, 0.0), 1.0);
+        vec4 mv = viewMatrix * modelMatrix * vec4(position, 1.0);
         vD = length(mv.xyz);
         gl_Position = projectionMatrix * mv;
       }`,
@@ -335,28 +336,7 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
   groupe.add(tour);
 
   // ---------------------------------------------------------------- le sol : rues éclairées par leurs halos
-  const sol = new THREE.Mesh(new THREE.PlaneGeometry(NB * PAS + 400, NB * PAS + 400), new THREE.ShaderMaterial({
-    uniforms: shared,
-    vertexShader: /* glsl */ `
-      varying vec3 vW; varying float vD;
-      void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vW = (modelMatrix * vec4(position, 1.0)).xyz;
-        vec4 mv = viewMatrix * wp;
-        vD = length(mv.xyz);
-        gl_Position = projectionMatrix * mv;
-      }`,
-    fragmentShader: /* glsl */ `
-      uniform float uHal[${QUARTIERS}]; uniform mat4 uInv;
-      ${brume} ${hache}
-      varying vec3 vW; varying float vD;
-      void main() {
-        vec3 p = vW / ${echelle.toFixed(3)} - modelMatrix_origin();
-        gl_FragColor = vec4(0.0);
-      }`.replace('vec3 modelMatrix_origin()', ''),
-  }));
-  // (le sol est remplacé ci-dessous : version sans matrice inverse)
-  sol.material.dispose();
+  const sol = new THREE.Mesh(new THREE.PlaneGeometry(NB * PAS + 400, NB * PAS + 400));
   sol.material = new THREE.ShaderMaterial({
     uniforms: { ...shared, uE: { value: echelle }, uC: { value: new THREE.Vector3() } },
     vertexShader: /* glsl */ `
@@ -416,15 +396,14 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
         gl_FragColor = vec4(col, 1.0);
       }`,
   }));
-  ciel.scale.setScalar(1250);
-  ciel.renderOrder = -10;
+    ciel.renderOrder = -10;
   ciel.frustumCulled = false;
   ciel.name = 'panorama-ciel';
   groupe.add(ciel);
 
   // l'échelle s'applique à tout sauf au ciel (qui reste à grande taille) : on inverse pour lui
   groupe.scale.setScalar(echelle);
-  ciel.scale.setScalar(1250 / echelle);
+  ciel.scale.setScalar(900 / echelle);
 
   // ---------------------------------------------------------------- API
   const tableaux = { enseignes: U.uEns.value, fenetres: U.uFen.value, hologrammes: U.uHol.value, halos: U.uHal.value };
