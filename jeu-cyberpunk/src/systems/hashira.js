@@ -20,7 +20,7 @@ const VERT = /* glsl */ `
   varying float vY;
   void main() {
     vUv = uv;
-    vY = position.y;
+    vY = position.y + 0.5 * 400.0;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     vVue = mv.xyz;
     gl_Position = projectionMatrix * mv;
@@ -53,33 +53,33 @@ const FRAG = /* glsl */ `
     // base sombre, légèrement bleutée, plus claire vers le haut
     vec3 col = mix(vec3(0.010, 0.006, 0.030), vec3(0.028, 0.016, 0.075), haut);
 
-    // lignes de texte : une bande tous les 2.4 m, montent à vitesses différentes par « colonne »
+    // lignes de texte : une ligne tous les 1.7 m, montent à vitesses différentes par « colonne »
     float larg = 5.0;                         // nombre de bandes de vitesse autour
     float bande = floor(vUv.x * larg);
     float vit = 3.0 + 9.0 * h11(bande + 3.0); // m/s
-    float yy = (y - uT * vit) / 2.4;
+    float yy = (y - uT * vit) / 1.7;
     float rang = floor(yy);
     float f = fract(yy);
-    float trait = smoothstep(0.18, 0.26, f) * (1.0 - smoothstep(0.50, 0.58, f));
+    float trait = smoothstep(0.30, 0.36, f) * (1.0 - smoothstep(0.52, 0.58, f));
 
     // segments de « mots » le long de la ligne
-    float nSeg = 150.0;
+    float nSeg = 230.0;
     float u = vUv.x * nSeg + h21(vec2(rang, bande)) * 80.0;
     float seg = floor(u);
     float g = fract(u);
     float lettre = step(0.12, g) * (1.0 - step(0.82, g));
-    float mot = floor(seg / 5.0);                       // groupes de 5 glyphes
-    float allume = step(0.30, h21(vec2(mot, rang + bande * 71.0)));
-    float glyphe = step(0.28, h21(vec2(seg, rang * 1.7 + bande)));
+    float mot = floor(seg / 9.0);                       // groupes de 5 glyphes
+    float allume = step(0.22, h21(vec2(mot, rang + bande * 71.0)));
+    float glyphe = step(0.12, h21(vec2(seg, rang * 1.7 + bande)));
     float ligne = trait * lettre * allume * glyphe;
 
     float kc = h21(vec2(rang, bande * 13.0));
     vec3 c = palette(kc);
     // scintillement léger et ligne « fraîche » plus vive
     float pulse = 0.75 + 0.25 * sin(uT * 2.0 + rang * 0.9);
-    float fond = smoothstep(0.0, 0.10, haut);            // s'allume en s'éloignant du sol
+    float fond = 0.45 + 0.55 * smoothstep(0.0, 0.08, haut); // plus discret au pied
     float ciel = mix(0.55, 1.0, smoothstep(0.0, 0.7, haut));
-    col += c * ligne * pulse * 1.55 * fond * ciel;
+    col += c * ligne * pulse * 2.8 * fond * ciel;
 
     // veines verticales fines (côtes du fût)
     float cote = abs(fract(vUv.x * 16.0) - 0.5);
@@ -131,19 +131,16 @@ export const hashira = {
     const neonBleu = new THREE.MeshBasicMaterial({ color: 0x4a7dff, toneMapped: false, fog: false });
 
     // --- Socle : évasement + deux marches lumineuses ---
-    const evase = new THREE.Mesh(new THREE.CylinderGeometry(RAYON, RAYON + 3.5, 14, 64, 1, true), sombre);
-    evase.position.y = 7;
-    groupe.add(evase);
-    const marche1 = new THREE.Mesh(new THREE.CylinderGeometry(RAYON + 3.5, RAYON + 5.5, 0.9, 64), sombre);
-    marche1.position.y = 0.45 + 0.3;
+    const marche1 = new THREE.Mesh(new THREE.CylinderGeometry(RAYON + 2.4, RAYON + 3.4, 1.0, 64), sombre);
+    marche1.position.y = 0.3 + 0.5;
     groupe.add(marche1);
-    const anneauPied = new THREE.Mesh(new THREE.TorusGeometry(RAYON + 5.6, 0.14, 8, 96), neonMagenta);
+    const anneauPied = new THREE.Mesh(new THREE.TorusGeometry(RAYON + 3.4, 0.14, 8, 96), neonMagenta);
     anneauPied.rotation.x = Math.PI / 2;
     anneauPied.position.y = 0.9;
     groupe.add(anneauPied);
-    const anneauEvase = new THREE.Mesh(new THREE.TorusGeometry(RAYON + 3.4, 0.12, 8, 96), neonBleu);
+    const anneauEvase = new THREE.Mesh(new THREE.TorusGeometry(RAYON + 0.3, 0.12, 8, 96), neonBleu);
     anneauEvase.rotation.x = Math.PI / 2;
-    anneauEvase.position.y = 1.2;
+    anneauEvase.position.y = 1.4;
     groupe.add(anneauEvase);
 
     // --- Couronnement : anneau plus large, deux liserés, balise ---
@@ -171,8 +168,8 @@ export const hashira = {
 
     k.scene.add(groupe);
 
-    // --- Colliders : trois boîtes qui approchent le disque du pied (rayon 17.5) ---
-    const R = RAYON + 3.5;
+    // --- Colliders : trois boîtes qui approchent le disque du pied (rayon 16.4) ---
+    const R = RAYON + 2.4;
     const o = R * 0.7;
     k.colliders.push(
       { minX: -R, maxX: R, minZ: -o * 0.55, maxZ: o * 0.55 },
