@@ -58,3 +58,14 @@ jeu.enregistrer(reactions);
 import { conversation } from './conversation.js';
 
 jeu.enregistrer(conversation);
+
+// Étape 4
+import { sourdine } from './sourdine.js';
+import { questions } from './questions.js';
+import { maison } from './maison.js';
+import { fins } from './fins.js';
+
+jeu.enregistrer(sourdine);
+jeu.enregistrer(questions);
+jeu.enregistrer(maison);
+jeu.enregistrer(fins);
