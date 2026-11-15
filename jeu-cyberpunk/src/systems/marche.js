@@ -59,11 +59,11 @@ const TISSUS = [0xa03ac8, 0xd03a9a, 0x4a4ad8, 0x8a3ab0, 0xc04a8a, 0x3a62d0, 0x7a
 // ---------------------------------------------------------------------------
 const TPL = {
   boite: new THREE.BoxGeometry(1, 1, 1),
-  cyl: new THREE.CylinderGeometry(1, 1, 1, 10),
+  cyl: new THREE.CylinderGeometry(1, 1, 1, 8),
   cyl6: new THREE.CylinderGeometry(1, 1, 1, 6),
-  cone: new THREE.CylinderGeometry(0, 1, 1, 10),
-  sph: new THREE.SphereGeometry(1, 10, 7),
-  tore: new THREE.TorusGeometry(1, 0.1, 6, 18),
+  cone: new THREE.CylinderGeometry(0, 1, 1, 8),
+  sph: new THREE.SphereGeometry(1, 7, 5),
+  tore: new THREE.TorusGeometry(1, 0.1, 5, 14),
 };
 const M4 = new THREE.Matrix4();
 const QU = new THREE.Quaternion();
@@ -657,12 +657,12 @@ export const marche = {
         const n = Math.max(3, Math.floor((w - 0.6) / 0.62));
         for (let i = 0; i < n; i++) {
           const u = -((n - 1) * 0.62) / 2 + i * 0.62;
-          R.c(0.18, 0.34, u, 1.15, 2.2, 0x20183e);
+          R.c(0.18, 0.34, u, 1.15, 2.2, 0x6a4aa8);
           for (let j = 0; j < 4; j++) {
             const c = [0xff5ad0, 0xc44bff, 0xffd0f6, 0x8a5cff, 0x4a7dff][Math.floor(rand() * 5)];
             R.sp(0.1 + rand() * 0.04, u + (rand() - 0.5) * 0.28, 1.5 + rand() * 0.28, 2.2 + (rand() - 0.5) * 0.2, c, { lueur: rand() < 0.4 });
           }
-          R.c(0.012, 0.4, u, 1.4, 2.2, 0x2a1a50);
+          R.c(0.012, 0.4, u, 1.4, 2.2, 0x8a6ac8);
           // fil lumineux noué : l'étiquette de la ligne
           R.sp(0.03, u + 0.14, 1.34, 2.38, lum(COUL.rose, 0.9), { lueur: true });
         }
@@ -908,6 +908,12 @@ export const marche = {
       R.b(0.45, 0.4, 0.45, -3.0, 1.26, 1.45, 0x35286a);
       R.b(0.08, 0.04, 0.02, -3.0, 1.34, 1.69, lum(COUL.rose, 0.9), { lueur: true });
       for (let i = 0; i < 3; i++) R.c(0.07, 0.04, -3.18 + i * 0.18, 1.0, 1.12 - i * 0.0, 0x1c1838);
+      // un robot ménager éventré, ses entrailles en tas
+      R.c(0.2, 0.5, -2.0, 1.3, 1.3, 0x5a4aa8);
+      R.sp(0.17, -2.0, 1.66, 1.3, 0x7a66c8);
+      R.sp(0.04, -2.05, 1.7, 1.46, lum(COUL.rose, 1.0), { lueur: true });
+      R.sp(0.04, -1.95, 1.7, 1.46, lum(COUL.rose, 1.0), { lueur: true });
+      R.b(0.6, 0.04, 0.04, -1.6, 1.2, 1.5, COUL.bleuPale, { ry: 0.5 });
       // lampe-loupe
       R.c(0.12, 0.04, -0.45, 1.06, 1.25, COUL.metal);
       R.b(0.03, 0.8, 0.03, -0.45, 1.5, 1.25, COUL.metal, { rz: -0.3 });
@@ -1069,19 +1075,19 @@ export const marche = {
 
     // ---------- Le mât de la place ----------
     {
-      cylM(0.3, 38, X_PLACE, 19, AXE, COUL.metal);
+      cylM(0.34, 50, X_PLACE, 25, AXE, COUL.metal);
       cylM(1.5, 0.4, X_PLACE, 0.2, AXE, 0x1a1234);
       poser(lueur, TPL.tore, lum(COUL.magenta, 0.9), X_PLACE, 0.5, AXE, 1.5, 1.5, 1.5, Math.PI / 2);
-      for (const [y, r, n] of [[9.4, 2.4, 10], [17.2, 1.7, 8], [25.5, 1.2, 6]]) {
+      for (const [y, r, n] of [[9.4, 2.4, 10], [17.2, 1.8, 8], [26, 1.4, 8], [44, 1.3, 6]]) {
         for (let i = 0; i < n; i++) {
           const a = (i / n) * Math.PI * 2;
           lampion(X_PLACE + Math.cos(a) * r, y, AXE + Math.sin(a) * r, i % 2 ? COUL.rose : COUL.magenta, 1.6);
         }
         poser(lueur, TPL.tore, lum(COUL.violet, 0.8), X_PLACE, y + 0.9, AXE, r + 0.2, r + 0.2, r + 0.2, Math.PI / 2);
       }
-      sphM(1.2, X_PLACE, 38.6, AXE, lum(COUL.rose, 1.1), { lueur: true });
+      sphM(1.5, X_PLACE, 50.8, AXE, lum(COUL.rose, 1.1), { lueur: true });
       for (const [dx, dz, ry] of [[0.55, 0, Math.PI / 2], [-0.55, 0, -Math.PI / 2], [0, 0.55, 0], [0, -0.55, Math.PI]]) {
-        planM('mat', 4.5, 18, X_PLACE + dx, 27, AXE + dz, 0, ry);
+        planM('mat', 6, 24, X_PLACE + dx * 1.2, 35, AXE + dz * 1.2, 0, ry);
       }
       collider(X_PLACE - 1.6, X_PLACE + 1.6, AXE - 1.6, AXE + 1.6);
     }
@@ -1202,7 +1208,15 @@ export const marche = {
     }
 
     // ---------- Assemblage ----------
-    const matSolide = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.15, emissive: 0x3a1048, emissiveIntensity: 0.9 });
+    const matSolide = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.1 });
+    // Auto-éclairage : une part de la couleur propre de chaque pièce s'ajoute à l'émission,
+    // pour que les étals gardent leur teinte (magenta, violet) sous la lumière bleutée de la ville.
+    matSolide.onBeforeCompile = (sh) => {
+      sh.fragmentShader = sh.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        '#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * 0.62;'
+      );
+    };
     const matLueur = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
     const mSolide = maillage(solide, matSolide);
     const mLueur = maillage(lueur, matLueur);
@@ -1248,7 +1262,7 @@ export const marche = {
 
     // Lampions instanciés
     {
-      const geo = new THREE.SphereGeometry(0.3, 10, 8);
+      const geo = new THREE.SphereGeometry(0.3, 8, 6);
       const mesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ toneMapped: false, map: textureLampion() }), lampions.length);
       lampions.forEach((l, i) => mesh.setColorAt(i, COL.set(l.c).multiplyScalar(0.8)));
       mesh.instanceColor.needsUpdate = true;
@@ -1299,7 +1313,7 @@ export const marche = {
       this.halos = [];
       for (const [x, y, z, s, c, o] of [
         [X_PLACE, 10, AXE, 64, COUL.magenta, 0.5],
-        [X_PLACE, 28, AXE, 60, COUL.rose, 0.6],
+        [X_PLACE, 36, AXE, 100, COUL.rose, 0.8],
         [X_OUEST, 8, AXE, 26, COUL.magenta, 0.45],
         [X_EST, 8, AXE, 26, COUL.magenta, 0.45],
       ]) {

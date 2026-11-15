@@ -21,11 +21,11 @@ export const CALQUE_GLANEUR = {
   taches: {
     ronde: 'ronde du trottoir',
     ramasse: 'ramassage en cours',
-    arret: 'attente : passage',
-    bloque: 'attente : voie occupée',
+    arret: 'attente de passage',
+    bloque: 'voie occupée, attente',
     scan: 'relevé du sol',
     bascule: 'perte d’aplomb',
-    renverse: 'capteur d’inclinaison : alerte',
+    renverse: 'capteur d’inclinaison en alerte',
     releve: 'remise d’aplomb',
     merci: 'accusé de réception',
   },
@@ -63,8 +63,8 @@ export const CALQUE_PORTEUR = {
   taches: {
     trajet: 'en route',
     livre: 'dépose en cours',
-    arret: 'attente : passage',
-    bloque: 'attente : voie occupée',
+    arret: 'attente de passage',
+    bloque: 'voie occupée, attente',
     ecarte: 'écart de courtoisie',
   },
 };

@@ -156,14 +156,16 @@ function corps(variante, acc = null) {
     p.push(partie(_cyl(0.17, 0.3, 1.12), { y: 0.92, sz: 0.7, rig: [0.1, 1.45] }));
     p.push(partie(_sph(0.18, 10, 8), { y: 1.41, sx: 1.12, sy: 0.7, sz: 0.78 }));
     p.push(partie(_cyl(0.045, 0.045, 0.14, 6), { y: 1.53 }));
+    p.push(partie(_cyl(0.11, 0.17, 0.12, 10), { y: 1.5, sz: 0.8 }));
     for (const s of [-1, 1]) p.push(partie(_cyl(0.05, 0.045, 0.4, 7), { x: s * 0.075, y: 0.19, rig: [s * 1, 0.4] }));
     tete(1.65);
   } else if (variante === 1) {
     for (const s of [-1, 1]) p.push(partie(_cyl(0.075, 0.055, 0.86, 8), { x: s * 0.095, y: 0.43, rig: [s * 1, 0.86] }));
     p.push(partie(_cyl(0.18, 0.2, 0.66), { y: 1.15, sz: 0.72 }));
     p.push(partie(_sph(0.2, 10, 8), { y: 1.42, sx: 1.2, sy: 0.62, sz: 0.76 }));
-    for (const s of [-1, 1]) p.push(partie(_cyl(0.045, 0.038, 0.6, 7), { x: s * 0.245, y: 1.11, rz: s * 0.05, rig: [-s * 0.85, 1.4] }));
+    for (const s of [-1, 1]) p.push(partie(_cyl(0.04, 0.032, 0.58, 7), { x: s * 0.245, y: 1.12, rz: s * 0.05, rig: [-s * 0.85, 1.4] }));
     p.push(partie(_cyl(0.045, 0.045, 0.14, 6), { y: 1.53 }));
+    p.push(partie(_cyl(0.095, 0.13, 0.08, 10), { y: 1.51, sz: 0.85 }));
     tete(1.65);
   } else {
     p.push(partie(_cyl(0.1, 0.4, 1.3), { y: 0.86, sz: 0.85, rig: [0.07, 1.55] }));
@@ -330,11 +332,14 @@ function creerHabitant(id) {
   n.approche = n.ancien ? r() < 0.75 : r() < 0.08;
   return n;
 }
+// Pas d'« Itsuki Mori » tiré au hasard : ce nom appartient à un personnage nommé.
+const PRENOMS = C.PRENOMS.filter((x) => x !== 'Itsuki');
+const NOMS = C.NOMS.filter((x) => x !== 'Mori');
 function lignesDe(n) {
   if (n.lignes) return n.lignes;
   const r = aleatoire(graine('ligne', n.id));
   const champs = {
-    prenom: choisir(r, C.PRENOMS), nom: choisir(r, C.NOMS),
+    prenom: choisir(r, PRENOMS), nom: choisir(r, NOMS),
     occupation: choisir(r, D.OCCUPATIONS), horaire: choisir(r, C.HORAIRES),
     humeur: n.humeur.libelle,
     pensee: r() < D.LIGNE_HABITANT.partPenseeClose ? D.LIGNE_HABITANT.penseeClose : D.LIGNE_HABITANT.penseeOuverte,
@@ -812,7 +817,13 @@ function majCalque(dt) {
   if (!pool.length) return;
   const actif = calque.actif;
   if (!actif) {
-    if (pool[0].garee !== true) for (const e of pool) { e.position.set(0, -900, 0); e.garee = true; e.hab = null; if (e.cible0) e.cible0 = null; }
+    for (const e of pool) {
+      if (e.garee) continue;
+      if (e.hab) e.hab.etiquette = null;
+      e.hab = null;
+      e.garee = true;
+      e.position.set(0, -900, 0);
+    }
     return;
   }
   accCalque += dt;
@@ -945,12 +956,13 @@ function monterPersonnage(p) {
   scene.add(p.corps, p.halo3d);
   p.corps.visible = p.halo3d.visible = p.visible;
   const lib = def.libelle ?? remplir(D.NPC.parler, { nom: p.nom });
+  // Pas de `zone` sur l'objet : le Calque ne le liste pas (il lirait « Objet XX — Usage : … » en double
+  // de la ligne du personnage) ; la visibilité tient lieu de test de zone.
   p.objet = jeu.interact.ajouter({
-    zone: p.zone,
     position: [p.position.x, p.position.y + 1.2, p.position.z],
     rayon: def.rayon ?? 2.8,
     libelle: lib,
-    visible: () => p.visible && !p.retire,
+    visible: () => p.visible && !p.retire && jeu.zones.nom === p.zone,
     action: async () => {
       jeu.etat.rencontres[p.id] = (jeu.etat.rencontres[p.id] || 0) + 1;
       jeu.sauver?.();
@@ -1094,7 +1106,7 @@ export const npc = {
   },
 
   update(dt, t) {
-    if (!pret || jeu.zones.nom !== 'kasumi') return;
+    if (!pret || !jeu.zones.nom) return;
     dt = Math.min(dt, 0.1);
     const cam = jeu.camera;
     const p = jeu.player.position;
@@ -1105,9 +1117,10 @@ export const npc = {
     joueur.fx = _fl.x / fl;
     joueur.fz = _fl.z / fl;
     haloUniforms.uTime.value = t;
+    majPersonnages(dt, t); // les personnages nommés vivent dans n'importe quelle zone
+    if (jeu.zones.nom !== 'kasumi') return;
     simuler(dt, t);
     dessiner(t, cam);
-    majPersonnages(dt, t);
     majCalque(dt);
     majBribes(dt, t);
   },

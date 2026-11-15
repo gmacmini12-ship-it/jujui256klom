@@ -153,7 +153,7 @@ function geometries() {
     bloc(0.2, 0.006, 0.02, 0, 0.037, -0.26, 0x3a2e70),
     bloc(0.12, 0.02, 0.03, 0, 0.04, -0.36, 0xb8a8ff), // poignée
   ]);
-  const bras = teinter(new THREE.CylinderGeometry(0.011, 0.011, 1, 6).rotateX(Math.PI / 2).translate(0, 0, -0.5), 0xb8a8ff);
+  const bras = teinter(new THREE.CylinderGeometry(0.016, 0.016, 1, 6).rotateX(Math.PI / 2).translate(0, 0, -0.5), 0xb8a8ff);
   const pince = fusion([
     bloc(0.05, 0.02, 0.03, 0, 0, -0.01, 0x7a64c8),
     bloc(0.01, 0.014, 0.05, 0.017, 0, -0.045, 0xe0d8ff),
@@ -222,6 +222,21 @@ function textureBande() {
   return t;
 }
 
+function textureHalo() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const d = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  d.addColorStop(0, 'rgba(255,255,255,0.9)');
+  d.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+  d.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = d;
+  g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 // ---------- Parc : les maillages instanciés d'une zone ----------
 const parcs = new Map(); // nom de zone → parc
 
@@ -249,6 +264,8 @@ function creerParc(nom, scene) {
     return m;
   };
   const plot = new THREE.RingGeometry(0.34, 0.5, 20).rotateX(-Math.PI / 2);
+  const mHalo = new THREE.MeshBasicMaterial({ map: textureHalo(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const halo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   const parc = {
     nom, groupe,
     corps: mk(G.corps, mCorps, CAPACITE), lum: mk(G.lum, mBasic, CAPACITE, true), couv: mk(G.couvercle, mCorps, CAPACITE),
@@ -256,7 +273,7 @@ function creerParc(nom, scene) {
     oeil: mk(G.oeil, mOeil, CAPACITE, true), debris: mk(G.debris, mDebris, CAPACITE * 3, true),
     pcorps: mk(G.pcorps, mCorps, CAPACITE), bande: mk(G.bande, mBande, CAPACITE), visiere: mk(G.visiere, mOeil, CAPACITE, true),
     pieds: mk(G.pied, mCorps, CAPACITE * 2), boite: mk(G.boite, mBoite, CAPACITE, true), temoin: mk(G.temoin, mBasic, CAPACITE, true),
-    helice: mk(G.helice, mBasic, CAPACITE), plots: mk(plot, mPlot, CAPACITE),
+    helice: mk(G.helice, mBasic, CAPACITE), plots: mk(plot, mPlot, CAPACITE), halo: mk(halo, mHalo, CAPACITE * 2, true),
     sites: [], plotsListe: [],
   };
   parcs.set(nom, parc);
@@ -453,8 +470,8 @@ function creerInteraction(r) {
   r.interact = jeu.interact.ajouter({
     zone: r.zone,
     position: [r.x, r.y + 0.5, r.z],
-    rayon: 2.4,
-    cone: 1.2,
+    rayon: 3.0, // distance 3D depuis l'œil : la machine est à 1,3 m plus bas
+    cone: 0.9,
     libelle: () => (r.mode === 'renverse' ? INV.redresser : INV.pousser),
     visible: () => r.mode === 'marche' || r.mode === 'tache' || r.mode === 'merci' || r.mode === 'renverse',
     action: () => (r.mode === 'renverse' ? robots.redresser(r, 'joueur') : robots.renverser(r, 'joueur')),
@@ -909,12 +926,29 @@ function posePorteur(P, r, k, t) {
 }
 
 function dessiner(parc, cam, t) {
-  let ng = 0, np = 0;
+  let ng = 0, np = 0, nh = 0;
   for (const r of toutes) {
     if (r.zone !== parc.nom || r.d2 > DIST_AFF * DIST_AFF) continue;
     if (r.type === 'glaneur') { if (ng < CAPACITE) poseGlaneur(parc, r, ng++); }
     else if (np < CAPACITE) posePorteur(parc, r, np++, t);
+    if (nh < CAPACITE * 2) {
+      // flaque de lumière sous la machine : elle se lit de loin et s'accroche au bloom
+      const gl = r.type === 'glaneur', e = gl ? 1.5 : 2.3;
+      const dec = r.mode === 'renverse' || r.mode === 'bascule' || r.mode === 'releve' ? 0.4 * Math.sin(Math.min(1, (r.phi || 0) / Math.PI) * Math.PI / 2) : 0; // la machine couchée a glissé vers l'avant
+      _P.set(r.x + r.dTip.x * dec, r.y + 0.025, r.z + r.dTip.z * dec); _Q.identity(); _S.set(e, 1, e);
+      parc.halo.setMatrixAt(nh, _W.compose(_P, _Q, _S));
+      const calme = r.sous === 'arret' || r.sous === 'bloque';
+      if (r.mode === 'renverse' || r.mode === 'bascule') _col.setRGB(0.55 + 0.3 * Math.sin(r.age * 22), 0.1, 0.4);
+      else if (calme) _col.setRGB(0.12, 0.25, 0.7);
+      else if (gl) _col.setRGB(0.5, 0.1, 0.4);
+      else _col.setRGB(0.2, 0.14, 0.55);
+      parc.halo.setColorAt(nh, _col);
+      nh++;
+    }
   }
+  parc.halo.count = nh;
+  parc.halo.instanceMatrix.needsUpdate = true;
+  if (parc.halo.instanceColor) parc.halo.instanceColor.needsUpdate = true;
   parc.corps.count = parc.lum.count = parc.couv.count = parc.bras.count = parc.pince.count = parc.oeil.count = ng;
   parc.roues.count = ng * 3;
   parc.pcorps.count = parc.bande.count = parc.visiere.count = parc.boite.count = parc.temoin.count = parc.helice.count = np;
@@ -963,10 +997,24 @@ function ajouterTrajet(type, pts, { sens = 1, lim, cote, tailleSites = 4, fracti
   return r;
 }
 
+// Vrai si aucun collider (étal, mobilier…) ne coupe le trajet à moins de `marge` mètres.
+function trajetLibre(pts, colliders, marge) {
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.8));
+    for (let k = 0; k < n; k++) {
+      const x = a[0] + ((b[0] - a[0]) * k) / n, z = a[1] + ((b[1] - a[1]) * k) / n;
+      for (const c of colliders) if ((c.maxY === undefined || c.maxY > 0.4) && (c.minY === undefined || c.minY < 1.2) && x > c.minX - marge && x < c.maxX + marge && z > c.minZ - marge && z < c.maxZ + marge) return false;
+    }
+  }
+  return true;
+}
+
 let peuple = false;
-function peuplerKasumi() {
+function peuplerKasumi(zone) {
   if (peuple) return;
   peuple = true;
+  const colliders = zone?.colliders || [];
   const R = graine(7741);
   const centre = (i) => (i - 4) * PITCH;
   const proches = [[4, 4], [5, 4], [4, 5], [5, 5]];
@@ -975,25 +1023,45 @@ function peuplerKasumi() {
   for (let i = autres.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [autres[i], autres[j]] = [autres[j], autres[i]]; }
 
   let n = 1;
+  // un trajet bloqué par un étal ou un meuble est abandonné : la machine n'y passerait pas à travers
   const glaneur = (bi, bj, sens, fraction) => {
     const lim = sens > 0 ? { g: 3.2, d: 1.0 } : { g: 1.0, d: 3.2 };
-    return ajouterTrajet('glaneur', anneau(centre(bi), centre(bj), 20.5, 20.5, sens), { sens, lim, fraction, graineRng: 100 + n++ });
+    const pts = anneau(centre(bi), centre(bj), 20.5, 20.5, sens);
+    if (!trajetLibre(pts, colliders, 0.9)) return null;
+    return ajouterTrajet('glaneur', pts, { sens, lim, fraction, graineRng: 100 + n++ });
   };
   const porteur = (cx, cz, hx, hz, sens, fraction) => {
     const lim = sens > 0 ? { g: 6, d: 5.5 } : { g: 5.5, d: 6 };
-    return ajouterTrajet('porteur', anneau(cx, cz, hx, hz, sens, 3), { sens, lim, fraction, cote: sens > 0 ? -1 : 1, graineRng: 500 + n++ });
+    const pts = anneau(cx, cz, hx, hz, sens, 3);
+    if (!trajetLibre(pts, colliders, 1.0)) return null;
+    return ajouterTrajet('porteur', pts, { sens, lim, fraction, cote: sens > 0 ? -1 : 1, graineRng: 500 + n++ });
   };
-  // 18 Glaneurs : deux (sens contraires) autour des quatre pâtés du carrefour de départ, un dans dix autres
-  for (const [bi, bj] of proches) { glaneur(bi, bj, 1, R()); glaneur(bi, bj, -1, R()); }
-  for (let k = 0; k < 10; k++) glaneur(autres[k][0], autres[k][1], R() < 0.5 ? 1 : -1, R());
+  // pâtés candidats : les quatre du carrefour de départ, puis le reste du voisinage (tirés au hasard), puis plus loin
+  const loin = [];
+  for (let i = 1; i <= 7; i++) for (let j = 1; j <= 7; j++) if (i < 2 || i > 6 || j < 2 || j > 6) loin.push([i, j]);
+  const cands = [...proches, ...autres, ...loin];
+  // 18 Glaneurs : deux (sens contraires) autour des pâtés du carrefour, un sur les autres
+  let ng = 0;
+  for (const [bi, bj] of cands) {
+    if (ng >= 18) break;
+    const sens = R() < 0.5 ? 1 : -1;
+    if (glaneur(bi, bj, sens, R())) ng++;
+    if (ng < 18 && proches.some(([a, b]) => a === bi && b === bj) && glaneur(bi, bj, -sens, R())) ng++;
+  }
   // 12 Porteurs : sur la chaussée, autour d'un pâté ou de deux
-  porteur(centre(5), centre(5), 26, 26, 1, 0.1);
-  porteur(centre(4), centre(4), 26, 26, -1, 0.6);
-  porteur((centre(4) + centre(5)) / 2, centre(4), 26 + PITCH / 2, 26, 1, 0.3);
-  for (let k = 10; k < 19; k++) {
-    const [bi, bj] = autres[k % autres.length];
-    if (k % 3 === 0 && bi < 6) porteur((centre(bi) + centre(bi + 1)) / 2, centre(bj), 26 + PITCH / 2, 26, R() < 0.5 ? 1 : -1, R());
-    else porteur(centre(bi), centre(bj), 26, 26, R() < 0.5 ? 1 : -1, R());
+  let np = 0;
+  const essais = [
+    () => porteur(centre(5), centre(5), 26, 26, 1, 0.1),
+    () => porteur(centre(4), centre(4), 26, 26, -1, 0.6),
+    () => porteur((centre(4) + centre(5)) / 2, centre(4), 26 + PITCH / 2, 26, 1, 0.3),
+  ];
+  for (const e of essais) if (e()) np++;
+  for (let k = 0; np < 12 && k < cands.length; k++) {
+    const [bi, bj] = cands[(k + 4) % cands.length];
+    const ok = k % 3 === 0 && bi < 7
+      ? porteur((centre(bi) + centre(bi + 1)) / 2, centre(bj), 26 + PITCH / 2, 26, R() < 0.5 ? 1 : -1, R())
+      : porteur(centre(bi), centre(bj), 26, 26, R() < 0.5 ? 1 : -1, R());
+    if (ok) np++;
   }
 }
 
@@ -1036,6 +1104,9 @@ export const robots = {
   renverser,
   redresser,
 
+  /** État du son spatialisé (contexte audio propre à ce système). */
+  get son() { return son.ctx ? { etat: son.ctx.state, voix: son.voix.filter((v) => v.r).length, ponctuels: son.nb } : null; },
+
   init() {
     jeu.robots = robots;
   },
@@ -1043,7 +1114,7 @@ export const robots = {
   surZone(nom, zone) {
     if (nom === 'kasumi' && !parcs.has('kasumi')) creerParc('kasumi', zone.scene);
     const parc = parcs.get(nom);
-    if (nom === 'kasumi') peuplerKasumi();
+    if (nom === 'kasumi') peuplerKasumi(zone);
     if (parc) for (const r of toutes) if (r.zone === nom) attacherParc(r.path, parc);
   },
 
