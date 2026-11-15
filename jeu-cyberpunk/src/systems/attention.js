@@ -111,6 +111,9 @@ export const attention = {
       this.calme -= PERIODE_DECROISSANCE;
       const v = this.valeurBrute();
       const plancher = this.plancher();
+      // Au dernier palier, elle attend une réponse : l'Attention ne retombe pas d'elle-même
+      // (bible §7.2 : elle redemande toutes les 3 minutes ; c'est la conversation qui la ramène à 60).
+      if (v >= SEUILS[SEUILS.length - 1]) continue;
       if (v > plancher) this.ecrire(Math.max(plancher, v - 1), 'decroissance');
     }
     this.maj();

@@ -358,8 +358,9 @@ export const transgressions = {
       p.etiquette = calque.etiqueter({ position: [x + nx * 0.4, 1.7, z + nz * 0.4], lignes: this.lignesPorte(p), zone: ZONE, rayon: 16 });
       p.objet = J.interact.ajouter({
         zone: ZONE,
-        position: [x + nx * 0.5, 1.2, z + nz * 0.5],
-        rayon: 2.6,
+        position: [x + nx * 0.2, 1.75, z + nz * 0.2],
+        rayon: 3,
+        cone: 1.1, // collé à la porte, on la regarde encore
         libelle: T1.libelle,
         sansEtiquette: true,
         visible: () => !p.ouverte && (J.etat.transgressions.T1 || 0) === 0 && !this.depart,
