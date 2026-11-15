@@ -36,7 +36,7 @@ export function createRain(count = 9000) {
       }`,
     fragmentShader: /* glsl */ `
       varying float vAlpha;
-      void main() { gl_FragColor = vec4(0.62, 0.74, 1.0, vAlpha); }`,
+      void main() { gl_FragColor = vec4(0.78, 0.62, 1.0, vAlpha); }`,
   });
   const mesh = new THREE.LineSegments(geo, mat);
   mesh.frustumCulled = false;
@@ -49,14 +49,15 @@ export function createRain(count = 9000) {
   };
 }
 
-// Passe finale : aberration chromatique légère, vignette et grain.
+// Passe finale, en espace écran : aberration chromatique, vignette, étalonnage violet
+// et réduction du nombre de teintes avec tramage (rendu « dessiné »).
 export const FilmShader = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, levels: { value: 14 } },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform float time;
+    uniform sampler2D tDiffuse; uniform float time; uniform float levels;
     varying vec2 vUv;
     void main() {
       vec2 d = vUv - 0.5;
@@ -66,9 +67,19 @@ export const FilmShader = {
         texture2D(tDiffuse, vUv).g,
         texture2D(tDiffuse, vUv - off).b
       );
-      col *= smoothstep(0.9, 0.3, length(d));
-      float n = fract(sin(dot(vUv * 800.0 + time, vec2(12.9898, 78.233))) * 43758.5453);
-      col += (n - 0.5) * 0.018;
+      col *= smoothstep(0.95, 0.3, length(d));
+      // étalonnage : ombres indigo, tons moyens violets, hautes lumières roses
+      float lum = dot(col, vec3(0.299, 0.587, 0.114));
+      vec3 sh = vec3(0.05, 0.015, 0.14);
+      vec3 mid = vec3(0.5, 0.16, 0.92);
+      vec3 hi = vec3(1.0, 0.72, 0.99);
+      vec3 duo = lum < 0.5 ? mix(sh, mid, lum * 2.0) : mix(mid, hi, lum * 2.0 - 1.0);
+      col = mix(col, duo, 0.42);
+      // tramage ordonné 4x4 puis palette réduite
+      ivec2 pi = ivec2(mod(gl_FragCoord.xy, 4.0));
+      const float bayer[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
+      float b = bayer[pi.x + pi.y * 4] / 16.0;
+      col = floor(col * levels + b) / levels;
       gl_FragColor = vec4(col, 1.0);
     }`,
 };

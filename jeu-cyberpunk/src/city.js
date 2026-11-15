@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { rng, windowTexture, signTexture, shopTexture, puddleTexture } from './textures.js';
+import { rng, windowTexture, signTexture, shopTexture, puddleTexture, skyTexture } from './textures.js';
+import { SIGNS_H as SIGN_DATA_H, SIGNS_V as SIGN_DATA_V } from './data/signs.js';
 
 export const BLOCKS = 9; // pâtés de maisons par côté
 export const BLOCK = 44; // largeur d'un pâté (trottoir compris)
@@ -9,9 +10,10 @@ export const STREET = 16;
 export const PITCH = BLOCK + STREET;
 export const HALF = (BLOCKS * PITCH) / 2;
 
-const NEON = ['#ff2bd6', '#00e5ff', '#ffd166', '#7a5cff', '#ff5a3c', '#39ff9c'];
-const SIGNS_H = ['ラーメン', 'BAR NÉON', 'HÔTEL', 'NOODLES', 'SYNTH CLUB', 'カラオケ', 'DATA//SHOP', 'PHARMA 24H', '電脳市場', 'CAFÉ ORBITE'];
-const SIGNS_V = ['ネオン街', '酒場', 'CYBER', '薬局', 'ホテル', 'ARCADE', '寿司', 'クラブ'];
+// Palette de la direction artistique : magenta, violet, bleu électrique.
+const NEON = ['#ff2bd6', '#c44bff', '#3d6bff', '#8a5cff', '#ff5ad0', '#4aa8ff'];
+const SIGNS_H = SIGN_DATA_H.map((s) => s.text);
+const SIGNS_V = SIGN_DATA_V.map((s) => s.text);
 
 const blockCenter = (i) => (i - (BLOCKS - 1) / 2) * PITCH;
 export const streetCenter = (i) => blockCenter(i) + PITCH / 2;
@@ -27,7 +29,7 @@ export function buildCity(scene) {
   const mirror = new Reflector(new THREE.PlaneGeometry(size, size), {
     textureWidth: 1024,
     textureHeight: 1024,
-    color: 0x5c5c74,
+    color: 0x6a5c90,
     clipBias: 0.003,
   });
   mirror.rotation.x = -Math.PI / 2;
@@ -38,7 +40,7 @@ export function buildCity(scene) {
   const road = new THREE.Mesh(
     new THREE.PlaneGeometry(size, size),
     new THREE.MeshStandardMaterial({
-      color: 0x0b0c13,
+      color: 0x0d0820,
       roughness: 0.55,
       metalness: 0.2,
       transparent: true,
@@ -52,9 +54,9 @@ export function buildCity(scene) {
 
   // ---------- Bâtiments ----------
   const variants = [
-    { tex: windowTexture(rand, ['#ffcf8a', '#ffb060', '#fff1d0', '#ff7ad9'], 0.3), geos: [] },
-    { tex: windowTexture(rand, ['#9be8ff', '#d8f6ff', '#5ecbff', '#ffffff'], 0.55), geos: [] },
-    { tex: windowTexture(rand, ['#ff2bd6', '#7a5cff', '#00e5ff', '#ffd166'], 0.16), geos: [] },
+    { tex: windowTexture(rand, ['#ff3fd8', '#ff7ae6', '#c44bff', '#ffd0f6'], 0.34), geos: [] },
+    { tex: windowTexture(rand, ['#4a7dff', '#7aa6ff', '#9a6bff', '#dfe6ff'], 0.5), geos: [] },
+    { tex: windowTexture(rand, ['#ff2bd6', '#7a5cff', '#3d6bff', '#b04bff'], 0.2), geos: [] },
   ];
   const sidewalkGeos = [];
   const buildings = [];
@@ -103,7 +105,7 @@ export function buildCity(scene) {
 
   for (const v of variants) {
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x0d0e16,
+      color: 0x130c2a,
       roughness: 0.55,
       metalness: 0.45,
       emissive: 0xffffff,
@@ -115,16 +117,16 @@ export function buildCity(scene) {
   scene.add(
     new THREE.Mesh(
       mergeGeometries(sidewalkGeos),
-      new THREE.MeshStandardMaterial({ color: 0x191a22, roughness: 0.5, metalness: 0.3 })
+      new THREE.MeshStandardMaterial({ color: 0x1c1436, roughness: 0.5, metalness: 0.3 })
     )
   );
 
   // ---------- Façades côté rue : vitrines, enseignes, hologrammes ----------
   const shops = [
-    { tex: shopTexture(rand, 310, 185), geos: [] },
-    { tex: shopTexture(rand, 185, 40), geos: [] },
-    { tex: shopTexture(rand, 35, 280), geos: [] },
-    { tex: shopTexture(rand, 265, 150), geos: [] },
+    { tex: shopTexture(rand, 310, 250), geos: [] },
+    { tex: shopTexture(rand, 235, 300), geos: [] },
+    { tex: shopTexture(rand, 285, 215), geos: [] },
+    { tex: shopTexture(rand, 265, 325), geos: [] },
   ];
   const signMats = new Map();
   const signMat = (text, color, vertical) => {
@@ -219,7 +221,7 @@ export function buildCity(scene) {
   );
   const bulbs = new THREE.InstancedMesh(
     new THREE.SphereGeometry(0.3, 10, 8),
-    new THREE.MeshBasicMaterial({ color: 0xffe2b0, toneMapped: false }),
+    new THREE.MeshBasicMaterial({ color: 0xff9cf2, toneMapped: false }),
     lampCount
   );
   const dummy = new THREE.Object3D();
@@ -249,7 +251,7 @@ export function buildCity(scene) {
   }
   const marks = new THREE.InstancedMesh(
     new THREE.PlaneGeometry(0.25, 3.5),
-    new THREE.MeshBasicMaterial({ color: 0x2a2a22 }),
+    new THREE.MeshBasicMaterial({ color: 0x2a1c4a }),
     dashes.length
   );
   dashes.forEach(([x, z, rot], i) => {
@@ -268,7 +270,7 @@ export function buildCity(scene) {
     new THREE.MeshBasicMaterial({ toneMapped: false }),
     CARS
   );
-  const carColors = [0x00e5ff, 0xff8a3c, 0xffffff, 0xff2b4a, 0xff2bd6];
+  const carColors = [0xff2bd6, 0x6f8cff, 0xe8d8ff, 0xc44bff, 0x3d6bff];
   const carData = [];
   const col = new THREE.Color();
   for (let i = 0; i < CARS; i++) {
@@ -299,8 +301,8 @@ export function buildCity(scene) {
   });
 
   // ---------- Lumières ----------
-  scene.add(new THREE.HemisphereLight(0x5a48b8, 0x120a1c, 1.1));
-  const moon = new THREE.DirectionalLight(0x7f8cff, 0.5);
+  scene.add(new THREE.HemisphereLight(0x6a3cff, 0x1a0838, 1.5));
+  const moon = new THREE.DirectionalLight(0x9a6bff, 0.7);
   moon.position.set(-60, 120, 40);
   scene.add(moon);
   // Quelques lumières colorées près du point de départ, au pied des enseignes.
@@ -314,15 +316,29 @@ export function buildCity(scene) {
       scene.add(l);
     });
 
-  return { colliders, update: (t) => animated.forEach((fn) => fn(t)) };
+  // ---------- Ciel ----------
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(640, 32, 16),
+    new THREE.MeshBasicMaterial({ map: skyTexture(rand), side: THREE.BackSide, fog: false, depthWrite: false })
+  );
+  sky.renderOrder = -1;
+  scene.add(sky);
+
+  return {
+    colliders,
+    update(t, camera) {
+      if (camera) sky.position.copy(camera.position);
+      animated.forEach((fn) => fn(t));
+    },
+  };
 }
 
-// Boîte dont les UV suivent les dimensions réelles : une tuile = 32 m x 56 m.
+// Boîte dont les UV suivent les dimensions réelles : une fenêtre = 1,25 m x 2,2 m.
 function buildingGeometry(b, rand) {
   const g = new THREE.BoxGeometry(b.w, b.h, b.d);
   const uv = g.attributes.uv;
-  const ou = Math.floor(rand() * 16) / 16;
-  const ov = Math.floor(rand() * 16) / 16;
+  const ou = Math.floor(rand() * 32) / 32;
+  const ov = Math.floor(rand() * 32) / 32;
   for (let face = 0; face < 6; face++) {
     for (let k = 0; k < 4; k++) {
       const i = face * 4 + k;
@@ -330,8 +346,8 @@ function buildingGeometry(b, rand) {
         uv.setXY(i, 0.002, 0.002); // toit et dessous : pas de fenêtres
       } else {
         const span = face < 2 ? b.d : b.w;
-        const u = Math.round((uv.getX(i) * span) / 2) / 16;
-        const v = Math.round((uv.getY(i) * b.h) / 3.5) / 16;
+        const u = Math.round((uv.getX(i) * span) / 1.25) / 32;
+        const v = Math.round((uv.getY(i) * b.h) / 2.2) / 32;
         uv.setXY(i, u + ou, v + ov);
       }
     }

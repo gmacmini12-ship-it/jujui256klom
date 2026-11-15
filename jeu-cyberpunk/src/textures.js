@@ -26,31 +26,25 @@ function finish(c, { repeat = true } = {}) {
   return tex;
 }
 
-// Façade : grille de 16 x 16 fenêtres, utilisée comme carte émissive.
+// Façade : grille de 32 x 32 petites fenêtres, utilisée comme carte émissive.
 export function windowTexture(rand, palette, litRatio) {
   const [c, ctx] = canvas(1024, 1024);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, 1024, 1024);
-  for (let row = 0; row < 16; row++) {
-    const floorLit = rand() < 0.12; // étage entièrement éclairé
-    for (let col = 0; col < 16; col++) {
-      const x = col * 64 + 12;
-      const y = row * 64 + 16;
-      if (floorLit || rand() < litRatio) {
-        const color = palette[Math.floor(rand() * palette.length)];
-        ctx.globalAlpha = 0.35 + rand() * 0.65;
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, 40, 34);
-        if (rand() < 0.3) {
-          // store à moitié baissé
-          ctx.globalAlpha = 0.7;
-          ctx.fillStyle = '#000';
-          ctx.fillRect(x, y, 40, 8 + rand() * 18);
-        }
+  for (let row = 0; row < 32; row++) {
+    const floorLit = rand() < 0.1; // étage entièrement éclairé
+    const floorDark = rand() < 0.12;
+    for (let col = 0; col < 32; col++) {
+      const x = col * 32 + 9;
+      const y = row * 32 + 9;
+      if (!floorDark && (floorLit || rand() < litRatio)) {
+        ctx.globalAlpha = 0.4 + rand() * 0.6;
+        ctx.fillStyle = palette[Math.floor(rand() * palette.length)];
+        ctx.fillRect(x, y, 14, 14);
       } else {
         ctx.globalAlpha = 1;
-        ctx.fillStyle = '#04060b';
-        ctx.fillRect(x, y, 40, 34);
+        ctx.fillStyle = '#0a0518';
+        ctx.fillRect(x, y, 14, 14);
       }
     }
   }
@@ -64,7 +58,7 @@ const FONT = '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", 
 export function signTexture(text, color, vertical) {
   const [c, ctx] = vertical ? canvas(256, 1024) : canvas(1024, 256);
   const { width: w, height: h } = c;
-  ctx.fillStyle = 'rgba(4, 3, 12, 0.88)';
+  ctx.fillStyle = 'rgba(8, 3, 26, 0.9)';
   ctx.fillRect(0, 0, w, h);
 
   ctx.shadowColor = color;
@@ -103,7 +97,7 @@ export function signTexture(text, color, vertical) {
 // Vitrine au rez-de-chaussée (motif répété tous les 8 m).
 export function shopTexture(rand, hueA, hueB) {
   const [c, ctx] = canvas(512, 256);
-  ctx.fillStyle = '#06070c';
+  ctx.fillStyle = '#0a0520';
   ctx.fillRect(0, 0, 512, 256);
 
   // bandeau lumineux
@@ -162,4 +156,43 @@ export function puddleTexture(rand) {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.anisotropy = 8;
   return tex;
+}
+
+// Ciel nocturne : dégradé violet, nuages et étoiles (projection équirectangulaire).
+export function skyTexture(rand) {
+  const [c, ctx] = canvas(2048, 1024);
+  const g = ctx.createLinearGradient(0, 0, 0, 1024);
+  g.addColorStop(0, '#04011a');
+  g.addColorStop(0.3, '#0d0536');
+  g.addColorStop(0.5, '#2a1278');
+  g.addColorStop(0.56, '#1a0c44');
+  g.addColorStop(1, '#1a0c44');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 2048, 1024);
+  for (let i = 0; i < 700; i++) {
+    ctx.globalAlpha = 0.25 + rand() * 0.6;
+    ctx.fillStyle = rand() < 0.3 ? '#ff9cf2' : '#cfd4ff';
+    const s = rand() < 0.1 ? 3 : 2;
+    ctx.fillRect(rand() * 2048, rand() * 470, s, s);
+  }
+  // nuages : amas de taches douces, étirées à l'horizontale
+  for (let k = 0; k < 46; k++) {
+    const cx = rand() * 2048;
+    const cy = 90 + rand() * 380;
+    const hue = 255 + rand() * 45;
+    for (let j = 0; j < 22; j++) {
+      const x = cx + (rand() - 0.5) * 420;
+      const y = cy + (rand() - 0.5) * 70;
+      const r = 30 + rand() * 90;
+      for (const ox of [-2048, 0, 2048]) {
+        const rg = ctx.createRadialGradient(x + ox, y, 0, x + ox, y, r);
+        rg.addColorStop(0, `hsla(${hue}, 85%, ${38 + rand() * 22}%, 0.11)`);
+        rg.addColorStop(1, `hsla(${hue}, 85%, 40%, 0)`);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = rg;
+        ctx.fillRect(x + ox - r, y - r, r * 2, r * 2);
+      }
+    }
+  }
+  return finish(c, { repeat: false });
 }
