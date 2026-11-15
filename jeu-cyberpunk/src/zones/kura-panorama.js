@@ -43,14 +43,14 @@ function communs() {
     uEns: { value: new Float32Array(QUARTIERS).fill(1) },
     uHol: { value: new Float32Array(QUARTIERS).fill(1) },
     uHal: { value: new Float32Array(QUARTIERS).fill(1) },
-    uHaze: { value: new THREE.Color(0x1a0f3e) },
-    uHazeD: { value: 0.0016 },
+    uHaze: { value: new THREE.Color(0x1a0d3a) },
+    uHazeD: { value: 0.0011 },
   };
   return U;
 }
 
 /** Construit le panorama. `echelle` : facteur de la ville (1 = taille réelle). Renvoie le groupe et l'API. */
-export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
+export function creerPanorama({ echelle = 1.0, graine = 20771 } = {}) {
   const U = communs();
   const groupe = new THREE.Group();
   groupe.name = 'panorama-ville';
@@ -336,7 +336,7 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
   groupe.add(tour);
 
   // ---------------------------------------------------------------- le sol : rues éclairées par leurs halos
-  const sol = new THREE.Mesh(new THREE.PlaneGeometry(NB * PAS + 400, NB * PAS + 400));
+  const sol = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000));
   sol.material = new THREE.ShaderMaterial({
     uniforms: { ...shared, uE: { value: echelle }, uC: { value: new THREE.Vector3() } },
     vertexShader: /* glsl */ `
@@ -388,11 +388,11 @@ export function creerPanorama({ echelle = 0.8, graine = 20771 } = {}) {
         float moy = 0.0;
         for (int i = 0; i < ${QUARTIERS}; i++) moy += (uFen[i] + uHal[i] + uEns[i]) / ${(QUARTIERS * 3).toFixed(1)};
         vec3 haut = vec3(0.010, 0.006, 0.030);
-        vec3 bas = vec3(0.10, 0.045, 0.20) * (0.25 + 0.75 * moy);
+        vec3 bas = vec3(0.10, 0.045, 0.21) * (0.25 + 0.75 * moy);
         vec3 col = mix(bas, haut, pow(max(h, 0.0), 0.45));
         // étoiles très rares
         vec2 e = floor(vDir.xz / (abs(vDir.y) + 0.35) * 160.0);
-        col += vec3(0.5, 0.55, 0.9) * step(0.9975, h21(e)) * smoothstep(0.1, 0.4, h);
+        col += vec3(0.5, 0.55, 0.9) * step(0.9991, h21(e)) * smoothstep(0.1, 0.4, h) * 0.7;
         gl_FragColor = vec4(col, 1.0);
       }`,
   }));

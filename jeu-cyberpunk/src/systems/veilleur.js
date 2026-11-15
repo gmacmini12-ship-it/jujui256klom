@@ -333,9 +333,9 @@ export const veilleur = {
     if (ville) this.animerPatrouilles(t);
     if (this.e) this.majEchec(dt, jeu);
     if (this.r) this.majRattrapage(dt, t, jeu);
-    else if (ville && !this.e && jeu.jouable) {
-      this.approcherBornes(jeu);
-      this.surveillerChute(jeu);
+    else if (!this.e && jeu.jouable) {
+      this.approcherBornes(jeu); // chaque borne n'est activée que dans sa zone (Kura : seuil des Profondeurs, mi-parcours)
+      if (ville) this.surveillerChute(jeu);
     }
     this.majSecousse(dt, jeu);
     this.majLampe();

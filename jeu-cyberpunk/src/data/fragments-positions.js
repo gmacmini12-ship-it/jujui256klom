@@ -103,6 +103,27 @@ export const POSITIONS_FRAGMENTS = [
     invite: 'Lire la fiche',
   },
 
+  // ---- Kura (zone 'kura', repère de zones/kura.js ; bible §6) ----
+  // 12 : sur la stèle du parvis du Hall, face à la mer de baies (stèle en (−4, 0, −53,5)).
+  { id: 12, zone: 'kura', position: [-4, 1.5, -53.5], rayon: 3.2, taille: 1.4, invite: 'Lire la stèle du Hall' },
+  // 13 : sous le linteau gravé de la Bibliothèque des Circuits (porte sud du pavillon, z = −58, mezzanine y = 10).
+  { id: 13, zone: 'kura', position: [62, 13.4, -57.2], rayon: 3.6, taille: 1.3, invite: "Lire l'inscription" },
+  // 16 et 17 : sur les bureaux des postes des deux autres Lecteurs (x = 48 et x = 88, z = −95).
+  {
+    id: 16, zone: 'kura', position: [51.5, 11.5, -95.2], rayon: 3.0,
+    support: { type: 'papier', position: [51.5, 10.93, -95.2], yaw: 0.3 },
+    invite: 'Lire la note du Lecteur',
+  },
+  {
+    id: 17, zone: 'kura', position: [84.5, 11.5, -95.2], rayon: 3.0,
+    support: { type: 'papier', position: [84.5, 10.93, -95.2], yaw: -0.4 },
+    invite: 'Lire le compte rendu',
+  },
+  // 23 : la Charte du Refuge, gravée au mur ouest de la salle (mezzanine y = 10).
+  { id: 23, zone: 'kura', position: [136.4, 12.6, -64.4], rayon: 3.4, taille: 1.2, invite: 'Lire la Charte du Refuge' },
+  // 33 : sur la stèle près de l'entrée de la salle de l'Interrupteur (sol y = 0), pas sur l'Interrupteur lui-même.
+  { id: 33, zone: 'kura', position: [394.2, 1.6, -329.4], rayon: 3.2, taille: 1.3, invite: "Lire la stèle de l'Interrupteur" },
+
   // 10 : « Le dividende » n'est PAS à ramasser : c'est un souvenir qu'Oba raconte. Il entre dans la frise à
   // la fin de son dialogue (systems/personnages.js, drapeau 'oba_dividende'). Il n'a donc pas de ligne
   // ci-dessus (fragments.js en ferait un éclat prenable) : voir POSITIONS_PAR_DIALOGUE plus bas.

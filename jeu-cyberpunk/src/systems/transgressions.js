@@ -663,7 +663,8 @@ export const transgressions = {
   // T4 — fumer là où ce n'est pas d'usage
   // =====================================================================
   surAllumage() {
-    const nom = J.zones?.nom || '';
+    // une zone peut désigner le lieu précis (Kura : le Refuge seul, bible §7.3) par `lieuDeFumee(jeu)` ; '' = nulle part
+    const nom = J.zones?.courante?.lieuDeFumee?.(J) ?? (J.zones?.nom || '');
     if (!T4.zones.some((z) => nom.includes(z))) return; // la rue, le marché couvert : jamais une transgression
     const n = declencher('T4', 'cigarette', { zone: nom });
     // La bande de Mima est masquée tant qu'on fume (bible §2.7) : la phrase attend la fin de la cigarette.

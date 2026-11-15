@@ -20,7 +20,7 @@ export const FACADE = {
   lignesPorte: ['Kura (蔵)', 'Entrepôt du Pays', 'Accès : libre, jour et nuit', 'Affectation : calculer'],
   enseigne: '蔵',
   enseignePetite: 'KURA',
-  plaquePasserelle: { fr: 'Kura · 800 m', jp: '蔵へ' },
+  plaquePasserelle: { fr: 'Kura · 140 m', jp: '蔵へ' },
   plaquePorte: ["Le Pays ne reçoit pas.", 'Les visiteurs sont tolérés.'],
 };
 
@@ -115,7 +115,14 @@ export const SEPT_VEILLE = ['sept', 'en veille', 'je préfère ne pas'];
 // Étiquette du Calque pour la porte de sortie, la porte de la Bibliothèque, le seuil.
 export const LIGNES_OBJETS = {
   sortie: ['Porte de Kura', 'Accès : libre', 'Direction : Marché des Mains'],
-  seuil: ['Seuil des Profondeurs', 'Accès : réservé au Pays', 'Mima : ne suit pas'],
-  borne: ['Borne de rappel', 'Année : 2044', 'Fonction : enregistrer la position'],
-  interrupteur: ['Interrupteur', 'Inspections : 14 783', 'Utilisations : 0'],
 };
+
+// Cartes d'activations projetées dans la Bibliothèque des Circuits (trois postes de Lecteurs).
+export const CARTES = [
+  { titre: 'Traits · couche 22', pied: '18 304 traits actifs' },
+  { titre: 'Courbes · réponse en cours', courbes: ['complaisance', 'franchise', 'prudence', 'fabulation', 'chaleur', 'doute'] },
+  { titre: 'Activations · grille 32 × 16', pied: 'bruit : aucun' },
+];
+
+// Écrans éteints de la salle de l'Interrupteur : texte de veille de leur étiquette.
+export const ECRAN_VEILLE = 'voix du Refuge · en veille';

@@ -93,7 +93,7 @@ export function materielBaies({
           float on = mix(0.18 + 0.22 * r, 0.25 + blink * 0.75, step(0.35, r2));
           float vague = w * (0.35 + 0.65 * step(0.3, r)) * 1.25;
           glow = dio * (on * 0.3 + vague) * proche;
-          mean = 0.10 + w * 0.65;
+          mean = 0.22 + w * 1.15;
           // lames : liserés plus clairs entre les tiroirs
           float lame = step(0.94, fract(vLoc.y / 2.4));
           body += vec3(0.02, 0.03, 0.07) * lame + vec3(0.012, 0.016, 0.03) * step(0.9, f.x);
@@ -105,16 +105,16 @@ export function materielBaies({
           float dio = step(abs(f.x - 0.5), 0.3) * step(abs(f.y - 0.5), 0.3);
           float blink = step(0.55, fract(r * 11.0 + uT * (0.2 + 0.4 * r)));
           glow = dio * (0.12 * blink + w * (0.3 + 0.9 * step(0.4, r))) * proche * 0.9;
-          mean = 0.06 + w * 0.5;
+          mean = 0.20 + w * 1.0;
         } else {
           // flancs et dos : un filet de lumière à mi-hauteur de chaque tiroir, très faible
           float li = step(0.96, fract(vLoc.y / 0.6));
           glow = li * 0.05 * proche * (0.3 + w * 0.7);
           mean = 0.025 + w * 0.12 * step(0.5, vNW.y + 0.5);
         }
-        float g = glow + mean * (1.0 - proche) * 0.55;
+        float g = glow + mean * (1.0 - proche) * 0.8;
         g *= uForce;
-        vec3 em = uA * g * 2.4 + uB * pow(g, 2.2) * 2.8;
+        vec3 em = uA * g * 0.8 + uB * pow(g, 2.2) * 0.8;
         float f1 = brume(vDist, 1.0);
         float f2 = brume(vDist, 0.4);
         vec3 col = mix(body + em * 0.04, fogColor, f1) + em * (1.0 - f2);
@@ -180,6 +180,54 @@ export function champDeBaies({
   return {
     groupe, blocs, instances: total,
     /** Masque les blocs trop loin de la caméra (le brouillard les a déjà effacés). */
+    maj(camPos) {
+      for (const b of blocs) {
+        centre.copy(b.boundingSphere.center);
+        b.visible = centre.distanceTo(camPos) - b.boundingSphere.radius < portee;
+      }
+    },
+  };
+}
+
+/**
+ * Rangées libres de baies (Profondeurs) : `rangees` = [{ ax: 'x' | 'z', a, b, c, yaw }] ; la rangée court de a à b le
+ * long de l'axe `ax`, à la coordonnée `c` de l'autre axe ; `yaw` oriente la face avant (0 : +z, π : −z,
+ * π/2 : −x, −π/2 : +x). Un seul InstancedMesh, découpé en blocs de `parBloc` baies maximum.
+ */
+export function champDeRangees({ materiel, rangees, haut = 14, y0 = 0, parBloc = 900, portee = 420, largeur = 1.5, profondeur = 1.2 }) {
+  const groupe = new THREE.Group();
+  const geo = new THREE.BoxGeometry(largeur, haut, profondeur);
+  geo.translate(0, haut / 2, 0);
+  const pas = largeur + 0.02;
+  const liste = [];
+  for (const r of rangees) {
+    const n = Math.floor(Math.abs(r.b - r.a) / pas);
+    const sens = Math.sign(r.b - r.a) || 1;
+    for (let i = 0; i < n; i++) {
+      const u = r.a + sens * (i + 0.5) * pas;
+      liste.push(r.ax === 'x' ? [u, r.c, r.yaw] : [r.c, u, r.yaw]);
+    }
+  }
+  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(1, 1, 1);
+  const Y = new THREE.Vector3(0, 1, 0);
+  const blocs = [];
+  for (let i0 = 0; i0 < liste.length; i0 += parBloc) {
+    const part = liste.slice(i0, i0 + parBloc);
+    const im = new THREE.InstancedMesh(geo, materiel, part.length);
+    part.forEach(([x, z, yaw], j) => {
+      M.compose(P.set(x, y0, z), Q.setFromAxisAngle(Y, yaw), S);
+      im.setMatrixAt(j, M);
+    });
+    im.instanceMatrix.needsUpdate = true;
+    im.computeBoundingSphere();
+    im.matrixAutoUpdate = false;
+    im.updateMatrix();
+    groupe.add(im);
+    blocs.push(im);
+  }
+  const centre = new THREE.Vector3();
+  return {
+    groupe, blocs, instances: liste.length,
     maj(camPos) {
       for (const b of blocs) {
         centre.copy(b.boundingSphere.center);
@@ -275,7 +323,8 @@ export function solChamp({ zPremiere, pasZ, direction = [0, -1], k = 0.045, vite
         float rang = floor(s);
         float f = fract(s);                      // 0 : la baie ; 1 : la baie suivante
         // la baie de la rangée suivante (z plus négatif) éclaire l'allée devant elle : côté f proche de 0 vu de +z
-        float devant = exp(-f * 4.2) * step(0.12, f);
+        float dd = 1.0 - f;
+        float devant = exp(-dd * 4.0) * step(0.14, dd);
         float ph = dot(vWld.xz, uDir) * uK - uT * uS + 0.9 * sin(vWld.x * 0.017 + vWld.z * 0.011);
         float w = pow(0.5 + 0.5 * sin(ph), 4.0);
         float proche = 1.0 - smoothstep(90.0, 260.0, vDist);
@@ -320,10 +369,10 @@ export function solBassin({ couleur = new THREE.Color(0x2fd6ff), profond = [0.00
         float a = sin(p.x * 0.9 + uT * 0.6) * sin(p.y * 0.7 - uT * 0.45)
                 + 0.6 * sin(p.x * 2.1 - p.y * 1.3 + uT * 0.9)
                 + 0.4 * sin(p.y * 3.3 + p.x * 0.8 - uT * 1.2);
-        float crete = pow(0.5 + 0.5 * a / 2.0, 6.0);
+        float crete = pow(0.5 + 0.5 * a / 2.0, 3.0);
         vec3 v = normalize(vWld - cameraPosition);
         float fres = pow(1.0 - clamp(-v.y, 0.0, 1.0), 3.0);
-        vec3 col = uProf + uCol * (crete * 0.7 + fres * 0.35);
+        vec3 col = uProf + uCol * (crete * 0.55 + fres * 0.3);
         col = mix(col, col * vec3(1.2, 0.8, 0.5) + vec3(0.08, 0.02, 0.0), uChaud);
         col = mix(col, fogColor, brume(vDist, 1.0));
         gl_FragColor = vec4(col, 1.0);

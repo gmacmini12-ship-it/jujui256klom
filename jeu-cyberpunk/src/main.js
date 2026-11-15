@@ -21,6 +21,7 @@ import { creerClinique } from './zones/clinique.js';
 import { creerKasumi } from './zones/kasumi.js';
 import { creerMainsCourantes } from './zones/mainsCourantes.js';
 import { creerMaison } from './zones/maison.js';
+import { creerKura } from './zones/kura.js';
 import { FRAGMENTS } from './data/fragments.js';
 import { OUVERTURE } from './data/ouverture.js';
 import { TITRES_ZONES } from './data/interface.js';
@@ -208,6 +209,7 @@ zones.enregistrer('clinique', creerClinique);
 zones.enregistrer('kasumi', creerKasumi);
 zones.enregistrer('mains-courantes', creerMainsCourantes);
 zones.enregistrer('maison', creerMaison);
+zones.enregistrer('kura', creerKura);
 
 const sauvegarde = charger();
 accueil.aUnePartie = sauvegarde && etat.ouvertureVue;
