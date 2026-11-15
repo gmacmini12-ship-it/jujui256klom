@@ -52,5 +52,5 @@ export const POSITIONS_FRAGMENTS = [
 
   // 27 : sur un toit à l'est de la clinique, visible depuis la rue du carrefour ; atteignable
   // plus tard (Bond). Toit du lot [60-79] × [41-60], hauteur 18,9 m dans son angle nord-ouest ; l'éclat flotte à 3,6 m au-dessus, pour dépasser le rebord vu d'en bas.
-  { id: 27, zone: 'kasumi', position: [63, 22.5, 42.2], taille: 3.5 },
+  { id: 27, zone: 'kasumi', position: [63, 22.5, 42.2], taille: 5 },
 ];

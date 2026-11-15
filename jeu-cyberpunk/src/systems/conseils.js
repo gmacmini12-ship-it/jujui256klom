@@ -23,7 +23,7 @@ const SEUILS = {
   fenetreSauts: 20, // …en autant de secondes
   bord: 10, // m du bord de la ville
   hauteur: 60, // m
-  evenement: 40, // s pendant lesquelles un évènement (sortie, retour, frise…) reste « récent »
+  evenement: 75, // s pendant lesquelles un évènement (sortie, retour, frise…) reste « récent »
 };
 
 // État local (non sauvé) : mesures et évènements récents.

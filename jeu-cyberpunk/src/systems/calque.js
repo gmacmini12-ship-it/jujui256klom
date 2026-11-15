@@ -24,7 +24,7 @@ const RAYON_PLEIN = 14; // pleine opacité en deçà, dégradé jusqu'à RAYON
 const MAX_DOM = 16;
 const PERIODE_TRI = 0.15; // s
 const DECALAGE_Y = 0.45; // m au-dessus du point de l'objet
-const QUOTAS = { externe: 10, porte: 4, objet: 6, ancre: 8, facade: 5, lampe: 3 };
+const QUOTAS = { externe: 10, porte: 4, objet: 6, ancre: 8, facade: 5, lampe: 4 };
 
 // ---------- Utilitaires ----------
 function graine(...parts) {
@@ -78,10 +78,10 @@ function neutraliser() {
 const CSS = `
 .cq-voile { position: fixed; inset: 0; z-index: 47; pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
   background:
-    radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 45%, rgba(8,40,60,0.38) 100%),
+    radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 45%, rgba(8,50,72,0.5) 100%),
     repeating-linear-gradient(0deg, rgba(110,240,255,0) 0 3px, rgba(110,240,255,0.045) 3px 4px),
     repeating-linear-gradient(90deg, rgba(110,240,255,0) 0 63px, rgba(110,240,255,0.05) 63px 64px),
-    rgba(40,170,200,0.05); }
+    rgba(40,170,200,0.09); }
 .cq-voile.on { opacity: 1; }
 .cq-voile::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18%;
   background: linear-gradient(180deg, rgba(110,240,255,0), rgba(110,240,255,0.07), rgba(110,240,255,0));
@@ -326,6 +326,8 @@ function trier() {
   for (let i = 0; i < cand.length && pris < MAX_DOM; i++) {
     const e = cand[i];
     if (compteurs[e.kind] >= QUOTAS[e.kind]) continue;
+    // deux façades voisines (ou colliders superposés) : une seule étiquette
+    if (e.kind === 'facade' && facadeProche(e, i)) continue;
     compteurs[e.kind]++;
     pris++;
     e.retenue = true;
@@ -343,6 +345,15 @@ function trier() {
   for (const e of actifs) if (!e.retenue) e.cible = 0;
 }
 const parDistance = (a, b) => a.d - b.d;
+function facadeProche(e, jusqua) {
+  for (let i = 0; i < jusqua; i++) {
+    const o = cand[i];
+    if (o.kind !== 'facade' || !o.retenue) continue;
+    const dx = o.position.x - e.position.x, dz = o.position.z - e.position.z;
+    if (dx * dx + dz * dz < 144) return true;
+  }
+  return false;
+}
 
 // ---------- Système ----------
 export const calque = {
