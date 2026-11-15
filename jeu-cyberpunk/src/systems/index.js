@@ -41,3 +41,12 @@ import { veilleur } from './veilleur.js';
 jeu.enregistrer(personnages);
 jeu.enregistrer(toits);
 jeu.enregistrer(veilleur);
+
+// Étape 3
+import { attention } from './attention.js';
+import { transgressions } from './transgressions.js';
+import { mainsCourantes } from './mainsCourantes.js';
+
+jeu.enregistrer(attention);
+jeu.enregistrer(transgressions);
+jeu.enregistrer(mainsCourantes);
