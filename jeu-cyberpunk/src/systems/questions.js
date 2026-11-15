@@ -14,10 +14,12 @@
 import { TEXTES, MAX_CHOIX, QUESTIONS_REPLI } from '../data/questions.js';
 
 // Fichier écrit par l'agent dialogues (peut ne pas exister encore) : repli dans data/questions.js.
-const _dlg = import.meta.glob('../data/dialogues-etape4.js', { eager: true });
+const _dlg = import.meta.glob('../data/dialogues-etape*.js', { eager: true });
 const QUESTIONS = (() => {
-  const q = Object.values(_dlg)[0]?.QUESTIONS_MIMA;
-  return Array.isArray(q) && q.length ? q : QUESTIONS_REPLI;
+  // toutes les banques des étapes : QUESTIONS_MIMA, QUESTIONS_MIMA_ETAPE5, …
+  const q = Object.values(_dlg).flatMap((m) => Object.entries(m)
+    .filter(([nom, v]) => nom.startsWith('QUESTIONS_MIMA') && Array.isArray(v)).flatMap(([, v]) => v));
+  return q.length ? q : QUESTIONS_REPLI;
 })();
 
 const PAR_PAGE = MAX_CHOIX - 2; // + « (Autres questions.) » + « (Ne rien demander.) »
