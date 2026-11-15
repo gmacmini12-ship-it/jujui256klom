@@ -14,7 +14,7 @@ import {
 //   Escalier       x ∈ [−2, 2], z de −6,1 à −12 : 21 marches de 0,2 m (boîtes 3D, praticables), il monte à l'étage.
 //   Transept       x ∈ [−14, 14], z ∈ [−34, −12] : au rez-de-chaussée la crypte (plafond à 3,9 m, la dalle de
 //                  l'étage) où se tient la Cabine du Sceau ; à l'étage (y = 4,2) la Clinique du Jugement.
-//   Aile ouest     x ∈ [−28, −9], z ∈ [−12, 14] : Salle des Consultations, douze cabines (deux rangées de six),
+//   Aile ouest     x ∈ [−28, −9], z ∈ [−12, 14] : Salle des Consultations, dix cabines (six à l'ouest, quatre au centre),
 //                  porte dans la nef à z ∈ [1, 7].
 //   Aile est       x ∈ [9, 28],   z ∈ [−12, 14] : Médiathèque des Avant, neuf écrans d'archives à texte défilant.
 //
@@ -30,9 +30,8 @@ export const LIEUX = {
     { id: 'consultant2', x: -26.2, z: 4, yaw: -Math.PI / 2 },
     { id: 'consultant3', x: -18.2, z: -2, yaw: Math.PI / 2 },
   ],
-  sall: { x: -9.2, y: Y_ETAGE, z: -21.2, yaw: Math.PI / 2 },
+  sall: { x: -8.6, y: Y_ETAGE, z: -22.6, yaw: Math.PI / 2 },
   patient: { x: 7.5, y: Y_ETAGE - 0.06, z: -26.6, yaw: 0 },
-  borneSceau: { x: -3.2, y: 1.3, z: -17.6 },
   pedestalSceau: { x: 0, y: 1.2, z: -25 },
 };
 
@@ -176,9 +175,26 @@ function textureVitrine() {
   return texture(c);
 }
 
-/** Écran d'archive : une bande de texte qui défile (décalage d'UV, aucune redessinée). */
+/** Écran d'archive : une bande de texte qui défile (décalage d'UV, aucune redessinée). Renvoie { tex, rep }. */
 function textureArchive(arch) {
-  const L = 768, H = 1024;
+  const L = 768, FEN = 528; // largeur de la bande, hauteur de la fenêtre visible (en pixels de la bande)
+  const mise = (g) => {
+    let y = 0;
+    g.textBaseline = 'alphabetic';
+    g.textAlign = 'left';
+    g.font = `600 36px ${SERIF}`;
+    const tit = couper(g, arch.titre, L - 80);
+    y = 160 + tit.length * 40 + 20;
+    return { tit, yCorps: y + 34 };
+  };
+  // première passe : mesure
+  const [c0, g0] = toile(L, 64);
+  const m0 = mise(g0);
+  let h = m0.yCorps;
+  g0.font = `28px ${SERIF}`;
+  for (const l of arch.lignes) h += l ? 38 : 22;
+  const H = Math.max(FEN + 120, Math.round(h + 110));
+  void c0;
   const [c, g] = toile(L, H);
   g.fillStyle = '#060d26';
   g.fillRect(0, 0, L, H);
@@ -189,28 +205,27 @@ function textureArchive(arch) {
   g.fillText(String(arch.annee), 40, 110);
   g.fillStyle = '#9fb2ff';
   g.font = `600 36px ${SERIF}`;
-  const tit = couper(g, arch.titre, L - 80);
+  const { tit, yCorps } = mise(g);
+  g.font = `600 36px ${SERIF}`;
   tit.forEach((l, i) => g.fillText(l, 44, 160 + i * 40));
-  let y = 160 + tit.length * 40 + 20;
   g.strokeStyle = '#3a56c8';
   g.lineWidth = 2;
-  g.beginPath(); g.moveTo(40, y - 6); g.lineTo(L - 40, y - 6); g.stroke();
+  g.beginPath(); g.moveTo(40, yCorps - 40); g.lineTo(L - 40, yCorps - 40); g.stroke();
   g.font = `28px ${SERIF}`;
   g.fillStyle = '#b6c8ff';
-  y += 34;
+  let y = yCorps;
   for (const l of arch.lignes) {
     if (!l) { y += 22; continue; }
+    g.font = `28px ${SERIF}`;
     const k = adapter(g, l, L - 80);
     if (k < 1) g.font = `${Math.round(28 * k)}px ${SERIF}`;
     g.fillText(l, 44, y);
-    g.font = `28px ${SERIF}`;
     y += 38;
   }
-  // fin de bande : un trait, puis du noir jusqu'au retour de l'en-tête
+  // fin de bande : un trait avant le retour de l'en-tête
   g.fillStyle = '#2a3f8c';
-  g.fillRect(40, Math.min(y + 24, H - 40), L - 80, 2);
-  const t = texture(c, { repeat: true, aniso: 4 });
-  return t;
+  g.fillRect(40, H - 50, L - 80, 2);
+  return { tex: texture(c, { repeat: true, aniso: 4 }), rep: FEN / H };
 }
 
 // ---------------------------------------------------------------------------- fabrique
@@ -439,12 +454,6 @@ export function creerMaison(jeu) {
   for (const x of [-3.7, 3.7]) for (const z of [-30, -20.4]) {
     BE(M.lumiere, x - 0.05, x + 0.05, 0.1, 3.5, z - 0.05, z + 0.05);
   }
-  // lutrin de la notice du Sceau, devant la cabine
-  const B = LIEUX.borneSceau;
-  BE(M.boisClair, B.x - 0.35, B.x + 0.35, 0, 1.1, B.z - 0.3, B.z + 0.3);
-  BE(M.lumiere, B.x - 0.3, B.x + 0.3, 1.1, 1.14, B.z - 0.25, B.z + 0.25);
-  col(B.x - 0.4, B.x + 0.4, B.z - 0.35, B.z + 0.35, 0, 1.2);
-
   // ---------- Vitrine de la séance (nef ouest, fragment 15) ----------
   BE(M.boisClair, -8.8, -7.6, 0, 0.9, -9.1, -6.9);
   BE(M.verre, -8.75, -7.65, 0.9, 1.9, -9.05, -6.95);
@@ -478,7 +487,7 @@ export function creerMaison(jeu) {
     rings.push({ x: dos + sens * 0.09, y: 1.85, z, yaw: sens > 0 ? Math.PI / 2 : -Math.PI / 2, taille: 0.8, libre });
   };
   zc.forEach((z, i) => cabine(-27.7, 1, z, 'W', i));
-  zc.forEach((z, i) => cabine(-16.9, -1, z, 'E', i));
+  zc.slice(0, 4).forEach((z, i) => cabine(-16.9, -1, z, 'E', i)); // quatre seulement : la porte de la nef donne sur l'allée
   // quelques bancs d'attente contre la nef (côté ouest, entre la rangée est et la porte)
   BE(M.boisClair, -12.3, -11.7, 0.35, 0.42, -7.5, -3.5);
   BE(M.bois, -12.2, -12.1, 0, 0.35, -7.4, -7.3);
@@ -513,8 +522,7 @@ export function creerMaison(jeu) {
   for (const def of ECRANS) {
     const arch = ARCHIVES.find((a) => a.annee === def.annee);
     const m = murs[def.mur];
-    const tex = textureArchive(arch);
-    const rep = 528 / 1024;
+    const { tex, rep } = textureArchive(arch);
     tex.repeat.set(1, rep);
     tex.offset.set(0, 1 - rep);
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.2), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
@@ -584,7 +592,7 @@ export function creerMaison(jeu) {
   plaque(PLAQUES.sceau, 0, 3.35, SZ1 + 0.22, 0, 2.5, 0.62);
 
   // ---------- Lumières (peu : le décor est surtout émissif) ----------
-  scene.add(new THREE.HemisphereLight(0xb4c4ff, 0x6a4630, 4.2));
+  scene.add(new THREE.HemisphereLight(0xf0e4da, 0x6a4630, 4.2));
   const lampe = (couleur, i, d, x, y, z) => {
     const l = new THREE.PointLight(couleur, i, d, 1.6);
     l.position.set(x, y, z);
@@ -614,7 +622,7 @@ export function creerMaison(jeu) {
     const o = jeu.interact.ajouter({
       zone: 'maison',
       position: [r.x, r.y, r.z],
-      rayon: 3.1,
+      rayon: 3.7,
       libelle: INVITES.anneau,
       lignes: ANNEAU.lignes,
       sansLigne: false,

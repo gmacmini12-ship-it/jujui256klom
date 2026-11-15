@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TITRES_ZONES } from '../data/interface.js';
 import {
-  TITRE_ZONE, FACADE, PERSONNAGES as TEXTES, APPARENCES, INVITES, SCEAU,
+  TITRE_ZONE, FACADE, PERSONNAGES as TEXTES, APPARENCES,
 } from '../data/maison.js';
 import { LIEUX } from '../zones/maison.js';
 import { npc } from './npc.js';
@@ -30,8 +30,8 @@ import { npc } from './npc.js';
 //   `sourdine` n'est pas encore là.
 //
 // BRANCHEMENTS DE LA ZONE (zones/maison.js) : anneaux libres → `jeu.questions?.ouvrir?.()` ; chaque anneau est déclaré
-//   à `jeu.conversation?.ajouterEcran` ; cabine du Sceau → `jeu.fins?.sceau?.()` ; la borne du Sceau ouvre le dialogue
-//   'sceau' d'étape 4 ; fumer y est déplacé (T4.zones de data/transgressions.js).
+//   à `jeu.conversation?.ajouterEcran` ; cabine du Sceau → `jeu.fins?.sceau?.()` (c'est fins.js qui ouvre le dialogue
+//   'sceau' d'étape 4 : rien à faire ici) ; fumer y est déplacé (T4.zones de data/transgressions.js).
 //
 // API : `jeu.maison` = { zone (la zone, une fois construite), personnages, lancer(id), dernier, LIEUX }.
 
@@ -148,7 +148,6 @@ export const maison = {
     if (!this._faits) {
       this._faits = true;
       this.placerPersonnages(jeu);
-      this.monterBorneSceau(jeu);
     }
   },
 
@@ -166,7 +165,7 @@ export const maison = {
       const p = npc.ajouterPersonnage({
         id, nom: t.nom, zone: 'maison', position: [def.x, def.y ?? 0, def.z], yaw: def.yaw ?? 0,
         apparence: APPARENCES[id], lignes: t.lignes, libelle: t.libelle, regardeLeJoueur: id === 'sall' || id === 'patient',
-        hauteurEtiquette: 2.25, rayon: 3.0,
+        hauteurEtiquette: 2.25, rayon: 3.4,
         dialogue: () => dialoguePour(id, jeu.etat),
         apres: () => this.apres(id),
       });
@@ -207,7 +206,7 @@ export const maison = {
     if (typeof jeu.sourdine?.accorder !== 'function') return false;
     this._sourdineEnCours = true;
     try {
-      return jeu.sourdine.accorder() !== false;
+      return !!jeu.sourdine.accorder();
     } finally {
       this._sourdineEnCours = false;
     }
@@ -217,30 +216,6 @@ export const maison = {
   lancer(id) {
     const p = this.personnages[id];
     return p?.objet?.action?.();
-  },
-
-  // ------------------------------------------------------------------
-  // Borne du Sceau : la notice, devant la cabine (dialogue 'sceau')
-  // ------------------------------------------------------------------
-  monterBorneSceau(jeu) {
-    const b = LIEUX.borneSceau;
-    jeu.interact.ajouter({
-      zone: 'maison',
-      position: [b.x, b.y, b.z],
-      rayon: 2.6,
-      cone: 0.9,
-      libelle: INVITES.borneSceau,
-      lignes: ['Notice du Sceau', SCEAU.inscription, 'Lecture : libre'],
-      decalageEtiquette: 0.5,
-      visible: () => dialoguePour('sceau', jeu.etat) !== null,
-      action: async () => {
-        const d = dialoguePour('sceau', jeu.etat);
-        if (!d) return;
-        await jeu.ouvrirDialogue(d);
-        jeu.etat.rencontres.sceau = (jeu.etat.rencontres.sceau || 0) + 1;
-        jeu.sauver?.();
-      },
-    });
   },
 
   // ------------------------------------------------------------------

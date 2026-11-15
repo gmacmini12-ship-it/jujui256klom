@@ -93,12 +93,12 @@ export const POSITIONS_FRAGMENTS = [
     invite: "Regarder l'affiche",
   },
   {
-    id: 21, zone: 'maison', position: [-11.7, 5.3, -21.2], rayon: 2.8,
+    id: 21, zone: 'maison', position: [-11.7, 5.3, -21.2], rayon: 3.3,
     support: { type: 'papier', position: [-11.7, 4.99, -21.2], yaw: 0.3 },
     invite: 'Lire la note',
   },
   {
-    id: 22, zone: 'maison', position: [0, 5.05, -23.8], rayon: 2.8,
+    id: 22, zone: 'maison', position: [0, 5.05, -23.8], rayon: 3.3,
     support: { type: 'papier', position: [-0.2, 4.67, -23.8], yaw: -0.4 },
     invite: 'Lire la fiche',
   },

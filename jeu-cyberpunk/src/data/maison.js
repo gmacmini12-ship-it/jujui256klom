@@ -17,7 +17,6 @@ export const INVITES = {
   sortir: 'Sortir dans la rue',
   anneau: "Parler à l'anneau",
   cabine: 'Entrer dans la cabine',
-  borneSceau: 'Lire la notice du Sceau',
   archive: "Lire l'archive",
 };
 
@@ -72,20 +71,21 @@ export const PERSONNAGES = {
     libelle: 'Parler au patient',
     lignes: ['Patient (nom non communiqué)', 'Affectation : fauteuil n° 4', 'Fonction : réapprendre à décider', 'Pensée : ouverte — halo hésitant'],
   },
+  // (dialogues-etape4.js : consultant1 = un repas, consultant2 = un amour, consultant3 = un déménagement)
   consultant1: {
-    nom: 'Consultante',
-    libelle: 'Écouter la consultante',
-    lignes: ['Habitante en consultation', 'Sujet : un déménagement', 'Pensée : ouverte — halo calme'],
-  },
-  consultant2: {
     nom: 'Consultant',
     libelle: 'Écouter le consultant',
     lignes: ['Habitant en consultation', 'Sujet : un repas', 'Pensée : ouverte — halo calme'],
   },
-  consultant3: {
+  consultant2: {
     nom: 'Consultante',
     libelle: 'Écouter la consultante',
     lignes: ['Habitante en consultation', 'Sujet : un amour', 'Pensée : ouverte — halo tiède'],
+  },
+  consultant3: {
+    nom: 'Consultante',
+    libelle: 'Écouter la consultante',
+    lignes: ['Habitante en consultation', 'Sujet : un déménagement', 'Pensée : ouverte — halo calme'],
   },
 };
 
@@ -98,7 +98,6 @@ export const APPARENCES = {
 };
 
 // Archives de la Médiathèque des Avant, 2020–2049 (bible §1, « Avant le sommeil » puis « Pendant le sommeil »).
-// `ancienne` : écran de ce que le joueur a pu connaître ; les suivants sont l'extrapolation de la bible.
 export const ARCHIVES = [
   {
     annee: 2020,

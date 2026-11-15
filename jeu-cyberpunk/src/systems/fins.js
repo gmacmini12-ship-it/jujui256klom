@@ -57,12 +57,12 @@ function ecrireMemoire(m) {
 function dialogueEtape4(nom, etat) {
   const table = D4?.DIALOGUES_ETAPE4;
   if (table) {
-    if (table[nom]) return table[nom]; // entrée directe (ex. 'lit_question')
     if (typeof D4.choisirDialogueEtape4 === 'function') {
       let id = null;
       try { id = D4.choisirDialogueEtape4(nom, etat); } catch (e) { console.error('[fins] choisirDialogueEtape4 :', e); }
       if (id && table[id]) return table[id];
     }
+    if (table[nom]) return table[nom]; // entrée directe
   }
   return DIALOGUES_FINS_REPLI[nom];
 }
@@ -80,14 +80,15 @@ function epilogue(id, variante) {
 }
 
 function phraseTesteur() {
-  return String(D4?.EPILOGUES?.fin2?.testeur ?? EPILOGUES_REPLI.fin2.testeur);
+  return paragraphes(D4?.EPILOGUES?.fin2?.testeur ?? EPILOGUES_REPLI.fin2.testeur).join(' ');
 }
 
 /** Accueil de la partie suivante (cycle ≥ 1) : { date, heure, mima: [texte…] }. */
 function accueilCycle(cycle) {
   const src = D4?.ACCUEIL_2126;
   let a = { ...ACCUEIL_2126_REPLI };
-  if (typeof src === 'string' || Array.isArray(src)) a.mima = aTableau(src).map(String);
+  if (typeof src === 'string') a.mima = [src, ...a.mima.slice(1)]; // la réplique d'accueil écrite, puis la date et le souvenir
+  else if (Array.isArray(src)) a.mima = src.map(String);
   else if (src && typeof src === 'object') {
     if (src.date) a.date = String(src.date);
     if (src.heure) a.heure = String(src.heure);
@@ -227,6 +228,7 @@ export const fins = {
       }
     }
     this.animerNote(dt);
+    this.majBulles();
 
     const gele = jeu.accueil?.visible && !jeu.sansSouris;
     if (!gele) {
@@ -420,9 +422,12 @@ export const fins = {
     const J = this.jeton;
     this.occupe = true;
     try {
+      const avant = this.drapeau('sceau_accepte');
       await jeu.ouvrirDialogue(dialogueEtape4('sceau', jeu.etat));
       if (J !== this.jeton) return false;
-      if (!this.drapeau('sceau_accepte')) {
+      // accepté dans ce dialogue ; ou accepté avant mais la fin n'a jamais été menée à son terme (rechargement)
+      const accepte = this.drapeau('sceau_accepte') && (!avant || !jeu.etat.finsVues.includes('fin2'));
+      if (!accepte) {
         jeu.emettre('sceau:refus');
         return false;
       }
@@ -546,17 +551,28 @@ export const fins = {
     return true;
   },
 
-  placerBulles() {
-    if (!this.bulles.length) return;
+  /** Opacité et durée de vie des bulles (à chaque pas du jeu, rendu ou non). */
+  majBulles() {
     const jeu = this.jeu;
-    const cam = jeu.camera;
-    const w = innerWidth;
-    const h = innerHeight;
-    const v = this._v || (this._v = new THREE.Vector3());
     for (let i = this.bulles.length - 1; i >= 0; i--) {
       const b = this.bulles[i];
       const veut = jeu.t - b.t0 < b.duree && jeu.zones.nom === 'kasumi' && !this.enCours;
       b.a += ((veut ? 1 : 0) - b.a) * 0.2;
+      if (!veut && b.a < 0.03) {
+        b.el.style.display = 'none';
+        this.bulles.splice(i, 1);
+      }
+    }
+  },
+
+  /** Place les bulles au-dessus de leur porteur (après le rendu : la caméra est à jour). */
+  placerBulles() {
+    if (!this.bulles.length) return;
+    const cam = this.jeu.camera;
+    const w = innerWidth;
+    const h = innerHeight;
+    const v = this._v || (this._v = new THREE.Vector3());
+    for (const b of this.bulles) {
       const c = b.cible();
       v.set(c.x, c.y, c.z).project(cam);
       const dehors = v.z > 1 || v.z < -1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1;
@@ -565,10 +581,6 @@ export const fins = {
         const x = Math.round((v.x * 0.5 + 0.5) * w);
         const y = Math.round((-v.y * 0.5 + 0.5) * h);
         b.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
-      }
-      if (!veut && b.a < 0.03) {
-        b.el.style.display = 'none';
-        this.bulles.splice(i, 1);
       }
     }
   },
