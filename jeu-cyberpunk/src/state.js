@@ -36,7 +36,7 @@ export function etatInitial() {
   const transgressions = {};
   for (let i = 1; i <= 15; i++) transgressions['T' + i] = 0;
   return {
-    pouvoirs: ['calque', 'bond'],
+    pouvoirs: [],
     fragments: [],
     attention: 0,                 // 0..100
     attentionMax: 0,
