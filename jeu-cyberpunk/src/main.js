@@ -19,6 +19,7 @@ import { createInteract } from './interact.js';
 import { createZoneManager } from './zones/manager.js';
 import { creerClinique } from './zones/clinique.js';
 import { creerKasumi } from './zones/kasumi.js';
+import { creerMainsCourantes } from './zones/mainsCourantes.js';
 import { FRAGMENTS } from './data/fragments.js';
 import { OUVERTURE } from './data/ouverture.js';
 import { TITRES_ZONES } from './data/interface.js';
@@ -203,6 +204,7 @@ addEventListener('resize', resize);
 jeu._preparerSystemes();
 zones.enregistrer('clinique', creerClinique);
 zones.enregistrer('kasumi', creerKasumi);
+zones.enregistrer('mains-courantes', creerMainsCourantes);
 
 const sauvegarde = charger();
 accueil.aUnePartie = sauvegarde && etat.ouvertureVue;

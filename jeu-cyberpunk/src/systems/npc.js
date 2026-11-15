@@ -52,6 +52,11 @@ const TAILLE_HALO = 1.9;
 const ANCIEN = 0.12; // part des « anciens », qui se souviennent
 const RAYON_FUMEE = 17;
 
+// Réactions de l'Attention (systems/reactions.js) : crochets lus par la simulation et le dessin, tous à 0 au palier 0.
+//   halo  0..1 : les halos proches se tournent vers le joueur (plus vifs, teintés, décalés vers lui) et les têtes aussi ;
+//   ecart 0..1 : les habitants s'écartent de sa trajectoire, plus tôt et plus largement, en ralentissant (palier 3).
+const REA = { halo: 0, ecart: 0, teinte: new THREE.Color(0xff7ae6) };
+
 // ---------------------------------------------------------------- utilitaires
 const aleatoire = (seed) => {
   let s = seed | 0;
@@ -832,6 +837,22 @@ function simuler(dt, t) {
       else if (n.etat === PAUSE || n.etat === GROUPE) regarde = Math.max(regarde, 0.85 * lisse((6.5 - d) / 3));
     }
     if (n.etat === MARCHE && vcible < 0.12 && d < 3) regarde = Math.max(regarde, 1); // arrêté devant lui : il le regarde
+    if (REA.halo > 0.01 && d < 16 && n.etat !== REGARD && n.etat !== APPROCHE) regarde = Math.max(regarde, 0.55 * REA.halo * lisse((16 - d) / 9)); // palier 1 : la tête se tourne
+    if (REA.ecart > 0.01 && d < 8 && n.etat !== REGARD && n.etat !== APPROCHE) {
+      // palier 3 : on s'écarte de sa trajectoire, tendrement (plus tôt et plus large que l'évitement normal)
+      const e = REA.ecart;
+      const rx = -dxp, rz = -dzp; // du joueur vers l'habitant
+      const av = rx * joueur.fx + rz * joueur.fz; // en avant du joueur (> 0)
+      const lt = rx * -joueur.fz + rz * joueur.fx; // côté (signe = côté de l'habitant)
+      if (av > -1.5 && av < 7.5 && Math.abs(lt) < 2.9) {
+        const s = lt >= 0 ? 1 : -1;
+        const k = (2.9 - Math.abs(lt)) * 0.55 * e * lisse((8 - d) / 4);
+        pushX += -joueur.fz * s * k;
+        pushZ += joueur.fx * s * k;
+      }
+      if (n.etat === MARCHE) vcible *= 1 - 0.45 * e * lisse((6.5 - d) / 3.5);
+      regarde = Math.max(regarde, 0.8 * e * lisse((8 - d) / 4));
+    }
 
     // --- les voisins : se croiser sans se traverser
     if (n.vis > 0.05) {
@@ -954,7 +975,17 @@ function dessiner(t, camera) {
     // halo mélangé vers le pâle quand il regarde fumer
     _c.copy(n.halo);
     if (n.etat === REGARD || n.etat === APPROCHE) _c.lerp(_c2.setHex(D.HALO_SURPRIS), 0.55);
-    const f = n.intensite * n.haloBoost * (1 - 0.6 * Math.min(1, n.dip));
+    let f = n.intensite * n.haloBoost * (1 - 0.6 * Math.min(1, n.dip));
+    // palier 1 : le halo se tourne vers le joueur (plus vif, rosé, avancé vers lui, un peu plus large)
+    let hx = n.x, hz = n.z, hs = 1;
+    if (REA.halo > 0.01 && d < 40) {
+      const w = REA.halo * lisse((40 - d) / 16);
+      _c.lerp(REA.teinte, 0.38 * w);
+      f *= 1 + 0.45 * w;
+      hx -= (dx / (d || 1)) * 0.42 * w;
+      hz -= (dz / (d || 1)) * 0.42 * w;
+      hs = 1 + 0.16 * w;
+    }
     ud.aHalo.array[i * 4] = _c.r * f * 0.8;
     ud.aHalo.array[i * 4 + 1] = _c.g * f * 0.8;
     ud.aHalo.array[i * 4 + 2] = _c.b * f * 0.8;
@@ -964,8 +995,8 @@ function dessiner(t, camera) {
     // halo (sprite additif)
     const hy = n.y + bob + HAUT_HALO[n.variante] * sc;
     _e.set(0, 0, 0);
-    _p.set(n.x, hy, n.z);
-    _s.setScalar(TAILLE_HALO * lisse(n.vis) * (0.92 + 0.08 * n.taille));
+    _p.set(hx, hy, hz);
+    _s.setScalar(TAILLE_HALO * hs * lisse(n.vis) * (0.92 + 0.08 * n.taille));
     _m.compose(_p, _q.identity(), _s);
     meshHalo.setMatrixAt(k, _m);
     _c.multiplyScalar(f);
@@ -1233,6 +1264,8 @@ export const npc = {
   get visibles() { return compteurs.visibles; },
   /** Le groupe 3D de la foule (pour mesurer le coût : racine.visible = false). */
   get racine() { return racine; },
+  /** Crochets des réactions de l'Attention : { halo, ecart, teinte } (voir en-tête de REA). */
+  reaction: REA,
   get fumee() { return fumee; },
   BRIBES: D.BRIBES,
 

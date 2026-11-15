@@ -322,8 +322,9 @@ export const mainsCourantes = {
 
     jeu.zones.porte({
       zone: 'kasumi',
-      position: [0, 1.5, Z_PORTE + 0.4],
+      position: [0, 2.0, Z_PORTE + 0.4],
       rayon: 4.6,
+      cone: 1.2,
       libelle: INVITES_SALLE.entrer,
       vers: 'mains-courantes',
       point: 'entree',

@@ -226,6 +226,7 @@ export function buildCity(scene, options = {}) {
 
   // Panneaux holographiques animés sur les grands immeubles.
   const holoGeo = new THREE.PlaneGeometry(15, 9);
+  const hologrammes = []; // { mesh, mat } : exposé (systems/reactions.js : msg / msgMix changent l'image affichée)
   holoSpots
     .sort((a, b) => Math.hypot(a.f.cx, a.f.cz) - Math.hypot(b.f.cx, b.f.cz))
     .filter((_, i) => i % 2 === 0)
@@ -237,6 +238,7 @@ export function buildCity(scene, options = {}) {
       m.rotation.y = angle;
       scene.add(m);
       animated.push((t) => (mat.uniforms.time.value = t));
+      hologrammes.push({ mesh: m, mat });
     });
 
   // ---------- Lampadaires ----------
@@ -355,6 +357,7 @@ export function buildCity(scene, options = {}) {
     colliders,
     immeubles,
     enseignes: signs, // groupe des enseignes de façade (un module peut en retirer)
+    hologrammes, // panneaux holographiques : [{ mesh, mat }] ; mat.uniforms.msg (texture) et msgMix (0..1) superposent une image
     mirror, // sol réfléchissant (coupé par le gestionnaire de zones selon l'ambiance)
     sky,
     update(t, camera) {
@@ -398,6 +401,9 @@ function streetFaces(b) {
   return faces;
 }
 
+const MSG_VIDE = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+MSG_VIDE.needsUpdate = true;
+
 function holoMaterial(c1, c2, seed) {
   return new THREE.ShaderMaterial({
     transparent: true,
@@ -409,6 +415,8 @@ function holoMaterial(c1, c2, seed) {
       c1: { value: new THREE.Color(c1) },
       c2: { value: new THREE.Color(c2) },
       seed: { value: seed * 1.37 },
+      msg: { value: MSG_VIDE }, // image superposée (réactions de l'Attention) ; msgMix 0 = panneau d'origine
+      msgMix: { value: 0 },
     },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
@@ -418,6 +426,7 @@ function holoMaterial(c1, c2, seed) {
       }`,
     fragmentShader: /* glsl */ `
       uniform float time; uniform float seed; uniform vec3 c1; uniform vec3 c2;
+      uniform sampler2D msg; uniform float msgMix;
       varying vec2 vUv;
       void main() {
         float t = time + seed;
@@ -430,7 +439,9 @@ function holoMaterial(c1, c2, seed) {
         vec3 col = mix(c1, c2, vUv.y + 0.25 * sin(t + vUv.x * 6.0));
         float a = (0.16 + 0.3 * bands + 1.4 * ring + 1.6 * core + glitch * 0.8) * scan;
         vec2 e = smoothstep(0.0, 0.04, vUv) * smoothstep(0.0, 0.04, 1.0 - vUv);
-        gl_FragColor = vec4(col * a * e.x * e.y, 1.0);
+        vec3 base = col * a * e.x * e.y;
+        vec3 img = texture2D(msg, vUv).rgb * (0.92 + 0.08 * sin(t * 2.6)) * e.x * e.y;
+        gl_FragColor = vec4(mix(base, img, msgMix), 1.0);
       }`,
   });
 }
