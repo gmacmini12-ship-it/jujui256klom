@@ -113,6 +113,12 @@ function conditionRemplie(f) {
 
 const deja = (id) => jeu.etat.fragments.includes(id);
 
+// Un pouvoir de déplacement (Bond, Harnais) ne cache pas le fragment : on le voit sur son toit,
+// on ne pourra le prendre qu'une fois le pouvoir acquis. Les pouvoirs de perception (Lecture,
+// Écho, Calque…) le gardent invisible tant qu'on ne les a pas.
+const POUVOIRS_DEPLACEMENT = new Set(['bond', 'harnais']);
+const apercu = (f) => conditionRemplie(f) || POUVOIRS_DEPLACEMENT.has(sansAccent(f.condition));
+
 export const fragments = {
   nom: 'fragments',
   zonesConstruites: new Set(),
@@ -192,7 +198,7 @@ export const fragments = {
   },
 
   majVisibilite(o) {
-    const montre = o.fin !== null || (!deja(o.data.id) && conditionRemplie(o.data));
+    const montre = o.fin !== null || (!deja(o.data.id) && apercu(o.data));
     o.groupe.visible = montre;
   },
 
@@ -239,7 +245,7 @@ export const fragments = {
     for (const o of this.objets) {
       const trouve = deja(o.data.id);
       if (o.fin === null) {
-        if (trouve || !conditionRemplie(o.data)) { o.groupe.visible = false; continue; }
+        if (trouve || !apercu(o.data)) { o.groupe.visible = false; continue; }
         o.groupe.visible = true;
       } else if (o.fin >= DUREE_DISPARITION) {
         o.groupe.visible = false;
