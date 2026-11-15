@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Démo UI — RÉMANENCE</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0424; }
+  /* fond de ville violette factice */
+  #ville { position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 85%, rgba(255,43,214,.35), transparent 55%),
+      linear-gradient(180deg, #120637 0%, #2a0f5c 55%, #1a0a42 100%); }
+  #ville i { position: absolute; bottom: 0; background: #0c0422; box-shadow: inset 0 0 0 2px rgba(61,107,255,.25); }
+  #ville b { position: absolute; width: 6px; height: 6px; background: #ff2bd6; box-shadow: 0 0 10px #ff2bd6; }
+</style>
+</head>
+<body>
+<div id="ville"></div>
+<script type="module">
+import { createHud } from './src/ui/hud.js';
+import { createDialogue } from './src/ui/dialogue.js';
+import { createFrise } from './src/ui/frise.js';
+
+// décor
+const v = document.getElementById('ville');
+let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+for (let x = 0; x < 1280; x += 60) {
+  const i = document.createElement('i');
+  i.style.left = x + 'px'; i.style.width = 50 + r() * 40 + 'px'; i.style.height = 200 + r() * 330 + 'px';
+  v.appendChild(i);
+  for (let k = 0; k < 6; k++) { const b = document.createElement('b'); b.style.left = x + r() * 80 + 'px'; b.style.top = 200 + r() * 400 + 'px'; b.style.background = r() > .5 ? '#ff2bd6' : '#3d6bff'; v.appendChild(b); }
+}
+
+const etat = { fragments: ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'], confiance: 0 };
+const fragments = [
+  { id: 'f1', titre: 'Carte postale de Kasumi', annee: 2031, zone: 'kasumi', lieu: 'Quai 4', condition: '', texte: "Au dos : « On se retrouve sous l'enseigne rose, comme avant. » Le timbre n'existe plus." },
+  { id: 'f2', titre: 'Dernier message vocal', annee: 2031, zone: 'kasumi', lieu: 'Cabine 12', condition: '', texte: "« Si tu m'entends, c'est que la pluie a fini par couvrir le reste. »" },
+  { id: 'f3', titre: 'Plan de la ville haute', annee: 2044, zone: 'haute', lieu: 'Tour nord', condition: '', texte: 'Un plan froissé. Une zone entière est barrée au feutre violet.' },
+  { id: 'f4', titre: 'Cassette sans étiquette', annee: 2058, zone: 'port', lieu: 'Entrepôt', condition: '', texte: 'Trois minutes de respiration, puis une berceuse que tu connais sans savoir pourquoi.' },
+  { id: 'f5', titre: 'Journal de Mima, entrée 1', annee: 2026, zone: 'toit', lieu: 'Toit', condition: '', texte: 'Je compte les nuits pour toi. Tu en as oublié beaucoup.' },
+  { id: 'f6', titre: 'Fragment sans mémoire', annee: null, zone: 'egout', lieu: 'Égout', condition: '', texte: "Impossible de dater ce souvenir. Il n'appartient peut-être à personne." },
+  ...Array.from({ length: 29 }, (_, i) => ({ id: 'x' + i, titre: 'caché', annee: 2030 + i, zone: 'z', lieu: '', condition: '', texte: '' })),
+];
+
+const log = [];
+window.__log = log;
+const hud = createHud();
+const dialogue = createDialogue({ etat, onOuvert: () => log.push('dlg-ouvert'), onFerme: () => log.push('dlg-ferme') });
+const frise = createFrise({ fragments, etat, onOuvert: () => log.push('frise-ouverte'), onFerme: () => log.push('frise-fermee') });
+// le « jeu » : doit ne rien recevoir pendant un dialogue
+window.addEventListener('keydown', (e) => { log.push('jeu:' + e.key); if (e.key === 'j' && !dialogue.estOuvert) frise.basculer(); });
+
+const demoDialogue = {
+  debut: 'n1',
+  noeuds: {
+    n1: { qui: 'Mima', texte: "Tu es réveillé. Je commençais à m'inquiéter, tu sais. La ville dort mal ce soir.", suite: 'n2' },
+    n2: { qui: 'Mima', texte: "Dis-moi ce dont tu te souviens. Même un détail. Même une odeur.",
+      choix: [
+        { texte: "De la pluie, et d'une enseigne rose.", vers: 'n3', effet: (e) => { e.confiance++; } },
+        { texte: "Rien. Pourquoi ne puis-je rien me rappeler ?", vers: 'n4' },
+        { texte: "Je préfère ne pas en parler.", vers: null },
+        { texte: "(Option masquée)", vers: null, si: () => false },
+      ] },
+    n3: { qui: 'Mima', texte: "L'enseigne rose. Oui. Garde-la précieusement.", suite: null },
+    n4: { qui: '', texte: 'Un silence passe dans le haut-parleur, comme une respiration retenue.', suite: null },
+  },
+};
+window.__ui = { hud, dialogue, frise, etat, fragments, demoDialogue, log };
+</script>
+</body>
+</html>
