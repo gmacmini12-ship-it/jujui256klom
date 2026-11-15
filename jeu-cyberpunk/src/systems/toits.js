@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { jeu } from '../game.js';
 import { rng, signTexture } from '../textures.js';
-import { EYE, RAYON } from '../player.js';
+import { EYE } from '../player.js';
 import { TEXTES_TOITS, ENSEIGNES_TOITS } from '../data/toits.js';
 
 // Système « toits » : les toits de Kasumi (bible §5.2, tâche 2.6).
@@ -678,11 +678,13 @@ function jardin(R, rand, x, z, long, nLits, sensX) {
     boite(C.mate, cx, y, cz, sensX ? long : larg, lit, sensX ? larg : long, 0x20324a, { ry: 0 });
     // plan vert émissif sur le lit
     C.lueur.ajouter(cx, y + lit + 0.012, cz, sensX ? long - 0.1 : larg - 0.14, 0.02, sensX ? larg - 0.14 : long - 0.1, 0x0f5a34);
+    // lueur des lampes de culture sur le toit autour du lit
+    C.lueursMur.ajouter(cx, y + 0.05, cz, sensX ? long + 1.8 : larg + 2.2, sensX ? larg + 2.2 : long + 1.8, 1, 0xc83ad8, 0, -Math.PI / 2);
     const pas = 0.5;
     const n = Math.floor((long - 0.4) / pas);
     for (let k = 0; k < n; k++) {
       const u = (k - (n - 1) / 2) * pas;
-      plante(rand, sensX ? cx + u : cx + (k % 2 ? 0.18 : -0.18), y + lit, sensX ? cz + (k % 2 ? 0.18 : -0.18) : cz + u, 0.3, choix(rand, COULEURS.vert));
+      plante(rand, sensX ? cx + u : cx + (k % 2 ? 0.18 : -0.18), y + lit, sensX ? cz + (k % 2 ? 0.18 : -0.18) : cz + u, 0.38, choix(rand, COULEURS.vert));
     }
   }
   // cadre : deux portiques et des barres lumineuses
@@ -979,10 +981,9 @@ function habiller(R, rand, opts = {}) {
   }
   // cabanon
   if (!petit && rand() < 0.5) {
-    const ry = rand() < 0.5 ? 0 : Math.PI / 2;
+    rand(); // (tirage conservé : la disposition des toits ne change pas)
     const pos = P.placer(3.4, 2.8, { gap: 1.5 });
     if (pos) cabanon(R, rand, pos.x, pos.z, 0);
-    void ry;
   }
   // linge
   if (!petit && rand() < 0.65) {
@@ -1201,10 +1202,13 @@ export const toits = {
       const E = creerToit({ nom: `${nom}E`, x: et.x, z: et.z, w: et.x1 - et.x0, d: et.z1 - et.z0, h: et.h1, toitEtage: true }, immeubles);
       const rand = rng(Math.round(E.x * 131 + E.z * 7919) + 9001);
       if (nom === 'C2' && escC?.escalierToit) {
-        // sortie de l'escalier de toit : face est, vers le haut de la volée
-        const coord = escC.escalierToit.pied[2] - 9.24;
-        E.trous.e.push([coord - 1.25, coord + 1.25]);
-        for (const [s0, s1] of sansTrous(coord - 6.5, coord + 6.5, [[coord - 1.25, coord + 1.25]])) {
+        // sortie de l'escalier de toit : face est, en haut de la volée (dernière marche, escaliers.js : GIRON 0,28 m, 0,34 m de hauteur max)
+        const [, socle, pz] = escC.escalierToit.pied;
+        const marches = Math.ceil((escC.escalierToit.sommet - socle) / 0.34);
+        const coord = pz - 0.9 - marches * 0.28 + 0.14;
+        const trou = 1.6;
+        E.trous.e.push([coord - trou, coord + trou]);
+        for (const [s0, s1] of sansTrous(coord - 7, coord + 7, [[coord - trou, coord + trou]])) {
           const a = clamp(s0, E.z0 + 0.3, E.z1 - 0.3), c = clamp(s1, E.z0 + 0.3, E.z1 - 0.3);
           if (c - a > 0.8) E.rails.push({ bord: 'e', a, c });
         }
@@ -1325,6 +1329,7 @@ export const toits = {
       rayon: 4,
       cone: 3.2,
       libelle: TEXTES_TOITS.relever,
+      sansEtiquette: true, // le Calque l'ignore : l'invite suffit
       visible: () => !!this.assis && this.assis.phase === 'assis' && this.assis.depuis < ASSIS.aide,
       action: () => this.relever(),
     });
@@ -1455,7 +1460,7 @@ export const toits = {
     if (this.balisesLot?.mesh) {
       const m = this.balisesLot.mesh;
       const d = this.balisesDonnees;
-      const col = new THREE.Color();
+      const col = _c;
       for (let i = 0; i < d.length; i++) {
         const b = d[i];
         const ph = ((t / b.periode) + b.phase) % 1;

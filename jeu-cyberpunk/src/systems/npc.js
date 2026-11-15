@@ -501,7 +501,7 @@ function placerMarche(n, { minD, horsVue }) {
   }
   n.speed = 0;
   n.etat = MARCHE;
-  n.prochainePause = 3 + rnd() * 14;
+  n.prochainePause = 6 + rnd() * 30;
   n.partenaire = null;
   n.pauseZ = undefined;
   n.dip = 0;
@@ -581,7 +581,7 @@ function reprendre(n) {
     n.etat = MARCHE;
     n.partenaire = null;
     n.pauseZ = undefined;
-    n.prochainePause = 5 + rnd() * 15;
+    n.prochainePause = 10 + rnd() * 25;
     return;
   }
   for (let i = Math.max(0, bi - 1); i <= Math.min(BLOCKS - 1, bi + 1); i++)
@@ -792,7 +792,7 @@ function simuler(dt, t) {
       case PAUSE:
         n.tEtat -= dt;
         vcible = 0;
-        if (n.tEtat <= 0) { n.etat = MARCHE; n.pauseZ = undefined; n.prochainePause = n.de >= NOEUDS ? 9 + rnd() * 22 : 12 + rnd() * 40; }
+        if (n.tEtat <= 0) { n.etat = MARCHE; n.pauseZ = undefined; n.prochainePause = n.de >= NOEUDS ? 20 + rnd() * 45 : 12 + rnd() * 40; }
         break;
       case GROUPE:
         n.tEtat -= dt;
