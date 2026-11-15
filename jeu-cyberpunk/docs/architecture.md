@@ -78,6 +78,13 @@ Ville (`jeu.zones.get('kasumi')`) :
 - Marché (`jeu.zones` Kasumi, systems/marche.js) : `marche.colliders` ont des hauteurs (étal 1,1 m au-dessus du trottoir, cloisons, arches 7,6 m, mât 50 m ; estrades basses = marches de 0,3 m) ; `marche.allees` = segments des allées où marchent les habitants (npc.js : graphe des allées, 60 % des habitants placés quand le joueur est près, arrêts face aux étals) et trois Glaneurs (robots.js). Les côtés de pâté couverts par les étals sont interdits aux habitants ; les trajets de robots qui touchent un collider haut sont abandonnés.
 - Fragments obtenus en parlant : `POSITIONS_PAR_DIALOGUE` (data/fragments-positions.js), non ramassables.
 
+## L'Attention (src/systems/attention.js, montants et seuils dans data/attention.js)
+
+`jeu.attention` = `{ valeur, palier, plancher, enPause, ajouter(points, { id, source }), fixer(v) }`. Valeur 0–100 dans `etat.attention` (sauvegardée ; `etat.attentionMax` suit le maximum), paliers 0–14 / 15–34 / 35–59 / 60–84 / 85–100. Plancher = 4 × nombre de types `etat.transgressions[Tn] > 0`. Décroissance : −1 point toutes les 30 s sans montée (partie en cours), jusqu'au plancher. `jeu.sourdine?.actif` : ni montée ni descente. `fixer(v)` impose la valeur sans plancher (retombée à 60 après la conversation du palier 4).
+- Entrée unique : `transgression { id: 'T1'…'T15', source, attention? }` (montant de l'évènement s'il est fourni, sinon `MONTANTS[id]`). **L'émetteur** incrémente `etat.transgressions[id]` (une fois) puis émet `transgression` (une fois) ; l'Attention n'incrémente rien. Émetteurs actuels : robots.js (T3, avec `robot:renverse` conservé), veilleur.js (T6 dans `compterChute`, rattrapée ou non ; `veilleur:rattrapage` conservé), personnages.js (T8, T9). T7 (conseils ignorés) n'est pas une transgression : `etat.refus` +1, 0 point, aucun évènement.
+- Sorties : `attention:change { valeur, delta, id }` (id = Tn, `decroissance`, `fixer`, `nouvelle`), `attention:palier { palier, ancien }` (montée et descente).
+- Aucune jauge ; `?attention` dans l'URL affiche une ligne de débogage en haut à gauche.
+
 ## Ajouter un objet interactif
 
 ```js

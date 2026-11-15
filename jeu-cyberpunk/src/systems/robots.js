@@ -706,6 +706,8 @@ function renverser(r, par = 'joueur') {
   }
   bip(r, 'chute');
   jeu.emettre('robot:renverse', { robot: r, par, transgression: 'T3', attention: 5, compte: jeu.etat?.transgressions.T3 });
+  // entrée unique de l'Attention : le compteur T3 est déjà incrémenté ci-dessus (une seule fois)
+  jeu.emettre('transgression', { id: 'T3', source: 'robot', attention: 5 });
   return true;
 }
 function redresser(r, par = 'joueur') {

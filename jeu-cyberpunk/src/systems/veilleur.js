@@ -455,6 +455,8 @@ export const veilleur = {
     const e = this.jeu.etat;
     e.chutes = (e.chutes || 0) + 1;
     e.transgressions.T6 = (e.transgressions.T6 || 0) + 1;
+    // entrée unique de l'Attention (chute rattrapée ou non : le compteur T6 vient d'être incrémenté)
+    this.jeu.emettre('transgression', { id: 'T6', source: 'chute', attention: ATTENTION_T6 });
     return e.chutes;
   },
 
