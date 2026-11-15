@@ -54,3 +54,7 @@ jeu.enregistrer(mainsCourantes);
 import { reactions } from './reactions.js';
 
 jeu.enregistrer(reactions);
+
+import { conversation } from './conversation.js';
+
+jeu.enregistrer(conversation);
