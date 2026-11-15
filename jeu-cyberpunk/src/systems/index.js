@@ -21,3 +21,14 @@ jeu.enregistrer(fragments);
 jeu.enregistrer(paquet);
 jeu.enregistrer(hashira);
 jeu.enregistrer(conseils);
+
+// Étape 2
+import { bond } from './bond.js';
+import { marche } from './marche.js';
+import { npc } from './npc.js';
+import { robots } from './robots.js';
+
+jeu.enregistrer(bond);
+jeu.enregistrer(marche);
+jeu.enregistrer(npc);
+jeu.enregistrer(robots);
