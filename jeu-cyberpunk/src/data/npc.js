@@ -99,20 +99,3 @@ export const REACTIONS_JETEE = [
   'Il l’a lâchée. Elle s’éteint toute seule.',
   'C’est fini. Il n’y a plus de ligne, là.',
 ];
-
-// --- Personnage de démonstration PROVISOIRE (près de la sortie de la clinique) ---
-// À RETIRER ou remplacer quand les vrais personnages nommés seront placés.
-export const PERSONNAGE_DEMO = {
-  id: 'provisoire-passant',
-  nom: 'Passant (provisoire)',
-  libelle: 'Parler au passant (personnage provisoire)',
-  lignes: ['Passant — PROVISOIRE', 'Personnage de démonstration', 'Affectation : à remplacer'],
-  dialogue: {
-    debut: 'n1',
-    noeuds: {
-      n1: { qui: 'Passant (provisoire)', texte: 'Bonsoir. Vous venez de sortir de la clinique ? On le voit tout de suite : pas de halo.', suite: 'n2' },
-      n2: { qui: 'Passant (provisoire)', texte: 'Ne vous inquiétez pas, ça se remarque, c’est tout. Il pleut, la ville est tranquille. Marchez un peu.', suite: 'n3' },
-      n3: { qui: 'Passant (provisoire)', texte: '(Réplique de démonstration. Ce personnage sera remplacé.)' },
-    },
-  },
-};

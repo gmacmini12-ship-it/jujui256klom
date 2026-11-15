@@ -70,6 +70,14 @@ Ville (`jeu.zones.get('kasumi')`) :
 
 `jeu.bond` : `accorder()` (ajoute 'bond' à `etat.pouvoirs`, sauve, notifie, émet `pouvoir:accorde { nom }` ; renvoie vrai la première fois), `actif`, `charge` (s), `pret`. Avec le pouvoir : Espace bref = saut normal (au relâchement) ; maintenu 0,4 s puis relâché = Bond vertical (≈ 9 m) ou, en courant (Maj), saut long (≈ 15 m) ; chutes amorties jusqu'à 12 m. Évènements : `bond:charge`, `bond:impulsion { type: 'vertical' | 'long' }`. Sons : `jeu.audio.tonalite({ de, vers, duree, volume, type })`, `jeu.audio.souffle({ de, vers, duree, volume, q })`.
 
+## Personnages nommés, marché, foule (étape 2)
+
+- `jeu.npc.ajouterPersonnage({ id, nom, position, yaw, apparence, lignes, libelle, dialogue, apres })` (src/systems/npc.js, en-tête pour le détail) : silhouette + halo + objet interactif. `dialogue` est évalué à l'appui sur E ; **à la fin** du dialogue `etat.rencontres[id]` est incrémenté, puis `apres(p, dialogue)`. `apparence.variante` 3 = assis (dessus du tabouret à 0,56 m), `penche`, `vacille`, accessoires `micro`/`loupe`.
+- `jeu.personnages` (src/systems/personnages.js, textes dans data/personnages.js) : Oba (tabouret du salon de thé), Kaede (atelier 修理), le Kiosque (décor du marché, interaction sur l'écran-visage), Itsuki (trottoir est du karaoké, lot (60-79) × (60-79), dont le toit porte le fragment 27 : toits.js). Après chaque dialogue : T8 / T9 de `etat.transgressions` (+1 par mensonge / doute semé nouveau) et évènement `transgression { id, source }` ; Bond de Kaede = pose (fondu, un temps, retour) puis `bond.accorder()` ; fragment 10 (souvenir d'Oba, sans ramassage) par `ajouterFragment(10)` ; évènement `personnage:dialogue { perso, dialogue, transgressions, bond, fragments, paquet }`. `jeu.personnages.dernier` = le dernier résumé.
+- Objets interactifs et Calque : un objet qui porte `lignes` (et `sansLigne`, `decalageEtiquette`) donne son propre texte au Calque ; `sansEtiquette: true` le fait ignorer.
+- Marché (`jeu.zones` Kasumi, systems/marche.js) : `marche.colliders` ont des hauteurs (étal 1,1 m au-dessus du trottoir, cloisons, arches 7,6 m, mât 50 m ; estrades basses = marches de 0,3 m) ; `marche.allees` = segments des allées où marchent les habitants (npc.js : graphe des allées, 60 % des habitants placés quand le joueur est près, arrêts face aux étals) et trois Glaneurs (robots.js). Les côtés de pâté couverts par les étals sont interdits aux habitants ; les trajets de robots qui touchent un collider haut sont abandonnés.
+- Fragments obtenus en parlant : `POSITIONS_PAR_DIALOGUE` (data/fragments-positions.js), non ramassables.
+
 ## Ajouter un objet interactif
 
 ```js

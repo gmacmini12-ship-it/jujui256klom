@@ -18,6 +18,11 @@ import * as D from '../data/calque.js';
 //   const e = calque.etiqueter({ position, lignes: ['Glaneur 0081', 'fonction : tri'], sansLigne?, zone?, brille?, souligne?, rayon? });
 //   e.retirer();  e.position (Vector3, modifiable en place) ;  e.lignes = [...]; e.maj();
 //   calque.actif, calque.possede(), calque.basculer(), calque.compte (étiquettes visibles)
+//
+// Objets interactifs (jeu.interact.ajouter) : le Calque en fait une étiquette « objet ». Champs facultatifs
+// de l'objet qui la règlent : `lignes: [titre, …]` (texte propre, sinon « Objet XX — Usage : … » généré),
+// `sansLigne` (étiquette ambre), `decalageEtiquette` (m au-dessus de `position`), `sansEtiquette: true`
+// (le Calque ignore l'objet : il a déjà une étiquette à lui, évite les doublons).
 
 const RAYON = 25; // m
 const RAYON_PLEIN = 14; // pleine opacité en deçà, dégradé jusqu'à RAYON
@@ -275,6 +280,8 @@ function trier() {
   }
   // objets interactifs de la zone (portes comprises)
   for (const o of jeu.interact.liste(nom)) {
+    // `sansEtiquette` : l'objet a déjà son étiquette (ou n'en veut pas) : le Calque l'ignore.
+    if (o.sansEtiquette) continue;
     let e = entreesObjets.get(o);
     if (!e) {
       e = nouvelleEntree({ kind: o.porte ? 'porte' : 'objet', zone: nom, objet: o });
@@ -297,6 +304,12 @@ function trier() {
       e.lignes = D.ETIQUETTES_CLINIQUE.borneCalque.lignes;
       e.decalage = 0.4;
     }
+    // `lignes` : l'objet fournit son propre texte (personnages, Kiosque…), au lieu d'« Objet XX — Usage : … »
+    if (Array.isArray(o.lignes)) {
+      e.lignes = o.lignes;
+      e.sansLigne = !!o.sansLigne;
+    }
+    if (typeof o.decalageEtiquette === 'number') e.decalage = o.decalageEtiquette;
     e.souligne = !!o.porte;
     const d = distanceA(e, px, py, pz);
     if (d <= RAYON) ajouter(e, d);

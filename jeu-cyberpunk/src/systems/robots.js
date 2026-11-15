@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { jeu } from '../game.js';
 import { calque } from './calque.js';
 import { PITCH } from '../city.js';
+import { marche } from './marche.js';
 import { INVITES_ROBOTS as INV, CALQUE_GLANEUR as CG, CALQUE_PORTEUR as CP } from '../data/robots.js';
 
 // Système « robots » (bible §3.2, plan 2.2) : les machines de service qu'on croise dans Kasumi.
@@ -1062,6 +1063,18 @@ function peuplerKasumi(zone) {
       ? porteur((centre(bi) + centre(bi + 1)) / 2, centre(bj), 26 + PITCH / 2, 26, R() < 0.5 ? 1 : -1, R())
       : porteur(centre(bi), centre(bj), 26, 26, R() < 0.5 ? 1 : -1, R());
     if (ok) np++;
+  }
+  // Marché des Mains : les étals couvrent les trottoirs et les colliders hauts du marché ferment tout trajet
+  // de ronde qui les touche (trajetLibre) : les machines de la ville ne traversent donc jamais le marché.
+  // Trois Glaneurs y font la ronde, mais par les allées (marche.allees : deux allées est-ouest entre les
+  // rangées d'étals), en boucle autour des îlots.
+  if (marche.allees?.length >= 2) {
+    const [[a0, a1], [b0]] = marche.allees;
+    const cx = (a0.x + a1.x) / 2, cz = (a0.z + b0.z) / 2, hx = Math.abs(a1.x - a0.x) / 2 - 1, hz = Math.abs(b0.z - a0.z) / 2;
+    [[1, 0.05], [-1, 0.45], [1, 0.72]].forEach(([sens, f], k) => {
+      const pts = anneau(cx, cz, hx, hz, sens, 1.6);
+      if (trajetLibre(pts, colliders, 0.7)) ajouterTrajet('glaneur', pts, { sens, lim: { g: 1.3, d: 1.3 }, fraction: f, graineRng: 300 + k });
+    });
   }
 }
 

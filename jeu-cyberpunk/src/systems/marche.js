@@ -18,6 +18,10 @@ import { TITRE_MARCHE, ENSEIGNES_MARCHE, OBJETS_MARCHE } from '../data/marche.js
 //   enseignes : un atlas canvas, tous les panneaux dans un seul maillage
 //   bâche   : plans translucides ; lampions : InstancedMesh ; vapeur : pool de particules.
 //
+// Colliders : boîtes 3D (`maxY` absolu, voir docs/architecture.md) : comptoirs 1,1 m au-dessus du trottoir,
+// cloisons et piliers à leur hauteur, estrades (marches de 0,3 m). Les îlots centraux et les étals de la
+// place reposent sur une plateforme de 0,3 m (le sol des étals est celui du trottoir). Allées : `allees`.
+//
 // Repère des étals : (u, y, v) = (le long de la rue, hauteur au-dessus du trottoir, distance
 // depuis le mur de fond vers l'allée). Côté nord (mur z = 19) l'allée est vers +z ; côté sud
 // (mur z = 41) vers −z.
@@ -531,8 +535,14 @@ export const marche = {
     const lampion = (x, y, z, c = null, s = 1) =>
       lampions.push({ x, y, z, c: c ?? LAMPIONS[Math.floor(rand() * LAMPIONS.length)], s, ph: rand() * 6.28 });
     const vapeur = (x, y, z, taux = 1) => emetteurs.push({ x, y, z, taux });
-    const collider = (x0, x1, z0, z1) =>
-      colliders.push({ minX: Math.min(x0, x1), maxX: Math.max(x0, x1), minZ: Math.min(z0, z1), maxZ: Math.max(z0, z1) });
+    // `h1` : sommet ABSOLU de la boîte (m) ; `h0` : dessous (facultatif, absent = mur jusqu'au sol).
+    // Le moteur de collisions (docs/architecture.md) laisse passer par-dessus ce qui est bas (marche
+    // de 0,35 m) et sous ce qui est haut : le rebord d'un toit voisin n'est plus barré par le marché.
+    const collider = (x0, x1, z0, z1, h1 = 1.1 + TROTTOIR, h0 = undefined) => {
+      const c = { minX: Math.min(x0, x1), maxX: Math.max(x0, x1), minZ: Math.min(z0, z1), maxZ: Math.max(z0, z1), maxY: h1 };
+      if (h0 !== undefined) c.minY = h0;
+      colliders.push(c);
+    };
 
     // ---------- Un étal : repère local (u, y, v) ----------
     const repere = (cote, cx, murForce = null) => {
@@ -551,7 +561,8 @@ export const marche = {
         plan: (cle, w, h, u, y, v, rx = 0, ry = 0) => planM(cle, w, h, X(u), Y(y), Z(v), rx, flip + ry),
         lamp: (u, y, v, c, sc) => lampion(X(u), Y(y), Z(v), c, sc),
         vap: (u, y, v, t) => vapeur(X(u), Y(y), Z(v), t),
-        col: (u0, u1, v0, v1) => collider(X(u0), X(u1), Z(v0), Z(v1)),
+        // h : hauteur de la boîte AU-DESSUS du sol de l'étal (1,1 m : un comptoir)
+        col: (u0, u1, v0, v1, h = 1.1) => collider(X(u0), X(u1), Z(v0), Z(v1), TROTTOIR + h),
         pt: (u, y, v) => new THREE.Vector3(X(u), Y(y), Z(v)),
       };
     };
@@ -603,7 +614,11 @@ export const marche = {
       } else {
         R.b(w - 0.5, 0.012, 0.07, 0, -0.29, prof + 0.5, 0x1a1030, { lueur: true });
       }
-      R.col(-demi, demi, 0, prof + 0.1);
+      R.col(-demi, demi, 0, prof + 0.1, 1.1);
+      // la cloison adossée : un mur de sa vraie hauteur
+      if (o.cloison) R.col(-demi, demi, 0, 0.35, o.hCloison ?? 3.6);
+      // la plateforme dépasse le comptoir : une marche de 0,3 m, on peut y monter
+      if (o.plateforme) collider(R.X(-demi), R.X(demi), R.Z(prof + 0.1), R.Z(prof + 0.4), TROTTOIR);
     }
 
     // ---------- Les marchandises, par type d'étal ----------
@@ -735,7 +750,7 @@ export const marche = {
         R.c(0.17, 0.02, w / 2 - 0.5, 0.65, 1.22, lum(0xff5ad0, 0.8), { lueur: true });
         R.c(0.09, 0.02, w / 2 - 0.5, 0.35, 1.22, lum(0xff5ad0, 0.8), { lueur: true });
         for (let i = 0; i < 6; i++) R.b(0.2, 0.28, 0.01, -1.2 + i * 0.4, 2.2, 0.4, 0xd9cdf5, { rz: (rand() - 0.5) * 0.2 });
-        R.col(-0.3, 0.3, 0, 2.6);
+        R.col(-0.3, 0.3, 0, 2.6, 1.1);
       },
       veilles(R, w, o) {
         ossature(R, w, COUL.violet2, 'veilles', o);
@@ -786,7 +801,7 @@ export const marche = {
         }
         R.b(0.5, 0.03, 0.02, -1.2, 0.5, 1.29, lum(COUL.blanc, 0.8), { lueur: true });
         R.b(0.5, 0.03, 0.02, 1.2, 0.5, 1.49, lum(COUL.blanc, 0.8), { lueur: true });
-        R.col(-w / 2, w / 2, 0, 2.0);
+        R.col(-w / 2, w / 2, 0, 2.0, 1.1);
       },
     };
 
@@ -878,7 +893,7 @@ export const marche = {
       R.lamp(-1.3, 2.6, 2.7, COUL.rose, 1.0);
       R.lamp(1.3, 2.6, 2.7, COUL.rose, 1.0);
       R.b(2.1, 0.012, 0.07, 0, -0.29, 3.2, lum(COUL.rose, 0.6), { lueur: true });
-      R.col(-1.3, 1.3, 0, 2.8);
+      R.col(-1.3, 1.3, 0, 2.8, 2.5);
     }
 
     // ---------- L'atelier de Kaede (deux emplacements : 8,2 m) ----------
@@ -951,9 +966,10 @@ export const marche = {
       R.plan('atelier', 3.0, 0.75, 0, 3.95, 2.8, 0.22);
       for (let i = 0; i < 5; i++) R.lamp(-3.4 + i * 1.7, 2.7, 3.3, i % 2 ? COUL.bleu : COUL.rose, 0.9);
       R.b(7.0, 0.012, 0.07, 0, -0.29, 3.5, lum(COUL.bleu, 0.6), { lueur: true });
-      R.col(-4.0, 1.15, 0, 2.0);
-      R.col(2.7, 4.0, 0, 2.0);
-      R.col(1.15, 2.7, 0, 0.7);
+      R.col(-4.0, 4.0, 0, 0.35, 3.6); // le mur de l'atelier
+      R.col(-4.0, 1.15, 0.35, 2.0, 1.2); // l'établi et ses pièces
+      R.col(2.7, 4.0, 0.35, 2.0, 1.8); // le fauteuil de pose
+      R.col(1.15, 2.7, 0.35, 0.7, 2.4); // les étagères
     }
 
     // ---------- Le salon de thé d'Oba (喫茶店) ----------
@@ -991,7 +1007,11 @@ export const marche = {
         R.c(0.12, 0.2, 2.2 + i * 0.35, 0.1, 3.2, 0x4a2a60);
         R.sp(0.13, 2.2 + i * 0.35, 0.34, 3.2, lum(0x7a5cff, 0.8), { lueur: true, sy: 1.3 });
       }
-      R.col(-0.3, 0.3, 3.4, 4.0);
+      // estrade basse sous les deux tabourets : le salon de thé déborde du trottoir, sur la chaussée
+      R.b(4.6, 0.31, 1.7, -0.7, -0.155, 3.45, COUL.metal);
+      R.b(4.6, 0.012, 0.05, -0.7, 0.01, 4.32, lum(COUL.rose, 0.55), { lueur: true });
+      collider(R.X(-3.0), R.X(1.6), R.Z(2.6), R.Z(4.3), TROTTOIR);
+      R.col(-0.35, 0.35, 3.35, 4.05, 1.6); // Oba et son tabouret
     }
     // les colliders de la partie « ossature » de la place couvrent déjà les cloisons
 
@@ -1008,8 +1028,8 @@ export const marche = {
     ];
     const wI = LARGEUR_ETAL - 0.35;
     for (const [x0, vNord, vSud] of ilots) {
-      vNord.forEach((t, i) => etal('S', x0 + LARGEUR_ETAL * (i + 0.5), t, wI, { mur: AXE, cloison: true, hCloison: 3.2 }));
-      vSud.forEach((t, i) => etal('N', x0 + LARGEUR_ETAL * (i + 0.5), t, wI, { mur: AXE }));
+      vNord.forEach((t, i) => etal('S', x0 + LARGEUR_ETAL * (i + 0.5), t, wI, { mur: AXE, cloison: true, hCloison: 3.2, plateforme: true }));
+      vSud.forEach((t, i) => etal('N', x0 + LARGEUR_ETAL * (i + 0.5), t, wI, { mur: AXE, plateforme: true }));
     }
     // Tables communes sur la place
     for (const [x, z] of [[83.2, 30], [96.8, 30]]) {
@@ -1033,7 +1053,7 @@ export const marche = {
       sphM(0.16, x, 1.15, z, lum(COUL.rose, 0.9), { lueur: true, sy: 1.3 });
       lampion(x, 3.3, z, COUL.rose, 1.0);
       vapeur(x - 0.5, 1.05, z - 0.2, 0.7);
-      collider(x - (tournee ? 1.1 : 1.7), x + (tournee ? 1.1 : 1.7), z - (tournee ? 1.7 : 1.1), z + (tournee ? 1.7 : 1.1));
+      collider(x - (tournee ? 1.1 : 1.7), x + (tournee ? 1.1 : 1.7), z - (tournee ? 1.7 : 1.1), z + (tournee ? 1.7 : 1.1), 0.95);
     }
 
     // ---------- Arches d'entrée et passages latéraux ----------
@@ -1042,7 +1062,7 @@ export const marche = {
         boiteM(0.55, 7.6, 0.55, x, 3.8, z, 0x160d2c);
         boiteM(0.1, 7.4, 0.1, x - sensVersLeMarche * 0.3, 3.8, z, lum(COUL.magenta, 0.8), { lueur: true });
         boiteM(0.9, 0.3, 0.9, x, 0.15, z, COUL.metal);
-        collider(x - 0.4, x + 0.4, z - 0.4, z + 0.4);
+        collider(x - 0.4, x + 0.4, z - 0.4, z + 0.4, 7.6);
       }
       boiteM(0.6, 0.7, 21.2, x, 7.55, AXE, 0x160d2c);
       boiteM(0.1, 0.1, 21.2, x - sensVersLeMarche * 0.35, 7.9, AXE, lum(COUL.rose, 0.9), { lueur: true });
@@ -1059,7 +1079,7 @@ export const marche = {
       for (const x of [X_PLACE - 4.4, X_PLACE + 4.4]) {
         boiteM(0.5, 6.4, 0.5, x, 3.2, z, 0x160d2c);
         boiteM(0.08, 6.2, 0.08, x, 3.2, z - versLaPlace * 0.3, lum(COUL.violet, 0.8), { lueur: true });
-        collider(x - 0.3, x + 0.3, z - 0.3, z + 0.3);
+        collider(x - 0.3, x + 0.3, z - 0.3, z + 0.3, 6.4);
       }
       boiteM(9.3, 0.55, 0.5, X_PLACE, 6.3, z, 0x160d2c);
       boiteM(9.3, 0.08, 0.08, X_PLACE, 6.0, z - versLaPlace * 0.3, lum(COUL.rose, 0.9), { lueur: true });
@@ -1089,7 +1109,8 @@ export const marche = {
       for (const [dx, dz, ry] of [[0.55, 0, Math.PI / 2], [-0.55, 0, -Math.PI / 2], [0, 0.55, 0], [0, -0.55, Math.PI]]) {
         planM('mat', 6, 24, X_PLACE + dx * 1.2, 35, AXE + dz * 1.2, 0, ry);
       }
-      collider(X_PLACE - 1.6, X_PLACE + 1.6, AXE - 1.6, AXE + 1.6);
+      collider(X_PLACE - 1.6, X_PLACE + 1.6, AXE - 1.6, AXE + 1.6, 0.45); // le socle
+      collider(X_PLACE - 0.4, X_PLACE + 0.4, AXE - 0.4, AXE + 0.4, 50); // le mât
     }
 
     // ---------- Lampions : rangées dans les allées ----------
@@ -1368,13 +1389,14 @@ export const marche = {
       { nom: 'nord', position: v(X_PLACE, 0, MUR_N - 2.5), yaw: Math.PI, versLeMarche: new THREE.Vector3(0, 0, 1) },
       { nom: 'sud', position: v(X_PLACE, 0, MUR_S + 2.5), yaw: 0, versLeMarche: new THREE.Vector3(0, 0, -1) },
     ];
-    const oba = v(the.X(0), 0, the.Z(3.7), Math.PI); // yaw π : regarde vers +z ? voir plus bas
-    oba.yaw = 0; // la silhouette regarde vers le nord (−z) : la place, le passant
+    // Les ancres sont posées sur le sol de l'étal (trottoir : 0,3 m ; estrade du salon de thé : 0,3 m).
+    // Oba : la silhouette regarde vers le nord (−z), la place, le passant.
+    const oba = v(the.X(0), the.Y(0), the.Z(3.7), 0);
     this.ancres = {
-      kiosque: v(kiosque.X(0), 0, kiosque.Z(2.6), Math.PI), // face vers +z (l'allée)
-      kiosqueVisage: v(kiosque.X(0), 1.75, kiosque.Z(2.25), Math.PI),
-      atelier: v(atelier.X(-0.6), 0, atelier.Z(2.7), 0), // Kaede, penchée sur l'établi (regarde −z)
-      fauteuil: v(atelier.X(3.3), 0, atelier.Z(1.4), Math.PI), // fauteuil de pose (Bond), regarde +z
+      kiosque: v(kiosque.X(0), kiosque.Y(0), kiosque.Z(2.6), Math.PI), // face vers +z (l'allée)
+      kiosqueVisage: v(kiosque.X(0), kiosque.Y(1.74), kiosque.Z(2.25), Math.PI), // centre de l'écran-visage
+      atelier: v(atelier.X(-0.6), atelier.Y(0), atelier.Z(2.7), 0), // Kaede, penchée sur l'établi (regarde −z)
+      fauteuil: v(atelier.X(3.3), atelier.Y(0), atelier.Z(1.4), Math.PI), // fauteuil de pose (Bond), regarde +z
       tabouret: oba,
     };
     oba.assise = true;
@@ -1395,10 +1417,17 @@ export const marche = {
       { id: 19, position: v(kiosque.X(0.3), 1.4, kiosque.Z(3.0)), acces: v(kiosque.X(0.3), 0, kiosque.Z(4.4)), note: 'sur la tablette du Kiosque' },
     ];
     this.centre.set(X_PLACE, 0, AXE);
+    // Les allées où l'on marche (segments [début, fin], axes x ou z, au sol de la chaussée) : deux allées
+    // est-ouest entre les rangées d'étals (3,5 m de la façade des étals de chaque côté, de part et d'autre
+    // du mât) et les passages qui les relient : entre deux îlots d'étals (3 m), de chaque côté du mât et
+    // des tables de la place, et aux deux extrémités, devant les arches. Les habitants (npc.js) y marchent ;
+    // les robots (robots.js) et tout autre système qui veut traverser le marché doit les suivre.
+    const ZA = 25.5, ZB = 34.5;
+    const XS_PASSAGES = [X_OUEST - 4, 56.9, 68.1, 86.65, 93.35, 112.1, 123.3, X_EST + 4];
     this.allees = [
-      [new THREE.Vector3(X_OUEST - 4, 0, 25.5), new THREE.Vector3(X_EST + 4, 0, 25.5)],
-      [new THREE.Vector3(X_OUEST - 4, 0, 34.5), new THREE.Vector3(X_EST + 4, 0, 34.5)],
-      [new THREE.Vector3(X_PLACE, 0, 12), new THREE.Vector3(X_PLACE, 0, 48)],
+      [new THREE.Vector3(X_OUEST - 4, 0, ZA), new THREE.Vector3(X_EST + 4, 0, ZA)],
+      [new THREE.Vector3(X_OUEST - 4, 0, ZB), new THREE.Vector3(X_EST + 4, 0, ZB)],
+      ...XS_PASSAGES.map((x) => [new THREE.Vector3(x, 0, ZA), new THREE.Vector3(x, 0, ZB)]),
     ];
     this.limites = LIMITES;
   },

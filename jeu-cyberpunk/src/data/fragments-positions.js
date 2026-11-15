@@ -50,7 +50,38 @@ export const POSITIONS_FRAGMENTS = [
     invite: "Soulever l'oreiller",
   },
 
-  // 27 : sur un toit à l'est de la clinique, visible depuis la rue du carrefour ; atteignable
-  // plus tard (Bond). Toit du lot [60-79] × [41-60], hauteur 18,9 m dans son angle nord-ouest ; l'éclat flotte à 3,6 m au-dessus, pour dépasser le rebord vu d'en bas.
-  { id: 27, zone: 'kasumi', position: [63, 22.5, 42.2], taille: 5 },
+  // 27 : toit du karaoké (カラオケ), lot sud-est du pâté de la clinique : (60-79) × (60-79), toit à 30,05 m.
+  // On n'y monte qu'au Bond : depuis le toit A (18,9 m) puis son étage technique (25,7 m), saut vers le nord du
+  // toit du karaoké. Le papier est posé sur une caisse (src/systems/toits.js, PAPIER_K) ; l'éclat flotte au-dessus.
+  {
+    id: 27, zone: 'kasumi', position: [68.5, 32.85, 62.0], taille: 3, rayon: 3,
+    support: { type: 'papier', position: [68.5, 30.78, 62.0], yaw: 0.4 },
+    invite: 'Lire le papier',
+  },
+
+  // ---- Marché des Mains (positions de `marche.pointsFragments`, src/systems/marche.js) ----
+  // Les étals sont posés sur le trottoir (0,3 m) : les hauteurs ci-dessous sont absolues.
+
+  // 8 : l'étiquette « 1,20 » collée sous le comptoir de l'étal sans personne (raviolis, côté sud, partie ouest).
+  // L'éclat est devant la nappe, plus bas que l'objet « Regarder l'étal » du marché : on le vise en baissant les yeux.
+  {
+    id: 8, zone: 'kasumi', position: [64.45, 0.62, 37.85], rayon: 3.1,
+    support: { type: 'autocollant', position: [64.45, 0.6, 38.33], yaw: Math.PI },
+    invite: 'Regarder sous le comptoir',
+  },
+
+  // 11 : le rapport punaisé au-dessus de l'établi de Kaede (atelier 修理, côté nord, partie est).
+  { id: 11, zone: 'kasumi', position: [120.5, 1.75, 20.75], rayon: 2.6, invite: 'Lire le rapport punaisé' },
+
+  // 19 : sur la tablette du Kiosque à la veste bleue (côté nord, partie ouest, face à la clinique), à droite de l'écran.
+  { id: 19, zone: 'kasumi', position: [49.35, 1.4, 22.0], rayon: 2.6, invite: 'Regarder la tablette' },
+
+  // 10 : « Le dividende » n'est PAS à ramasser : c'est un souvenir qu'Oba raconte. Il entre dans la frise à
+  // la fin de son dialogue (systems/personnages.js, drapeau 'oba_dividende'). Il n'a donc pas de ligne
+  // ci-dessus (fragments.js en ferait un éclat prenable) : voir POSITIONS_PAR_DIALOGUE plus bas.
 ];
+
+// Fragments obtenus en parlant (pas de ramassage) : id → { zone, position, source }.
+export const POSITIONS_PAR_DIALOGUE = {
+  10: { zone: 'kasumi', position: [97.6, 1.55, 37.3], source: 'oba' },
+};

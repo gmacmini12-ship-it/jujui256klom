@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { jeu } from '../game.js';
 import { BLOCKS, PITCH } from '../city.js';
 import { calque } from './calque.js';
+import { marche } from './marche.js';
 import * as D from '../data/npc.js';
 import * as C from '../data/calque.js';
 
@@ -19,13 +20,24 @@ import * as C from '../data/calque.js';
 // Les habitants lointains sont ramenés près du joueur (réaffectation hors de sa vue) : la
 // densité autour de lui reste constante où qu'il aille.
 //
+// Marché des Mains : les habitants y marchent dans les allées de `marche.allees` (deux allées est-ouest
+// et leurs passages), plus nombreux quand le joueur est près du marché (part de 60 % des habitants
+// placés), certains s'arrêtent face aux étals ; les côtés de pâté que les étals couvrent sont interdits
+// (arêtes `bloque`) et les étals (colliders hauts de marche.colliders) repoussent les habitants poussés.
+//
 // API pour les autres systèmes :
 //   import { npc } from './npc.js'   (ou jeu.npc)
 //   const p = npc.ajouterPersonnage({ id, nom, position: [x, y, z], zone: 'kasumi',
-//     apparence?: { couleurHalo, taille, accessoire?, variante? }, lignes?, libelle,
-//     dialogue: () => Promise | objet dialogue, regardeLeJoueur?: true, yaw? });
+//     apparence?: { couleurHalo, taille, accessoire?, variante?, penche?, vacille? }, lignes?, libelle,
+//     dialogue: (p) => Promise | objet dialogue, apres?: (p, dialogue) => Promise | void,
+//     regardeLeJoueur?: true, yaw?, rayon?, hauteurEtiquette? });
 //   p.retirer();  p.position (Vector3, modifiable) ;  p.visible (lecture/écriture)
-//   accessoire : 'chapeau' | 'sac' | 'canne' | 'echarpe' | 'capuche'
+//   accessoire : 'chapeau' | 'sac' | 'canne' | 'echarpe' | 'capuche' | 'micro' | 'loupe' (ou une liste)
+//   variante : 0 long manteau, 1 veste, 2 poncho à capuche, 3 assis sur un tabouret (le dessus du tabouret à 0,56 m)
+//   yaw : orientation du corps (0 = regarde +z) ; position[1] : le sol sous les pieds.
+//   Interaction : `dialogue` est évalué à l'appui sur E (avant que la rencontre soit comptée) ; à la FIN du
+//   dialogue, etat.rencontres[id] est incrémenté, puis `apres(p, dialogue)` est attendu. `lignes` : texte du
+//   Calque (porté par l'objet interactif, une seule étiquette) ; `hauteurEtiquette` : m au-dessus des pieds.
 
 // ---------------------------------------------------------------- réglages
 const NB = 200; // habitants dans la ville
@@ -69,10 +81,15 @@ const indiceBloc = (v) => clamp(Math.round(v / PITCH + (BLOCKS - 1) / 2), 0, BLO
 // coin c d'un pâté : 0 (-,-)  1 (+,-)  2 (+,+)  3 (-,+) ; id = (i * BLOCKS + j) * 4 + c
 const SX = [-1, 1, 1, -1];
 const SZ = [-1, -1, 1, 1];
-const NOEUDS = BLOCKS * BLOCKS * 4;
-const nx = new Float32Array(NOEUDS);
-const nz = new Float32Array(NOEUDS);
+const NOEUDS = BLOCKS * BLOCKS * 4; // les nœuds de trottoir ; ceux du Marché des Mains viennent après (id >= NOEUDS)
+const nx = new Array(NOEUDS).fill(0);
+const nz = new Array(NOEUDS).fill(0);
 const VOISINS = [];
+// Le Marché des Mains (systems/marche.js) occupe la rue z = 30 de x = 45 à 139 : ses étals couvrent les
+// trottoirs. Les habitants y suivent `marche.allees` (deux allées est-ouest et leurs passages), jamais les
+// trottoirs que les étals occupent : ces arêtes-là sont marquées `bloque` dans le graphe des trottoirs.
+const ZONE_MARCHE = { minX: 43, maxX: 141.5, minZ: 18.5, maxZ: 41.5 };
+const NOEUDS_MARCHE = []; // ids des nœuds des allées
 const idNoeud = (i, j, c) => (i * BLOCKS + j) * 4 + c;
 (function construireGraphe() {
   for (let i = 0; i < BLOCKS; i++)
@@ -102,8 +119,48 @@ const idNoeud = (i, j, c) => (i * BLOCKS + j) * 4 + c;
       o.len = Math.hypot(dx, dz);
       o.dx = dx / o.len;
       o.dz = dz / o.len;
+      // une arête de trottoir qui traverse le marché : les étals y sont, on n'y marche pas
+      const x0 = Math.min(nx[id], nx[o.id]), x1 = Math.max(nx[id], nx[o.id]);
+      const z0 = Math.min(nz[id], nz[o.id]), z1 = Math.max(nz[id], nz[o.id]);
+      o.bloque = x1 > ZONE_MARCHE.minX && x0 < ZONE_MARCHE.maxX && z1 > ZONE_MARCHE.minZ && z0 < ZONE_MARCHE.maxZ;
     }
 })();
+
+// Graphe des allées du marché : segments (axe x ou z) de `marche.allees`, coupés à leurs croisements.
+function construireAllees() {
+  if (NOEUDS_MARCHE.length) return;
+  const segs = (marche.allees || []).map(([a, b]) => ({ x0: Math.min(a.x, b.x), x1: Math.max(a.x, b.x), z0: Math.min(a.z, b.z), z1: Math.max(a.z, b.z) }));
+  const noeud = (x, z) => {
+    for (const id of NOEUDS_MARCHE) if (Math.abs(nx[id] - x) < 0.05 && Math.abs(nz[id] - z) < 0.05) return id;
+    const id = nx.length;
+    nx.push(x);
+    nz.push(z);
+    VOISINS[id] = [];
+    NOEUDS_MARCHE.push(id);
+    return id;
+  };
+  const lier = (a, b, ring) => {
+    if (a === b || VOISINS[a].some((o) => o.id === b)) return;
+    const dx = nx[b] - nx[a], dz = nz[b] - nz[a], len = Math.hypot(dx, dz);
+    VOISINS[a].push({ id: b, ring, len, dx: dx / len, dz: dz / len, bloque: false, allee: true });
+    VOISINS[b].push({ id: a, ring, len, dx: -dx / len, dz: -dz / len, bloque: false, allee: true });
+  };
+  segs.forEach((s, i) => {
+    const horiz = s.z1 - s.z0 < 1e-6;
+    const coupes = new Set([horiz ? s.x0 : s.z0, horiz ? s.x1 : s.z1]);
+    segs.forEach((o, j) => {
+      if (i === j) return;
+      if (horiz) { if (o.x0 === o.x1 && o.x0 >= s.x0 && o.x0 <= s.x1 && s.z0 >= o.z0 && s.z0 <= o.z1) coupes.add(o.x0); }
+      else if (o.z0 === o.z1 && o.z0 >= s.z0 && o.z0 <= s.z1 && s.x0 >= o.x0 && s.x0 <= o.x1) coupes.add(o.z0);
+    });
+    const t = [...coupes].sort((a, b) => a - b);
+    for (let k = 1; k < t.length; k++) {
+      const a = noeud(horiz ? t[k - 1] : s.x0, horiz ? s.z0 : t[k - 1]);
+      const b = noeud(horiz ? t[k] : s.x0, horiz ? s.z0 : t[k]);
+      lier(a, b, horiz); // les allées est-ouest sont des « côtés » (poids fort), les passages des traversées
+    }
+  });
+}
 function miroirX(c) { return [1, 0, 3, 2][c]; }
 function miroirZ(c) { return [3, 2, 1, 0][c]; }
 
@@ -129,7 +186,16 @@ function partie(geo, { x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1, rx = 0, rz =
 // accessoires des personnages nommés
 function accessoire(nom) {
   const p = [];
-  if (nom === 'chapeau') {
+  if (Array.isArray(nom)) return nom.flatMap((n) => accessoire(n));
+  if (nom === 'micro') {
+    // micro tenu devant le visage, bras plié (Itsuki)
+    p.push(partie(_cyl(0.014, 0.014, 0.2, 6), { x: 0.13, y: 1.4, z: 0.2, rx: -0.5 }));
+    p.push(partie(_sph(0.032, 8, 6), { x: 0.13, y: 1.5, z: 0.255 }));
+  } else if (nom === 'loupe') {
+    // lampe-loupe sur un serre-tête (Kaede) : le verre est relevé sur le front
+    p.push(partie(_cyl(0.118, 0.118, 0.03, 12), { y: 1.74 }));
+    p.push(partie(_cyl(0.062, 0.062, 0.035, 12), { x: 0.06, y: 1.75, z: 0.1, rx: Math.PI / 2 - 0.5 }));
+  } else if (nom === 'chapeau') {
     p.push(partie(_cyl(0.3, 0.3, 0.025, 14), { y: 1.74 }));
     p.push(partie(_cyl(0.13, 0.15, 0.16, 12), { y: 1.82 }));
   } else if (nom === 'sac') {
@@ -146,8 +212,28 @@ function accessoire(nom) {
   return p;
 }
 
-// variante 0 : long manteau ; 1 : veste, jambes et bras ; 2 : poncho à capuche
+// variante 3 : assis, voûté, dans un manteau trop grand (Oba). Les pieds touchent le sol, le haut de
+// l'assise est à 0,56 m : la silhouette est posée sur un tabouret dont le dessus est à cette hauteur.
+function corpsAssis(acc = null) {
+  const p = [];
+  for (const s of [-1, 1]) {
+    p.push(partie(_cyl(0.075, 0.07, 0.46, 8), { x: s * 0.1, y: 0.62, z: 0.2, rx: Math.PI / 2 })); // cuisses
+    p.push(partie(_cyl(0.06, 0.045, 0.52, 8), { x: s * 0.1, y: 0.28, z: 0.43 })); // jambes
+    p.push(partie(new THREE.BoxGeometry(0.1, 0.05, 0.24), { x: s * 0.1, y: 0.03, z: 0.5 })); // pieds
+    p.push(partie(_cyl(0.045, 0.04, 0.5, 7), { x: s * 0.23, y: 1.02, z: 0.16, rx: 0.5, rz: -s * 0.12 })); // bras
+  }
+  p.push(partie(_cyl(0.2, 0.36, 0.86), { y: 0.95, z: 0.03, sz: 0.74, rx: 0.2 })); // manteau, buste voûté
+  p.push(partie(_cyl(0.3, 0.34, 0.2, 12), { y: 0.55, z: 0.17, sz: 1.0 })); // pans sur les genoux
+  p.push(partie(_sph(0.2, 10, 8), { y: 1.36, z: 0.1, sx: 1.2, sy: 0.7, sz: 0.8 })); // épaules rondes
+  p.push(partie(_cyl(0.11, 0.15, 0.1, 10), { y: 1.42, z: 0.15, sz: 0.85 })); // col relevé
+  p.push(partie(_sph(0.107, 10, 8), { y: 1.5, z: 0.21, sx: 0.95, sy: 1.12 })); // tête penchée en avant
+  if (acc) p.push(...accessoire(acc));
+  return mergeGeometries(p);
+}
+
+// variante 0 : long manteau ; 1 : veste, jambes et bras ; 2 : poncho à capuche ; 3 : assis (voir plus haut)
 function corps(variante, acc = null) {
+  if (variante === 3) return corpsAssis(acc);
   const p = [];
   const tete = (y) => {
     p.push(partie(_sph(0.112, 10, 8), { y, sx: 0.95, sy: 1.12 }));
@@ -176,7 +262,7 @@ function corps(variante, acc = null) {
   if (acc) p.push(...accessoire(acc));
   return mergeGeometries(p);
 }
-const HAUT_HALO = [1.66, 1.66, 1.78]; // hauteur du centre du halo (m, avant échelle)
+const HAUT_HALO = [1.66, 1.66, 1.78, 1.5]; // hauteur du centre du halo (m, avant échelle)
 
 // ---------------------------------------------------------------- matériaux
 function materiauCorps() {
@@ -364,6 +450,24 @@ const degage = (ax, az, bx, bz) => {
   return true;
 };
 
+// Les étals (colliders du marché au-dessus de 0,5 m) : un habitant poussé par la foule n'y entre pas.
+let ETALS = [];
+function chasserDesEtals(n) {
+  const Z = ZONE_MARCHE;
+  if (n.x < Z.minX || n.x > Z.maxX || n.z < Z.minZ || n.z > Z.maxZ) return;
+  const m = 0.3;
+  for (const c of ETALS) {
+    if (n.x > c.minX - m && n.x < c.maxX + m && n.z > c.minZ - m && n.z < c.maxZ + m) {
+      const g = n.x - (c.minX - m), d = c.maxX + m - n.x, h = n.z - (c.minZ - m), b = c.maxZ + m - n.z;
+      const mn = Math.min(g, d, h, b);
+      if (mn === g) n.x = c.minX - m;
+      else if (mn === d) n.x = c.maxX + m;
+      else if (mn === h) n.z = c.minZ - m;
+      else n.z = c.maxZ + m;
+    }
+  }
+}
+
 function viseArete(n, a, b, t) {
   n.de = a;
   n.vers = b;
@@ -376,7 +480,41 @@ function viseArete(n, a, b, t) {
   n.y = hauteurSol(n.x, n.z);
 }
 
-function placer(n, { minD, horsVue, rayonBlocs = 1.4, depuisLeDebut = false }) {
+// Part des habitants placés dans les allées du marché : forte quand le joueur y est, nulle loin de là.
+function probMarche() {
+  if (!NOEUDS_MARCHE.length) return 0;
+  const dx = Math.max(0, ZONE_MARCHE.minX - joueur.x, joueur.x - ZONE_MARCHE.maxX);
+  const dz = Math.max(0, ZONE_MARCHE.minZ - joueur.z, joueur.z - ZONE_MARCHE.maxZ);
+  return 0.6 * clamp(1 - Math.hypot(dx, dz) / 90, 0, 1);
+}
+
+function placerMarche(n, { minD, horsVue }) {
+  for (let essai = 0; essai < 40; essai++) {
+    const a = choisir(rnd, NOEUDS_MARCHE);
+    const o = VOISINS[a][Math.floor(rnd() * VOISINS[a].length)];
+    viseArete(n, a, o.id, 0.1 + rnd() * 0.8);
+    const dx = n.x - joueur.x, dz = n.z - joueur.z, d = Math.hypot(dx, dz);
+    if (d < minD) continue;
+    if (horsVue && d < 85 && (dx * joueur.fx + dz * joueur.fz) / d > 0.15) continue;
+    if (rnd() > Math.exp(-(d - minD) / 60) && essai < 36) continue;
+    break;
+  }
+  n.speed = 0;
+  n.etat = MARCHE;
+  n.prochainePause = 3 + rnd() * 14;
+  n.partenaire = null;
+  n.pauseZ = undefined;
+  n.dip = 0;
+  n.look = 0;
+}
+
+function placer(n, opts) {
+  if (rnd() < probMarche()) {
+    placerMarche(n, opts);
+    n.vis = opts.depuisLeDebut ? 1 : 0;
+    return;
+  }
+  const { minD, horsVue, rayonBlocs = 1.4, depuisLeDebut = false } = opts;
   const pbi = indiceBloc(joueur.x), pbj = indiceBloc(joueur.z);
   for (let essai = 0; essai < 40; essai++) {
     const R = rayonBlocs + (essai > 26 ? 1 : 0);
@@ -386,6 +524,7 @@ function placer(n, { minD, horsVue, rayonBlocs = 1.4, depuisLeDebut = false }) {
     const a = idNoeud(i, j, c);
     const voisins = VOISINS[a];
     const o = rnd() < 0.82 ? voisins[rnd() < 0.5 ? 0 : 1] : voisins[2 + Math.floor(rnd() * (voisins.length - 2))] || voisins[0];
+    if (o.bloque) continue; // un côté de pâté couvert par les étals du marché
     const t = 0.1 + rnd() * 0.8;
     viseArete(n, a, o.id, t);
     const dx = n.x - joueur.x, dz = n.z - joueur.z, d = Math.hypot(dx, dz);
@@ -398,6 +537,7 @@ function placer(n, { minD, horsVue, rayonBlocs = 1.4, depuisLeDebut = false }) {
   n.etat = MARCHE;
   n.vis = depuisLeDebut ? 1 : 0;
   n.prochainePause = 5 + rnd() * 35;
+  n.pauseZ = undefined;
   n.partenaire = null;
   n.dip = 0;
   n.look = 0;
@@ -429,9 +569,21 @@ function formerGroupe(a, b) {
 }
 
 function reprendre(n) {
-  // retour sur les trottoirs : vise le coin le plus proche
+  // retour sur les trottoirs (ou dans les allées du marché) : vise le nœud le plus proche
   const bi = indiceBloc(n.x), bj = indiceBloc(n.z);
   let meilleur = -1, md = 1e9;
+  if (n.de >= NOEUDS) {
+    for (const id of NOEUDS_MARCHE) {
+      const d = (nx[id] - n.x) ** 2 + (nz[id] - n.z) ** 2;
+      if (d < md) { md = d; meilleur = id; }
+    }
+    n.de = n.vers = meilleur;
+    n.etat = MARCHE;
+    n.partenaire = null;
+    n.pauseZ = undefined;
+    n.prochainePause = 5 + rnd() * 15;
+    return;
+  }
   for (let i = Math.max(0, bi - 1); i <= Math.min(BLOCKS - 1, bi + 1); i++)
     for (let j = Math.max(0, bj - 1); j <= Math.min(BLOCKS - 1, bj + 1); j++)
       for (let c = 0; c < 4; c++) {
@@ -452,7 +604,7 @@ function choisirSuite(n) {
   const pdx = nx[cur] - nx[prev], pdz = nz[cur] - nz[prev], pl = Math.hypot(pdx, pdz) || 1;
   let somme = 0;
   const w = opts.map((o) => {
-    let p = o.id === prev ? 0.03 : o.ring ? 3 : 1.15;
+    let p = o.id === prev ? 0.03 : o.bloque ? 0 : o.ring ? 3 : 1.15;
     if (pl > 0.01 && (o.dx * pdx + o.dz * pdz) / pl > 0.9) p *= 1.6;
     somme += p;
     return p;
@@ -612,16 +764,25 @@ function simuler(dt, t) {
         const arete = n.de !== n.vers;
         cx = nx[o] + (arete ? -uz * n.voie : 0);
         cz = nz[o] + (arete ? ux * n.voie : 0);
-        vcible = n.vmax;
+        vcible = n.de >= NOEUDS ? n.vmax * 0.8 : n.vmax; // on flâne entre les étals
         n.prochainePause -= dt;
-        if (arete && n.prochainePause <= 0 && VOISINS[n.de].find((v) => v.id === n.vers)?.ring) {
+        const ar = arete && n.prochainePause <= 0 ? VOISINS[n.de].find((v) => v.id === n.vers) : null;
+        if (ar?.ring) {
           // arrêt devant une vitrine : à l'écart des coins
           const t1 = Math.hypot(n.x - nx[n.de], n.z - nz[n.de]), t2 = Math.hypot(n.x - nx[n.vers], n.z - nz[n.vers]);
-          if (t1 > 6 && t2 > 6) {
+          if (t1 > (ar.allee ? 3 : 6) && t2 > (ar.allee ? 3 : 6)) {
             n.etat = PAUSE;
             n.tEtat = 3 + rnd() * 12;
-            const bx = centreBloc(indiceBloc(n.x)), bz = centreBloc(indiceBloc(n.z));
-            n.faceYaw = Math.abs(n.x - bx) > Math.abs(n.z - bz) ? (n.x > bx ? -Math.PI / 2 : Math.PI / 2) : n.z > bz ? Math.PI : 0;
+            if (ar.allee) {
+              // devant un étal : à gauche ou à droite de l'allée, on s'en approche (jusqu'à un mètre du comptoir)
+              const lane = nz[n.de], vers = rnd() < 0.5 ? -1 : 1;
+              const front = Math.abs(lane - 25.5) < 1 ? (vers < 0 ? 21.7 : 27.3) : (vers < 0 ? 32.7 : 38.3);
+              n.pauseZ = lane + vers * Math.min(1.7, Math.abs(front - lane) - 1);
+              n.faceYaw = vers < 0 ? Math.PI : 0;
+            } else {
+              const bx = centreBloc(indiceBloc(n.x)), bz = centreBloc(indiceBloc(n.z));
+              n.faceYaw = Math.abs(n.x - bx) > Math.abs(n.z - bz) ? (n.x > bx ? -Math.PI / 2 : Math.PI / 2) : n.z > bz ? Math.PI : 0;
+            }
             break;
           }
           n.prochainePause = 4;
@@ -631,7 +792,7 @@ function simuler(dt, t) {
       case PAUSE:
         n.tEtat -= dt;
         vcible = 0;
-        if (n.tEtat <= 0) { n.etat = MARCHE; n.prochainePause = 12 + rnd() * 40; }
+        if (n.tEtat <= 0) { n.etat = MARCHE; n.pauseZ = undefined; n.prochainePause = n.de >= NOEUDS ? 9 + rnd() * 22 : 12 + rnd() * 40; }
         break;
       case GROUPE:
         n.tEtat -= dt;
@@ -702,6 +863,18 @@ function simuler(dt, t) {
         }
     }
 
+    // --- les personnages nommés (Itsuki sur son trottoir, Oba…) : on les contourne
+    if (n.vis > 0.05) {
+      for (const q of personnages.values()) {
+        if (!q.corps || q.zone !== 'kasumi' || q.retire) continue;
+        const dx = n.x - q.position.x, dz = n.z - q.position.z, dd = dx * dx + dz * dz;
+        if (dd > 1.3) continue;
+        const dist = Math.sqrt(dd) || 0.01;
+        pushX += (dx / dist) * (1.15 - dist) * 2.4;
+        pushZ += (dz / dist) * (1.15 - dist) * 2.4;
+      }
+    }
+
     // --- mouvement
     const a = vcible < n.speed ? 7 : 2.4;
     n.speed += (vcible - n.speed) * Math.min(1, dt * a);
@@ -722,6 +895,8 @@ function simuler(dt, t) {
     const vx = Math.sin(n.h) * n.speed + pushX, vz = Math.cos(n.h) * n.speed + pushZ;
     n.x += vx * dt;
     n.z += vz * dt;
+    if (n.etat === PAUSE && n.pauseZ !== undefined) n.z += clamp(n.pauseZ - n.z, -0.8 * dt, 0.8 * dt); // s'approche de l'étal
+    if (n.de >= NOEUDS || n.etat === PAUSE) chasserDesEtals(n);
     // ne jamais entrer dans un immeuble
     {
       const bi = indiceBloc(n.x), bj = indiceBloc(n.z);
@@ -915,8 +1090,9 @@ function ajouterPersonnage(def) {
   const p = {
     id, nom, zone, position: pos, regardeLeJoueur: !!def.regardeLeJoueur,
     yaw: def.yaw ?? 0, ry: def.yaw ?? 0, taille: ap.taille ?? 1,
+    penche: ap.penche ?? 0, vacille: ap.vacille ?? 0,
     halo: new THREE.Color(ap.couleurHalo ?? D.HUMEURS[0].couleur),
-    corps: null, halo3d: null, objet: null, etiquette: null, vu: true, parle: false, retire: false,
+    corps: null, halo3d: null, objet: null, vu: true, parle: false, retire: false,
     get visible() { return this._visible !== false; },
     set visible(v) {
       this._visible = !!v;
@@ -926,7 +1102,6 @@ function ajouterPersonnage(def) {
       if (this.retire) return;
       this.retire = true;
       if (this.objet) jeu.interact.retirer(this.objet);
-      this.etiquette?.retirer();
       this.corps?.removeFromParent();
       this.halo3d?.removeFromParent();
       this.corps?.geometry.dispose();
@@ -940,6 +1115,26 @@ function ajouterPersonnage(def) {
   if (pret) monterPersonnage(p);
   else aTraiter.push(p);
   return p;
+}
+
+// Le dialogue d'un personnage nommé : `def.dialogue` (objet dialogue, fonction ou promesse) est évalué
+// AVANT que la rencontre ne soit comptée ; `etat.rencontres[id]` est incrémenté à la FIN du dialogue
+// (c'est ce que lit la sélection des dialogues), puis `def.apres(p, dialogue)` est appelé.
+async function parler(p) {
+  const def = p.def;
+  p.parle = true;
+  try {
+    let r = typeof def.dialogue === 'function' ? def.dialogue(p) : def.dialogue;
+    if (r && typeof r.then === 'function') r = await r;
+    if (r && typeof r === 'object' && r.noeuds) {
+      await jeu.ouvrirDialogue(r);
+      jeu.etat.rencontres[p.id] = (jeu.etat.rencontres[p.id] || 0) + 1;
+      jeu.sauver?.();
+      if (def.apres) await def.apres(p, r);
+    }
+  } finally {
+    p.parle = false;
+  }
 }
 
 function monterPersonnage(p) {
@@ -956,29 +1151,19 @@ function monterPersonnage(p) {
   scene.add(p.corps, p.halo3d);
   p.corps.visible = p.halo3d.visible = p.visible;
   const lib = def.libelle ?? remplir(D.NPC.parler, { nom: p.nom });
-  // Pas de `zone` sur l'objet : le Calque ne le liste pas (il lirait « Objet XX — Usage : … » en double
-  // de la ligne du personnage) ; la visibilité tient lieu de test de zone.
+  // L'objet interactif porte lui-même la ligne du Calque (`lignes`) : une seule étiquette par personnage.
+  const haut = (def.hauteurEtiquette ?? 2.2) * p.taille;
   p.objet = jeu.interact.ajouter({
+    zone: p.zone,
     position: [p.position.x, p.position.y + 1.2, p.position.z],
     rayon: def.rayon ?? 2.8,
     libelle: lib,
+    lignes: def.lignes,
+    sansLigne: !!def.sansLigne,
+    decalageEtiquette: haut - 1.2 + 0.0,
     visible: () => p.visible && !p.retire && jeu.zones.nom === p.zone,
-    action: async () => {
-      jeu.etat.rencontres[p.id] = (jeu.etat.rencontres[p.id] || 0) + 1;
-      jeu.sauver?.();
-      p.parle = true;
-      try {
-        let r = typeof def.dialogue === 'function' ? def.dialogue() : def.dialogue;
-        if (r && typeof r.then === 'function') r = await r;
-        if (r && typeof r === 'object' && r.noeuds) await jeu.ouvrirDialogue(r);
-      } finally {
-        p.parle = false;
-      }
-    },
+    action: () => parler(p),
   });
-  if (def.lignes) {
-    p.etiquette = calque.etiqueter({ position: new THREE.Vector3(p.position.x, p.position.y + 2.2, p.position.z), lignes: def.lignes, zone: p.zone });
-  }
 }
 
 const _fl = new THREE.Vector3();
@@ -994,11 +1179,13 @@ function majPersonnages(dt, t) {
     }
     const sc = p.taille;
     const resp = Math.sin(t * 1.1 + p.id.length) * 0.006;
-    ecrireInstance(p.corps, 0, pos.x, pos.y + resp, pos.z, p.ry, 0, Math.sin(t * 0.7) * 0.006, sc);
+    ecrireInstance(p.corps, 0, pos.x, pos.y + resp, pos.z, p.ry, p.penche + Math.sin(t * 0.9 + p.id.length) * 0.012, Math.sin(t * 0.7) * 0.006, sc);
+    // halo qui vacille : une flamme près d'une fenêtre
+    const vac = p.vacille ? 1 + p.vacille * (Math.sin(t * 6.1 + p.id.length) * 0.5 + Math.sin(t * 2.3) * 0.5) * (0.6 + 0.4 * Math.sin(t * 0.8)) : 1;
     const ud = p.corps.userData;
-    ud.aHalo.array[0] = p.halo.r * 0.8;
-    ud.aHalo.array[1] = p.halo.g * 0.8;
-    ud.aHalo.array[2] = p.halo.b * 0.8;
+    ud.aHalo.array[0] = p.halo.r * 0.8 * vac;
+    ud.aHalo.array[1] = p.halo.g * 0.8 * vac;
+    ud.aHalo.array[2] = p.halo.b * 0.8 * vac;
     ud.aHalo.array[3] = 0.5;
     ud.aAnim.array[0] = 0;
     ud.aAnim.array[1] = 0;
@@ -1009,11 +1196,10 @@ function majPersonnages(dt, t) {
     _s.setScalar(TAILLE_HALO * 1.05 * sc);
     _m.compose(_p, _q.identity(), _s);
     p.halo3d.setMatrixAt(0, _m);
-    p.halo3d.setColorAt(0, _c.copy(p.halo).multiplyScalar(1.05));
+    p.halo3d.setColorAt(0, _c.copy(p.halo).multiplyScalar(1.05 * vac));
     p.halo3d.instanceMatrix.needsUpdate = true;
     p.halo3d.instanceColor.needsUpdate = true;
     if (p.objet) p.objet.position.set(pos.x, pos.y + 1.2, pos.z);
-    if (p.etiquette) p.etiquette.position.set(pos.x, pos.y + 2.2 * sc, pos.z);
   }
 }
 
@@ -1052,6 +1238,8 @@ export const npc = {
 
   init() {
     jeu.npc = npc;
+    construireAllees();
+    ETALS = (marche.colliders || []).filter((c) => c.minY === undefined && c.maxY > 0.5);
     creerDom();
     const rr = aleatoire(20771);
     void rr;
@@ -1080,21 +1268,6 @@ export const npc = {
     pret = true;
     for (const p of aTraiter) monterPersonnage(p);
     aTraiter = [];
-
-    // Personnage de démonstration PROVISOIRE, au pied de la sortie de la clinique (bible : à remplacer).
-    const demo = D.PERSONNAGE_DEMO;
-    ajouterPersonnage({
-      id: demo.id,
-      nom: demo.nom,
-      zone: 'kasumi',
-      position: [39.6, 0.3, 49.2],
-      yaw: -Math.PI / 2,
-      apparence: { couleurHalo: 0x7fb0ff, accessoire: 'canne', variante: 0, taille: 1.02 },
-      lignes: demo.lignes,
-      libelle: demo.libelle,
-      regardeLeJoueur: true,
-      dialogue: () => demo.dialogue,
-    });
   },
 
   surZone(nom) {
