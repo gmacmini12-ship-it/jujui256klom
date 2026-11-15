@@ -166,14 +166,14 @@ export function createSmoking(camera, scene) {
   // =====================================================================
   // Main + cigarette (espace caméra)
   // =====================================================================
-  const skin = new THREE.MeshLambertMaterial({ color: 0xb98c8c, emissive: 0x2a1030 });
-  const sleeveMat = new THREE.MeshLambertMaterial({ color: 0x1b1530, emissive: 0x0d0620 });
-  const cuffMat = new THREE.MeshLambertMaterial({ color: 0x2b2145, emissive: 0x120a2c });
+  const skin = new THREE.MeshLambertMaterial({ color: 0xe0b09c, emissive: 0x5a3038 });
+  const sleeveMat = new THREE.MeshLambertMaterial({ color: 0x120e1c, emissive: 0x070310 });
+  const cuffMat = new THREE.MeshLambertMaterial({ color: 0x1d1730, emissive: 0x0c0620 });
   const paperMat = new THREE.MeshLambertMaterial({ color: 0xe8e0f0, emissive: 0x3a3050 });
   const filterMat = new THREE.MeshLambertMaterial({ color: 0xd9a35c, emissive: 0x401c08 });
   const ashMat = new THREE.MeshLambertMaterial({ color: 0x8c8794, emissive: 0x2a2630 });
   const emberMat = new THREE.MeshBasicMaterial({ color: 0xff5a20, toneMapped: false, fog: false });
-  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffc060, toneMapped: false, fog: false });
+  const flameMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.5, 0.5), toneMapped: false, fog: false });
   const metalMat = new THREE.MeshLambertMaterial({ color: 0x9aa0c0, emissive: 0x1a2040 });
   for (const m of [skin, sleeveMat, cuffMat, paperMat, filterMat, ashMat, metalMat]) m.fog = false;
 
@@ -252,10 +252,10 @@ export function createSmoking(camera, scene) {
 
   // poses (espace caméra)
   const POSE = {
-    off:  { p: [0.34, -0.62, -0.5], r: [0.65, 0.6, 0] },
-    rest: { p: [0.22, -0.24, -0.5], r: [0.8, 0.5, 0.1] },
-    light: { p: [0.12, -0.15, -0.46], r: [0.85, 0.42, 0.0] },
-    mouth: { p: [0.03, -0.12, -0.27], r: [1.05, 0.3, 0.12] },
+    off:  { p: [0.4, -0.6, -0.5], r: [0.5, 0.85, -0.25] },
+    rest: { p: [0.17, -0.15, -0.5], r: [0.5, 0.85, -0.25] },
+    light: { p: [0.09, -0.1, -0.46], r: [0.55, 0.7, -0.2] },
+    mouth: { p: [0.05, -0.05, -0.32], r: [0.8, 0.45, -0.2] },
   };
   const cur = { p: new THREE.Vector3(), r: [0, 0, 0] };
   function applyPose(a, b, k, extra) {
@@ -331,7 +331,7 @@ export function createSmoking(camera, scene) {
         fwd.x * sp2 + rgt.x * (Math.random() - 0.5) * sp + up.x * 0.25,
         fwd.y * sp2 + (Math.random() - 0.3) * sp * 0.6 + 0.2,
         fwd.z * sp2 + rgt.z * (Math.random() - 0.5) * sp + up.z * 0.25,
-        3.4 + Math.random() * 2.0, 0.22 + Math.random() * 0.15, 1.3 + Math.random() * 0.9,
+        3.4 + Math.random() * 2.0, 0.2 + Math.random() * 0.12, 1.0 + Math.random() * 0.7,
         0.16 + Math.random() * 0.1, 1.5, 0.28, 0,
       );
     }
@@ -364,7 +364,7 @@ export function createSmoking(camera, scene) {
       lighter.visible = st < 1.35;
       flame.visible = lit;
       const fl = lit ? 0.85 + Math.sin(st * 60) * 0.15 + Math.random() * 0.2 : 0;
-      flame.scale.set(0.007 * fl, 0.024 * fl * 1.1, 0.007 * fl);
+      flame.scale.set(0.011 * fl, 0.04 * fl, 0.011 * fl);
       if (lit) {
         // éclat bref : la lumière monte puis la braise s'allume
         const ig = seg(st, 0.85, 1.2);
@@ -437,7 +437,7 @@ export function createSmoking(camera, scene) {
     if (state !== 'lighting') {
       light.position.copy(cig.tip.getWorldPosition(tmpV) && camera.worldToLocal(tmpV.clone()));
       light.position.z += 0.02;
-      light.intensity = hand.visible ? hot * hot * 0.55 + hot * 0.04 : 0;
+      light.intensity = hand.visible ? hot * hot * 0.3 + hot * 0.03 : 0;
       light.color.setRGB(1.0, 0.33 + hot * 0.1, 0.38 - hot * 0.1);
     }
 
