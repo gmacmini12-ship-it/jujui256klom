@@ -33,12 +33,12 @@ export const REGLAGES_FINS = {
     delaiInvitation: 9, // l'invite d'Itsuki : à partir de ce délai, s'il est à moins de `rayonItsuki`
     rayonItsuki: 10,
     delaiLigne: 38, // sinon, une ligne de texte à ce moment
-    rayonSalut: 6.5,
+    rayonSalut: 7.5,
     intervalleSalut: 3.6,
     maxSaluts: 12,
   },
   // Message laissé au Réveillé n°5 : objet « Lire » sur le toit du karaoké, à côté du fragment 27 (68,5 ; 62,0)
-  note: { position: [69.9, 30.3, 62.0], rayon: 3.2 },
+  note: { position: [69.9, 30.3, 62.0], rayon: 3.6 },
 };
 
 // ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ export const REGLAGES_FINS = {
 // ---------------------------------------------------------------------------
 export const TEXTES_FINS = {
   sAllonger: "S'allonger",
-  lireNote: 'Lire le papier',
+  lireNote: 'Lire le mot laissé',
   finsVues: (n) => `FINS VUES : ${n} / ${FINS_TOTAL}`,
   dejaConnu: 'Déjà connu : Mima s’en souvient.',
   suite: '▼',

@@ -80,9 +80,9 @@ export const FilmShader = {
       col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), 0.55 * sourdine);
       // Halo du Sceau (fin « Rester », 0 = rendu inchangé) : couleurs réchauffées, vignette rose-violet
       if (halo > 0.0) {
-        col = mix(col, col * vec3(1.16, 0.95, 0.86) + vec3(0.03, 0.012, 0.0), halo * 0.7);
-        float bord = smoothstep(0.22, 0.78, length(d));
-        col += vec3(0.78, 0.2, 0.9) * bord * bord * halo * 0.62;
+        col = mix(col, col * vec3(1.2, 0.93, 0.82) + vec3(0.04, 0.015, 0.0), halo * 0.75);
+        float bord = smoothstep(0.18, 0.72, length(d));
+        col += vec3(0.8, 0.22, 0.92) * bord * bord * halo * 0.85;
       }
       // tramage ordonné 4x4 puis palette réduite
       ivec2 pi = ivec2(mod(gl_FragCoord.xy, 4.0));

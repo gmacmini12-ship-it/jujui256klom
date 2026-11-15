@@ -506,7 +506,7 @@ export const fins = {
         const vz = n.z - joueur.z;
         const d = Math.hypot(vx, vz);
         if (d < 1.4 || d > C.rayonSalut) continue;
-        if ((vx * dir.x + vz * dir.z) / d < 0.25) continue;
+        if ((vx * dir.x + vz * dir.z) / d < 0.1) continue; // devant soi : la bulle doit être visible
         if (!meilleur || d < meilleur.d) meilleur = { n, d };
       }
       if (meilleur) {
@@ -702,6 +702,7 @@ export const fins = {
     this.rallumer();
     this.rouvrirSon(1);
     this.fx.halo = 0;
+    if (jeu.film?.uniforms?.halo) jeu.film.uniforms.halo.value = 0; // l'écran titre couvre l'image
     jeu.audio?.accord('defaut', 3);
     if (this.stand) {
       this.reposer();
