@@ -137,7 +137,7 @@ export function buildCity(scene, options = {}) {
       emissiveMap: v.tex,
       emissiveIntensity: 1.15,
     });
-    eteignable(mat, 'fenetres'); // fin 5 : fenêtres éteintes par quartier (extinction.js ; inchangé sinon)
+    eteignable(mat, 'fenetres', { reflet: true }); // fin 5 : fenêtres éteintes par quartier (extinction.js ; inchangé sinon)
     scene.add(new THREE.Mesh(mergeGeometries(v.geos), mat));
   }
   scene.add(
@@ -222,7 +222,7 @@ export function buildCity(scene, options = {}) {
   }
   for (const s of shops) {
     scene.add(
-      new THREE.Mesh(mergeGeometries(s.geos), eteignable(new THREE.MeshBasicMaterial({ map: s.tex, toneMapped: false }), 'fenetres', { plancher: 0.1 }))
+      new THREE.Mesh(mergeGeometries(s.geos), eteignable(new THREE.MeshBasicMaterial({ map: s.tex, toneMapped: false }), 'fenetres', { plancher: 0.06 }))
     );
   }
 
@@ -252,7 +252,7 @@ export function buildCity(scene, options = {}) {
   );
   const bulbs = new THREE.InstancedMesh(
     new THREE.SphereGeometry(0.3, 10, 8),
-    eteignable(new THREE.MeshBasicMaterial({ color: 0xff9cf2, toneMapped: false }), 'halos', { plancher: 0.1 }),
+    eteignable(new THREE.MeshBasicMaterial({ color: 0xff9cf2, toneMapped: false }), 'halos', { plancher: 0.04 }),
     lampCount
   );
   const dummy = new THREE.Object3D();

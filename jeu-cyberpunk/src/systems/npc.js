@@ -735,7 +735,7 @@ function simuler(dt, t) {
     n.d = d;
 
     // --- réaffectation des habitants lointains
-    if (d > RAYON_REAFFECTATION && reaffectes < 10) {
+    if (d > RAYON_REAFFECTATION && reaffectes < 10 && !(REA.aube > 0)) { // à l'aube, chacun reste où il s'est arrêté
       reaffectes++;
       if (n.etat !== GROUPE && rnd() < 0.12) {
         const m = habitants[Math.floor(rnd() * NB)];
@@ -1274,6 +1274,19 @@ export const npc = {
   /** Crochets des réactions de l'Attention : { halo, ecart, teinte } (voir en-tête de REA). */
   reaction: REA,
   get fumee() { return fumee; },
+  /** Fin 5 : `nb` habitants replacés dans les allées du marché (visibles d'emblée ; à appeler hors de la vue). */
+  peuplerMarche(nb = 60) {
+    for (let i = 0; i < Math.min(nb, NB); i++) {
+      const n = habitants[NB - 1 - i];
+      placerMarche(n, { minD: 0, horsVue: false });
+      n.y = hauteurSol(n.x, n.z);
+      n.vis = 0;
+      n.etat = PAUSE;
+      n.tEtat = 3 + rnd() * 20; // fini, il reprendra sa marche (pas à l’aube : npc.reaction.aube l’arrête)
+      n.faceYaw = rnd() * Math.PI * 2;
+      n.ry = n.faceYaw;
+    }
+  },
   /** Fait dire `texte` à l'habitant `n` (bribe flottante) ; faux si aucune place. */
   dire: (n, texte) => afficherBribe(n, texte),
   BRIBES: D.BRIBES,

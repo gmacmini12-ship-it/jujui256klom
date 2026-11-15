@@ -87,11 +87,11 @@ export const FilmShader = {
       vec3 duo = lum < 0.5 ? mix(sh, mid, lum * 2.0) : mix(mid, hi, lum * 2.0 - 1.0);
       // Aube de la fin 5 (0 = rendu inchangé) : l'étalonnage violet se retire devant le gris d'aube
       float duoMix = 0.42 * (1.0 - 0.5 * sourdine);
-      if (aube > 0.0) duoMix *= 1.0 - 0.78 * aube;
+      if (aube > 0.0) duoMix *= 1.0 - 0.85 * aube;
       col = mix(col, duo, duoMix);
       if (aube > 0.0) {
         float l2 = dot(col, vec3(0.299, 0.587, 0.114));
-        col = mix(col, vec3(l2) * vec3(0.97, 0.985, 1.03), 0.38 * aube);
+        col = mix(col, vec3(l2) * vec3(0.97, 0.985, 1.03), 0.5 * aube);
       }
       // Sourdine : couleurs désaturées, la ville « brute »
       col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), 0.55 * sourdine);

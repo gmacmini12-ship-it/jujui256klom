@@ -24,7 +24,7 @@ const QUARTIERS = [
 
 export const REGLAGES_SILENCE = {
   duree: 30, // E maintenu
-  levier: { position: [402, 1.6, -333.0], rayon: 4.8, cone: 0.85, haut: 0.55, bas: -0.62 },
+  levier: { position: [402, 1.6, -333.0], rayon: 4.8, cone: 0.85, haut: 0.55, bas: -1.2 },
   ecartMax: 1.5, // m : le joueur s'éloigne de plus que cela du point où il a pris l'Interrupteur : la main lâche
   rayonDesarmer: 8, // m : plus loin, il faudra repasser par le seuil (le dialogue)
   rallumage: 0.32, // par seconde : quand on lâche, tout revient doucement (≈ 3 s)
@@ -52,7 +52,7 @@ export const REGLAGES_SILENCE = {
   pluieSalle: 0.05, // la pluie, entendue à travers la vitre quand la ville s'éteint (la zone : 0)
   filtreSalle: 1000, // Hz : filtre de la salle (ATMOS.interrupteur de zones/kura.js), rouvert vers `filtreOuvert`
   filtreOuvert: 3200,
-  pluieVitre: 0.9, // intensité maximale des gouttes sur la baie
+  pluieVitre: 0.5, // intensité maximale des gouttes sur la baie
 
   // à 30 s : c'est fait
   fait: {
@@ -69,11 +69,12 @@ export const REGLAGES_SILENCE = {
   // ------------------------------------------------------------------------------------------- l'aube (5.8)
   aube: {
     // sur le parvis de Kura, côté ville, face au marché (kasumi.points.kura)
-    point: { position: [281, 4.5, 30], yaw: Math.PI / 2, pitch: 0.06 },
+    point: { position: [281, 4.5, 30], yaw: Math.PI / 2, pitch: 0.1 },
     duree: 40, // le ciel passe du violet au gris pâle
     marche: { minX: 44, maxX: 139, minZ: 18, maxZ: 42 }, // arrivée au Marché des Mains (arche est franchie)
     minAube: 0.72, // l'écran de fin n'arrive pas avant que le ciel soit gris
     attenteMarche: 3.5, // s passées dans le marché avant l'écran de fin
+    habitantsMarche: 70, // habitants replacés dans les allées du marché pendant le noir (sur 200)
     delaiMax: 115, // s : s'il ne va pas au marché
     horsVille: 1.0, // s hors de Kasumi : la fin arrive
     murmures: { debut: 7, intervalle: 8.5, max: 4, rayonMin: 2.2, rayonMax: 8 },
@@ -83,14 +84,15 @@ export const REGLAGES_SILENCE = {
   palette: {
     nuit: { zenith: '#0d0536', horizon: '#2a1278', est: '#2a1278', brouillard: '#1a0c44', hemiCiel: '#6a3cff', hemiSol: '#1a0838', hemi: 1.5, soleil: '#9a6bff', soleilI: 0.7, miroir: '#6a5c90' },
     violet: { zenith: '#231c3e', horizon: '#5a4a72', est: '#7a6488', brouillard: '#3e3456', hemiCiel: '#7a6ca0', hemiSol: '#1e1a2c', hemi: 1.6, soleil: '#b8a4c8', soleilI: 0.55, miroir: '#6e6680' },
-    gris: { zenith: '#7f848e', horizon: '#b9bbc0', est: '#d6d0ca', brouillard: '#a7a9ae', hemiCiel: '#c2c6ce', hemiSol: '#3c3c44', hemi: 2.3, soleil: '#e2d8ce', soleilI: 0.85, miroir: '#8c8e96' },
+    gris: { zenith: '#7f848e', horizon: '#b9bbc0', est: '#d6d0ca', brouillard: '#a7a9ae', hemiCiel: '#c2c6ce', hemiSol: '#4a4a52', hemi: 3.0, soleil: '#e2d8ce', soleilI: 0.9, miroir: '#8c8e96' },
     etapeViolet: 0.3, // où le violet culmine
     densite: [0.0075, 0.0052, 0.0040], // brouillard : nuit, violet, gris
-    exposition: [1.15, 1.08, 1.0],
+    exposition: [1.15, 1.1, 1.12],
     bloom: { force: [0.75, 0.35, 0.22], rayon: [0.7, 0.55, 0.5], seuil: [0.32, 0.8, 0.9] },
-    film: 0.85, // uniform `aube` de FilmShader à a = 1
+    film: 1.0, // uniform `aube` de FilmShader à a = 1
+    reflet: 0.22, // part du ciel que renvoient les fenêtres éteintes (extinction.js : EXTINCTION.reflet)
     nuages: 1.0,
-    pluieImage: 0.42, // densité visuelle de la pluie à a = 1
+    pluieImage: 0.3, // densité visuelle de la pluie à a = 1
     soleilPosition: [230, 70, -30], // la lumière vient de l'est (derrière Kura)
   },
   braise: { decalage: [0.16, 0.98, -0.28], taille: 0.028 }, // la cigarette d'Oba (par rapport à son tabouret)

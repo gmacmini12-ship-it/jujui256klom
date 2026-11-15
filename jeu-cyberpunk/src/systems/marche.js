@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { jeu } from '../game.js';
 import { rng } from '../textures.js';
 import { TITRE_MARCHE, ENSEIGNES_MARCHE, OBJETS_MARCHE } from '../data/marche.js';
+import { eteignable } from '../extinction.js';
 
 // Système « marche » : le Marché des Mains (夜の市場), bible §5.3, tâche 2.3.
 //
@@ -1241,6 +1242,8 @@ export const marche = {
         '#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * 0.62;'
       );
     };
+    // fin 5 (extinction.js) : à l'aube, les étals ne s'éclairent plus eux-mêmes (le reste : systems/silence.js)
+    eteignable(matSolide, 'fenetres', { mode: 'emissive', plancher: 0.15 });
     const matLueur = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
     const mSolide = maillage(solide, matSolide);
     const mLueur = maillage(lueur, matLueur);

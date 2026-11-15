@@ -14,7 +14,8 @@ import * as THREE from 'three';
 //   eteignable(materiau, categorie, { mode, plancher })   injection (onBeforeCompile) dans un matériau standard de
 //       three.js (Basic, Standard/Physical, Lambert, Phong, Sprite, Points) ; mode 'emissive' : seule la lumière
 //       émise est atténuée (fenêtres) ; mode 'sortie' : la couleur finale (enseignes, lampes, halos additifs) ;
-//       `plancher` : part qui reste à 0 (un tube éteint reste un objet sombre). À appeler AVANT la première
+//       `plancher` : part qui reste à 0 (un tube éteint reste un objet sombre) ; `reflet` (mode 'emissive') : la vitre
+//       éteinte renvoie `EXTINCTION.reflet` (le ciel de l'aube) au lieu de noir. À appeler AVANT la première
 //       compilation (sinon `needsUpdate` recompile une fois).
 //   eteignableGroupe(objet, { exclure })   parcourt un groupe et rend éteignable tout ce qui brille (catégorie
 //       devinée : additif → halos, émissif → fenetres, Basic/Sprite sans tone mapping → enseignes). Les ShaderMaterial
@@ -43,6 +44,8 @@ export const EXTINCTION = {
   fenetres: { value: new Float32Array(NB_QUARTIERS).fill(1) },
   hologrammes: { value: new Float32Array(NB_QUARTIERS).fill(1) },
   halos: { value: new Float32Array(NB_QUARTIERS).fill(1) },
+  // fenêtres éteintes à l'aube : elles renvoient un peu de ciel (couleur linéaire ; noir = vitres mortes)
+  reflet: { value: new THREE.Color(0, 0, 0) },
 };
 
 /** Niveau (0..1) d'une catégorie au point (x, z) de la ville ; 1 quand rien n'est éteint (côté CPU : npc.js, lumières). */
@@ -55,6 +58,7 @@ export function niveau(categorie, x, z) {
 /** Remet tout allumé (et l'injection en sommeil). */
 export function rallumerTout() {
   for (const c of CATEGORIES) EXTINCTION[c].value.fill(1);
+  EXTINCTION.reflet.value.setRGB(0, 0, 0);
   EXTINCTION.actif.value = 0;
 }
 
@@ -98,7 +102,7 @@ const FRAG_DECL = /* glsl */ `
   ${GLSL_QUARTIER}
   float extFacteur() { return mix( uExtPlancher, 1.0, uExtNiv[ extQuartier( vExtXZ ) ] ); }`;
 
-function injecter(sh, categorie, mode, plancher) {
+function injecter(sh, categorie, mode, plancher, reflet) {
   let v = sh.vertexShader;
   let f = sh.fragmentShader;
   if (!v.includes('#include <common>') || !f.includes('#include <common>')) return false;
@@ -107,17 +111,21 @@ function injecter(sh, categorie, mode, plancher) {
   else return false;
   if (mode === 'emissive' && f.includes('#include <lights_fragment_begin>')) {
     // après tout ce qui s'ajoute à la lumière émise (marche.js, npc.js y ajoutent leurs termes)
-    f = f.replace('#include <lights_fragment_begin>', 'if ( uExtActif > 0.5 ) totalEmissiveRadiance *= extFacteur();\n#include <lights_fragment_begin>');
+    const code = reflet
+      ? 'if ( uExtActif > 0.5 ) { float extF = extFacteur(); vec3 extE = totalEmissiveRadiance; totalEmissiveRadiance = extE * extF + uExtReflet * dot( extE, vec3( 0.3333 ) ) * ( 1.0 - extF ); }'
+      : 'if ( uExtActif > 0.5 ) totalEmissiveRadiance *= extFacteur();';
+    f = f.replace('#include <lights_fragment_begin>', `${code}\n#include <lights_fragment_begin>`);
   } else if (f.includes('#include <opaque_fragment>')) {
     f = f.replace('#include <opaque_fragment>', '#include <opaque_fragment>\nif ( uExtActif > 0.5 ) gl_FragColor.rgb *= extFacteur();');
   } else return false;
   v = v.replace('#include <common>', `#include <common>\n${VERT_DECL}`);
-  f = f.replace('#include <common>', `#include <common>\n${FRAG_DECL}`);
+  f = f.replace('#include <common>', `#include <common>\n${FRAG_DECL}${reflet ? '\nuniform vec3 uExtReflet;' : ''}`);
   sh.vertexShader = v;
   sh.fragmentShader = f;
   sh.uniforms.uExtActif = EXTINCTION.actif;
   sh.uniforms.uExtNiv = EXTINCTION[categorie];
   sh.uniforms.uExtPlancher = { value: plancher };
+  if (reflet) sh.uniforms.uExtReflet = EXTINCTION.reflet;
   return true;
 }
 
@@ -132,7 +140,7 @@ function cleDe(materiau) {
  * Rend un matériau éteignable (voir l'en-tête). Renvoie le matériau. Sans effet sur un ShaderMaterial, ou si
  * le matériau l'est déjà.
  */
-export function eteignable(materiau, categorie, { mode = null, plancher = 0 } = {}) {
+export function eteignable(materiau, categorie, { mode = null, plancher = 0, reflet = false } = {}) {
   if (!materiau || materiau.isShaderMaterial || materiau.userData?.extinction) return materiau;
   if (!EXTINCTION[categorie] || categorie === 'actif') return materiau;
   const emissif = !!(materiau.isMeshStandardMaterial || materiau.isMeshLambertMaterial || materiau.isMeshPhongMaterial || materiau.isMeshToonMaterial);
@@ -142,10 +150,10 @@ export function eteignable(materiau, categorie, { mode = null, plancher = 0 } = 
   const cle0 = cleDe(materiau); // évaluée AVANT de remplacer onBeforeCompile (la clé par défaut en est le texte)
   materiau.onBeforeCompile = function (sh, renderer) {
     if (aAvant) avant.call(this, sh, renderer);
-    injecter(sh, categorie, m, plancher);
+    injecter(sh, categorie, m, plancher, reflet && m === 'emissive');
   };
-  materiau.customProgramCacheKey = () => `${cle0}|ext:${m}`;
-  materiau.userData.extinction = { categorie, mode: m, plancher };
+  materiau.customProgramCacheKey = () => `${cle0}|ext:${m}${reflet ? ':reflet' : ''}`;
+  materiau.userData.extinction = { categorie, mode: m, plancher, reflet };
   materiau.needsUpdate = true;
   return materiau;
 }
