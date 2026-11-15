@@ -25,7 +25,6 @@ import { TEXTES_TOITS, ENSEIGNES_TOITS } from '../data/toits.js';
 //    neutralisés pendant l'assise, et la position sauvegardée est celle où l'on se relève.
 
 const ZONE = 'kasumi';
-const COUCHE_TOITS = 1;
 const LEVRE = 0.3; // acrotère bas : praticable (≤ 0,35 m), on peut le franchir et tomber
 const SURELEVATION = 0.02; // décor posé juste au-dessus du revêtement
 
@@ -1099,7 +1098,10 @@ export const toits = {
         if (this.assis) this.positionSauvee();
       };
     }
-    jeu.on('partie:nouvelle', () => this.finir(true));
+    jeu.on('partie:nouvelle', () => {
+      this.finir(true);
+      this.visite = false; // la première visite se refait dans une nouvelle partie
+    });
   },
 
   surZone(nom, zone) {
@@ -1290,10 +1292,17 @@ export const toits = {
       racine.add(this.bouleMesh);
       this.stats.lots += 1;
     }
-    // Couche 1 : la caméra du joueur la voit, pas le miroir du sol (Reflector, caméra virtuelle sur la couche 0).
-    // Le décor des toits n'apparaît jamais dans le reflet de la rue ; ça évite de le dessiner deux fois.
-    racine.traverse((o) => o.layers.set(COUCHE_TOITS));
-    jeu.camera.layers.enable(COUCHE_TOITS);
+    // Le miroir du sol (Reflector) redessine la scène depuis sous le sol : les toits n'y sont jamais visibles
+    // (cachés par leurs immeubles). On les masque pendant ce passage : moitié moins de dessin.
+    const miroir = zone.reflecteur;
+    if (miroir && typeof miroir.onBeforeRender === 'function') {
+      const original = miroir.onBeforeRender;
+      miroir.onBeforeRender = function (...args) {
+        const visible = racine.visible;
+        racine.visible = false;
+        try { original.apply(this, args); } finally { racine.visible = visible; }
+      };
+    }
     zone.scene.add(racine);
     this.racine = racine;
   },
