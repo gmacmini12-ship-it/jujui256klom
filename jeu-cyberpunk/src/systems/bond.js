@@ -17,8 +17,8 @@ import { AMORTI_BASE, GRAVITE } from '../player.js';
 
 const CHARGE = 0.4; // s d'appui pour un Bond
 const HAUTEUR = 9; // m, saut vertical
-const V_VERTICAL = Math.sqrt(2 * GRAVITE * HAUTEUR); // ≈ 19 m/s
-const LONG = { vy: 8.2, vh: 21, controleAir: 0.35 }; // saut long en course : ≈ 15 m sur le plat
+const V_VERTICAL = Math.sqrt(2 * GRAVITE * (HAUTEUR + 0.2)); // ≈ 19 m/s (pas de simulation compensé)
+const LONG = { vy: 8.2, vh: 19, controleAir: 0.35 }; // saut long en course : ≈ 15 m sur le plat
 const SEUIL_COURSE = 8; // m/s
 const AMORTI = 12; // m
 const FOV_CHARGE = -4; // degrés, au maximum de la charge

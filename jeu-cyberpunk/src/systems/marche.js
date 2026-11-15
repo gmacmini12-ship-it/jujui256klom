@@ -39,9 +39,9 @@ const PLACE_E = 101.2;
 const LIMITES = { minX: 44, maxX: 140.5, minZ: 18, maxZ: 42 };
 
 const COUL = {
-  bois: 0x4a2f7c,
-  boisClair: 0x6a48a8,
-  metal: 0x2e2a62,
+  bois: 0x5e2a72,
+  boisClair: 0x8a3e92,
+  metal: 0x34286a,
   noir: 0x0b0718,
   magenta: 0xff2bd6,
   rose: 0xff5ad0,
@@ -52,7 +52,7 @@ const COUL = {
   bleuPale: 0xbfd2ff,
 };
 const LAMPIONS = [0xff2bd6, 0xff2bd6, 0xff5ad0, 0xff5ad0, 0xc44bff, 0x8a5cff, 0x4a7dff, 0xffb8f0];
-const TISSUS = [0x7a2a9a, 0xa02a7a, 0x3a3aa0, 0x5a2a80, 0x8a3a6a, 0x2a4a9a, 0x6a3ab0];
+const TISSUS = [0xa03ac8, 0xd03a9a, 0x4a4ad8, 0x8a3ab0, 0xc04a8a, 0x3a62d0, 0x7a46d0];
 
 // ---------------------------------------------------------------------------
 // Primitives fusionnées
@@ -571,6 +571,11 @@ export const marche = {
         R.b(w - 0.2, 0.9, 0.9, 0, 0.45, prof - 0.45, COUL.bois);
         R.b(w - 0.05, 0.07, 1.04, 0, 0.935, prof - 0.45, COUL.boisClair);
         R.b(w - 0.1, 0.035, 0.035, 0, 0.88, prof + 0.04, lum(accent, 0.75), { lueur: true });
+        // nappe qui pend sur le devant du comptoir, avec ses étiquettes de ligne
+        const nappe = TISSUS[Math.floor(rand() * TISSUS.length)];
+        R.b(w - 0.2, 0.6, 0.03, 0, 0.58, prof + 0.045, nappe);
+        R.b(w - 0.2, 0.04, 0.035, 0, 0.3, prof + 0.05, lum(accent, 0.6), { lueur: true });
+        for (let i = 0; i < 3; i++) R.b(0.1, 0.06, 0.01, -w / 3 + i * (w / 3), 0.52, prof + 0.07, lum(accent, 0.9), { lueur: true });
       }
       for (const sg of [-1, 1]) {
         R.b(0.09, 3.1, 0.09, sg * (demi - 0.1), 1.55, prof - 0.1, COUL.metal);
@@ -925,8 +930,16 @@ export const marche = {
       R.b(0.03, 0.9, 0.03, 3.9, 1.7, 1.2, COUL.metal, { rz: 0.0 });
       R.b(0.45, 0.03, 0.03, 3.7, 2.15, 1.2, COUL.metal);
       R.sp(0.04, 3.5, 2.1, 1.2, lum(COUL.bleu, 1.0), { lueur: true });
+      // écrans, pile de caisses, engrenage au mur, câbles qui pendent
+      R.b(0.5, 0.32, 0.03, -2.3, 1.3, 1.2, 0x120a26, { rx: -0.35 });
+      R.b(0.44, 0.26, 0.01, -2.3, 1.3, 1.22, lum(COUL.bleu, 0.8), { lueur: true, rx: -0.35 });
+      R.b(0.5, 0.3, 0.4, -3.4, 1.2, 1.2, 0x52409a);
+      R.b(0.4, 0.26, 0.35, -3.4, 1.5, 1.2, 0x35286a);
+      poser(solide, TPL.cyl, COUL.metal, R.X(1.9), R.Y(2.3), R.Z(0.4), 0.5, 0.07, 0.5, Math.PI / 2);
+      poser(lueur, TPL.tore, lum(COUL.bleu, 0.9), R.X(1.9), R.Y(2.3), R.Z(0.46), 0.5, 0.5, 0.5);
+      for (let i = 0; i < 6; i++) R.c(0.012, 0.8 + rand() * 0.5, -3.6 + i * 0.5, 2.7, 1.9, [COUL.rose, COUL.bleu, COUL.violet][i % 3], { lueur: i % 2 === 0 });
       // auvent, rideau, enseigne, lampions
-      R.b(w + 0.3, 0.05, 3.25, 0, 3.25, 1.5, 0x2b2058, { rx: 0.14 });
+      R.b(w + 0.3, 0.05, 3.25, 0, 3.25, 1.5, 0x4b3a98, { rx: 0.14 });
       R.b(w + 0.3, 0.05, 0.05, 0, 3.0, 3.2, lum(COUL.bleu, 0.9), { lueur: true });
       for (let i = 0; i < 12; i++) R.b(0.6, 0.5, 0.02, -w / 2 + 0.35 + i * 0.67, 2.7, 3.15, TISSUS[(i * 5) % TISSUS.length]);
       R.plan('atelier', 3.0, 0.75, 0, 3.95, 2.8, 0.22);
@@ -993,7 +1006,7 @@ export const marche = {
       vSud.forEach((t, i) => etal('N', x0 + LARGEUR_ETAL * (i + 0.5), t, wI, { mur: AXE }));
     }
     // Tables communes sur la place
-    for (const [x, z] of [[83.2, 30], [96.8, 30], [90, 22.8]]) {
+    for (const [x, z] of [[83.2, 30], [96.8, 30]]) {
       const tournee = z === 30 ? 0 : Math.PI / 2;
       boiteM(3.2, 0.1, 0.95, x, 0.82, z, COUL.boisClair, { ry: tournee });
       for (const dx of [-1.4, 1.4]) boiteM(0.1, 0.8, 0.8, x + (tournee ? 0 : dx), 0.4, z + (tournee ? dx : 0), COUL.bois);
@@ -1189,7 +1202,7 @@ export const marche = {
     }
 
     // ---------- Assemblage ----------
-    const matSolide = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.15, emissive: 0x2a1458, emissiveIntensity: 0.9 });
+    const matSolide = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.15, emissive: 0x3a1048, emissiveIntensity: 0.9 });
     const matLueur = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
     const mSolide = maillage(solide, matSolide);
     const mLueur = maillage(lueur, matLueur);
@@ -1261,7 +1274,7 @@ export const marche = {
       const mesh = new THREE.InstancedMesh(
         new THREE.PlaneGeometry(1, 1),
         new THREE.MeshBasicMaterial({
-          map: textureHalo(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, opacity: 0.4,
+          map: textureHalo(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, opacity: 0.75,
         }),
         pools.length
       );

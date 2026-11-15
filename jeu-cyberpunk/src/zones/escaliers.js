@@ -46,6 +46,8 @@ function repere(b, face) {
   }
 }
 
+const finE = (F) => (F - 1) % 2 === 0; // la dernière volée arrive au palier du bout (u max)
+
 function monde(R, u, v) {
   return [R.cx + R.tx * u + R.nx * v, R.cz + R.tz * u + R.nz * v];
 }
@@ -126,7 +128,7 @@ export function construireEscaliers(scene, immeubles, colliders, { enseignes } =
       // main courante côté rue, sur les volées extérieures
       if (versE) {
         barre(R, [U(debut), vRail + 0.03, base + RAMPE], [U(fin), vRail + 0.03, base + K * r + RAMPE], 0.05, 'metal');
-        barre(R, [U(debut), vRail + 0.03, base + RAMPE - 0.06], [U(fin), vRail + 0.03, base + K * r + RAMPE - 0.06], 0.018, 'neon');
+        barre(R, [U(debut), vRail + 0.03, base + RAMPE - 0.06], [U(fin), vRail + 0.03, base + K * r + RAMPE - 0.06], 0.03, 'neon');
         for (const uu of [debut + 0.9, debut + run / 2 + 0.4]) {
           const t = (uu - debut) / run;
           barre(R, [U(uu), vRail + 0.03, base + t * K * r], [U(uu), vRail + 0.03, base + t * K * r + RAMPE], 0.04, 'metal');
@@ -151,7 +153,7 @@ export function construireEscaliers(scene, immeubles, colliders, { enseignes } =
       }
       // liseré néon sous le nez du palier, côté rue
       const dernier = f === F - 1;
-      barre(R, [U(pa), vRail - 0.02, top - 0.14], [U(pb), vRail - 0.02, top - 0.14], 0.03, dernier ? 'neonBleu' : 'neon');
+      barre(R, [U(pa), vRail - 0.02, top - 0.14], [U(pb), vRail - 0.02, top - 0.14], 0.05, dernier ? 'neonBleu' : 'neon');
       // console sous le palier (accroche au mur)
       barre(R, [U((pa + pb) / 2), 0.02, top - 0.9], [U((pa + pb) / 2), vRail, top - 0.13], 0.06, 'metal');
     }
@@ -171,10 +173,23 @@ export function construireEscaliers(scene, immeubles, colliders, { enseignes } =
       }
     }
 
+    // chemin de montée (points au centre des voies), utile aux tests et aux habitants
+    const chemin = [];
+    const point = (u, v, y) => { const [x, z] = monde(R, U(u), v); chemin.push([+x.toFixed(3), +y.toFixed(3), +z.toFixed(3)]); };
+    const mid = (v) => (v[0] + v[1]) / 2;
+    point(PALIER - 0.9, mid(vOut), TROTTOIR);
+    for (let f = 0; f < F; f++) {
+      const versE = f % 2 === 0;
+      const uP = versE ? PALIER + run + PALIER / 2 : PALIER / 2;
+      const top = TROTTOIR + (f + 1) * K * r;
+      point(uP, mid(versE ? vOut : vIn), top);
+      if (f < F - 1) point(uP, mid(versE ? vIn : vOut), top);
+    }
+    point(finE(F) ? PALIER + run + PALIER / 2 : PALIER / 2, -3, H); // sur le toit, 3 m après le bord
+
     const yawMontee = Math.atan2(-R.tx, -R.tz); // regard le long de la première volée
     const [px, pz] = monde(R, U(PALIER - 0.9), (vOut[0] + vOut[1]) / 2);
-    const finE = (F - 1) % 2 === 0;
-    const [sx, sz] = monde(R, U(finE ? PALIER + run + PALIER / 2 : PALIER / 2), VOIE);
+    const [sx, sz] = monde(R, U(finE(F) ? PALIER + run + PALIER / 2 : PALIER / 2), VOIE);
     const esc = {
       nom: def.nom,
       pied: [+px.toFixed(2), TROTTOIR, +pz.toFixed(2)], // sur le trottoir, devant la première marche
@@ -182,6 +197,7 @@ export function construireEscaliers(scene, immeubles, colliders, { enseignes } =
       sommet: [+sx.toFixed(2), +H.toFixed(2), +sz.toFixed(2)], // centre du dernier palier, au niveau du toit
       hauteurMarche: +r.toFixed(4),
       marches: F * K,
+      chemin, // [[x, y, z], …] du pied au toit
       immeuble: b,
       toits: [{ x: b.x, z: b.z, w: b.w, d: b.d, h: b.h }],
     };

@@ -41,6 +41,35 @@ export const paquet = {
 
 Modèle commenté : `src/systems/exemple.js`. Un système qui modifie la ville (Hashira) fait dans `preparer` : `jeu.config.ville.blocsReserves.push([4, 4])` (pâté central vide, reste de la ville identique), puis dans `init` : `const k = jeu.zones.get('kasumi'); k.scene.add(tour); k.colliders.push({ minX, maxX, minZ, maxZ });`.
 
+## Collisions, hauteur, joueur (src/player.js)
+
+Collider : `{ minX, maxX, minZ, maxZ, minY?, maxY? }`, dans le tableau `zone.colliders` (gardé par référence, on peut y pousser plus tard).
+- **Sans `minY`/`maxY`** : mur infini (clinique, tour, décor ajouté par les systèmes) : rien à changer.
+- **Avec** : boîte 3D. Son sommet `maxY` est un sol praticable (toits, trottoirs à 0,3 m, marches), son dessous `minY` un plafond (on s'y cogne la tête).
+- Le sol sous le joueur = le sommet le plus haut sous son empreinte (carré de 1,2 m) qui ne dépasse pas ses pieds de plus d'une marche (0,35 m), ou y = 0. Une boîte ne bloque latéralement que si son sommet dépasse les pieds de plus de 0,35 m et si son dessous est sous la tête (corps de 1,85 m). Au sol, on suit les descentes jusqu'à 0,45 m (escaliers, trottoirs) sans « tomber ».
+- Sous-pas de 0,2 m au plus et balayage vertical : pas de traversée, même à 60 m/s ou avec un pas de 0,2 s. Arrêt au contact (pas de rebond), glissement le long des murs. Une boîte dans laquelle on se trouve déjà ne retient pas (on peut en sortir).
+
+`jeu.player` (en plus de `position`, `velocity`, `update`, `teleporter(x, y, z, yaw, pitch)`, `regarder`, `orientation`, `setColliders`, `bloque(x, z, y?)`) :
+- `auSol` ; `vitesseChute` (m/s, ≥ 0, 0 au sol) ; `hauteurChute` (m déjà tombés depuis le point le plus haut du vol en cours) ; `derniereChute { hauteurChute, vitesse }`.
+- `solSous(x, z, y = Infinity, rayon = 0)` → hauteur du sol sous le point (x, z) pour qui se tient à `y` (sommet le plus haut ≤ y, 0 au minimum).
+- `sauter(vy = 6.5)` → bool (seulement au sol) ; `impulser(vx|null, vy, vz|null, { controleAir })` (pouvoirs : remplace la vitesse ; `controleAir` bas = élan conservé jusqu'à l'atterrissage).
+- `amortissement` (m, 4 par défaut, 12 avec le Bond) : hauteur de chute encaissée sans conséquence, recopiée dans l'évènement d'atterrissage. Les conséquences (Veilleur, échec) restent à écrire, à partir des évènements.
+- `sautAuto` (vrai : Espace saute dès l'appui ; le Bond le met à faux et gère le saut au relâchement), `decalageVue` (m, ajouté à la hauteur de la caméra), `dimensions { yeux, rayon, taille, marche, gravite, saut }`.
+- Constantes exportées : `EYE, RAYON, TAILLE, MARCHE, GRAVITE, SAUT, AMORTI_BASE`.
+
+Évènements : `joueur:saut { y, vitesse }` (décollage par un saut ou une impulsion), `joueur:chute { y }` (le sol se dérobe : bord d'un toit, sans sauter), `joueur:atterrissage { hauteurChute, vitesse, y, amortissement, amortie }` (`hauteurChute` = plus haut point du vol − y d'arrivée ; `vitesse` = vitesse verticale à l'impact, m/s ; `amortie` = `hauteurChute <= amortissement`).
+
+Sauvegarde : `etat.position = { x, y, z, yaw }` (la hauteur est reprise : on se réveille sur le toit). Tests : `__game.teleport(zone, x, z, yaw, pitch, y = 0)`.
+
+Ville (`jeu.zones.get('kasumi')`) :
+- `immeubles` : `[{ x, z, w, d, h, hMax, etage, bloc }]` (centre, largeurs, `h` = toit principal, `etage` = `{ x, z, w, d, h0, h1 }` étage technique ou null, `hMax` = sommet réel, `bloc` = [i, j]). Les colliders des immeubles et de leurs étages techniques sont des boîtes 3D ; les trottoirs aussi (0,3 m).
+- `escaliers` : `[{ nom, pied: [x, y, z], yawMontee, sommet: [x, y, z], chemin: [[x, y, z]…], hauteurMarche, marches, immeuble, toits: [{ x, z, w, d, h }], escalierToit?, marchesToits? }]` (zones/escaliers.js, liste `ESCALIERS` pour en ajouter).
+- `city.enseignes` : groupe des enseignes de façade (on peut retirer celles qui gênent).
+
+## Le Bond (src/systems/bond.js)
+
+`jeu.bond` : `accorder()` (ajoute 'bond' à `etat.pouvoirs`, sauve, notifie, émet `pouvoir:accorde { nom }` ; renvoie vrai la première fois), `actif`, `charge` (s), `pret`. Avec le pouvoir : Espace bref = saut normal (au relâchement) ; maintenu 0,4 s puis relâché = Bond vertical (≈ 9 m) ou, en courant (Maj), saut long (≈ 15 m) ; chutes amorties jusqu'à 12 m. Évènements : `bond:charge`, `bond:impulsion { type: 'vertical' | 'long' }`. Sons : `jeu.audio.tonalite({ de, vers, duree, volume, type })`, `jeu.audio.souffle({ de, vers, duree, volume, q })`.
+
 ## Ajouter un objet interactif
 
 ```js

@@ -123,16 +123,16 @@ const fusion = (liste) => mergeGeometries(liste.map((g) => (g.index ? g.toNonInd
 function geometries() {
   // ----- Glaneur : repère local, sol en y = 0, avant = −z -----
   const corps = fusion([
-    bloc(0.4, 0.36, 0.4, 0, 0.31, 0, 0x4a3a86), // caisse
-    bloc(0.44, 0.04, 0.44, 0, 0.15, 0, 0x1c1438), // jupe
-    bloc(0.415, 0.03, 0.415, 0, 0.455, 0, 0x7a64c8), // ceinture
-    bloc(0.26, 0.13, 0.02, 0, 0.34, -0.205, 0x0b0716), // plaque de visage
-    cylindre(0.062, 0.062, 0.02, 0, 0.34, -0.212, 0x2a2050, Math.PI / 2), // lunette de la diode
-    bloc(0.012, 0.2, 0.28, 0.203, 0.31, 0.01, 0x6a58b4), // flancs
-    bloc(0.012, 0.2, 0.28, -0.203, 0.31, 0.01, 0x6a58b4),
-    bloc(0.32, 0.05, 0.05, 0, 0.17, -0.215, 0x9a86e8), // pare-chocs
-    bloc(0.16, 0.1, 0.02, 0, 0.28, 0.205, 0x241a48), // aération arrière
-    cylindre(0.008, 0.008, 0.34, 0.15, 0.66, 0.17, 0x9a86e8, 0, 0, 6), // antenne
+    bloc(0.4, 0.36, 0.4, 0, 0.31, 0, 0x9a90e8), // caisse
+    bloc(0.44, 0.04, 0.44, 0, 0.15, 0, 0x2a2050), // jupe
+    bloc(0.415, 0.03, 0.415, 0, 0.455, 0, 0xd4caff), // ceinture
+    bloc(0.26, 0.13, 0.02, 0, 0.34, -0.205, 0x120c24), // plaque de visage
+    cylindre(0.062, 0.062, 0.02, 0, 0.34, -0.212, 0x4a3c80, Math.PI / 2), // lunette de la diode
+    bloc(0.012, 0.2, 0.28, 0.203, 0.31, 0.01, 0xc0b4ff), // flancs
+    bloc(0.012, 0.2, 0.28, -0.203, 0.31, 0.01, 0xc0b4ff),
+    bloc(0.32, 0.05, 0.05, 0, 0.17, -0.215, 0xe8e0ff), // pare-chocs
+    bloc(0.16, 0.1, 0.02, 0, 0.28, 0.205, 0x4a3c80), // aération arrière
+    cylindre(0.008, 0.008, 0.34, 0.15, 0.66, 0.17, 0xe8e0ff, 0, 0, 6), // antenne
   ]);
   const lum = fusion([
     bloc(0.012, 0.3, 0.012, 0.198, 0.31, -0.198, 0x6f8cff), // liserés verticaux
@@ -147,10 +147,10 @@ function geometries() {
     bloc(0.012, 0.012, 0.012, -0.207, 0.42, 0.08, 0x6f8cff),
   ]);
   const couvercle = fusion([
-    bloc(0.38, 0.035, 0.38, 0, 0.0175, -0.19, 0x7a64c8),
-    bloc(0.2, 0.006, 0.02, 0, 0.037, -0.12, 0x241a48),
-    bloc(0.2, 0.006, 0.02, 0, 0.037, -0.19, 0x241a48),
-    bloc(0.2, 0.006, 0.02, 0, 0.037, -0.26, 0x241a48),
+    bloc(0.38, 0.035, 0.38, 0, 0.0175, -0.19, 0xd4caff),
+    bloc(0.2, 0.006, 0.02, 0, 0.037, -0.12, 0x3a2e70),
+    bloc(0.2, 0.006, 0.02, 0, 0.037, -0.19, 0x3a2e70),
+    bloc(0.2, 0.006, 0.02, 0, 0.037, -0.26, 0x3a2e70),
     bloc(0.12, 0.02, 0.03, 0, 0.04, -0.36, 0xb8a8ff), // poignée
   ]);
   const bras = teinter(new THREE.CylinderGeometry(0.011, 0.011, 1, 6).rotateX(Math.PI / 2).translate(0, 0, -0.5), 0xb8a8ff);
@@ -160,8 +160,8 @@ function geometries() {
     bloc(0.01, 0.014, 0.05, -0.017, 0, -0.045, 0xe0d8ff),
   ]);
   const roue = fusion([
-    cylindre(0.075, 0.075, 0.06, 0, 0, 0, 0x120d22, 0, Math.PI / 2, 14),
-    cylindre(0.038, 0.038, 0.072, 0, 0, 0, 0x6a58b4, 0, Math.PI / 2, 10),
+    cylindre(0.075, 0.075, 0.06, 0, 0, 0, 0x261c46, 0, Math.PI / 2, 14),
+    cylindre(0.038, 0.038, 0.072, 0, 0, 0, 0xa898f0, 0, Math.PI / 2, 10),
     bloc(0.074, 0.012, 0.13, 0, 0, 0, 0xb8a8ff), // rayon : montre la rotation
     bloc(0.074, 0.13, 0.012, 0, 0, 0, 0x3a2e66),
   ]);
@@ -171,18 +171,18 @@ function geometries() {
   // ----- Porteur : capsule de 1,4 m ; avant = −z -----
   const cps = new THREE.CapsuleGeometry(0.27, 0.78, 8, 22).translate(0, 0.76, 0);
   const pcorps = fusion([
-    teinter(cps, 0x34285e),
-    cylindre(0.278, 0.278, 0.05, 0, 0.45, 0, 0x7a64c8, 0, 0, 24), // ceinture basse
-    cylindre(0.2, 0.22, 0.045, 0, 1.425, 0, 0x6a58b4, 0, 0, 20), // collerette (siège de la boîte)
-    bloc(0.2, 0.34, 0.035, 0, 0.84, 0.262, 0x241a48), // panneau dorsal
-    cylindre(0.05, 0.05, 0.05, 0.285, 1.0, 0, 0x9a86e8, 0, Math.PI / 2, 10), // capteurs de flanc
-    cylindre(0.05, 0.05, 0.05, -0.285, 1.0, 0, 0x9a86e8, 0, Math.PI / 2, 10),
-    cylindre(0.011, 0.011, 0.85, -0.16, 1.43, 0.17, 0x9a86e8, 0, 0, 6), // mât
+    teinter(cps, 0xb4a8f0),
+    cylindre(0.278, 0.278, 0.05, 0, 0.45, 0, 0x4a3a90, 0, 0, 24), // ceinture basse
+    cylindre(0.2, 0.22, 0.045, 0, 1.425, 0, 0x5a4aa0, 0, 0, 20), // collerette (siège de la boîte)
+    bloc(0.2, 0.34, 0.035, 0, 0.84, 0.262, 0x5a4a9a), // panneau dorsal
+    cylindre(0.05, 0.05, 0.05, 0.285, 1.0, 0, 0xf0e8ff, 0, Math.PI / 2, 10), // capteurs de flanc
+    cylindre(0.05, 0.05, 0.05, -0.285, 1.0, 0, 0xf0e8ff, 0, Math.PI / 2, 10),
+    cylindre(0.011, 0.011, 0.85, -0.16, 1.43, 0.17, 0xe8e0ff, 0, 0, 6), // mât
   ]);
   const bande = teinter(new THREE.CylinderGeometry(0.2745, 0.2745, 0.075, 28, 1, true).translate(0, 0.96, 0), 0xffffff);
   const visiere = teinter(new THREE.SphereGeometry(0.276, 22, 2, (3 * Math.PI) / 2 - 0.95, 1.9, 1.2, 0.2).translate(0, 1.15, 0), 0xffb8f0);
   const pied = fusion([
-    bloc(0.15, 0.07, 0.25, 0, 0.0, 0, 0x120d22),
+    bloc(0.15, 0.07, 0.25, 0, 0.0, 0, 0x2a2050),
     bloc(0.15, 0.012, 0.25, 0, -0.034, 0, 0x6a58b4),
   ]);
   const boite = fusion([
@@ -231,9 +231,11 @@ function creerParc(nom, scene) {
   groupe.name = 'robots';
   scene.add(groupe);
   const mCorps = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.5, emissive: 0x2a1a5a, emissiveIntensity: 0.55 });
+  mCorps.color.setScalar(1.7); // les carrosseries claires se détachent des habitants (silhouettes sombres) et du décor violet
   const mBasic = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
   const mOeil = new THREE.MeshBasicMaterial({ toneMapped: false });
   const mBoite = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.3, emissive: 0x1a1030, emissiveIntensity: 0.5 });
+  mBoite.color.setScalar(1.5);
   const mBande = new THREE.MeshBasicMaterial({ map: textureBande(), toneMapped: false });
   const mDebris = new THREE.MeshBasicMaterial({ toneMapped: false });
   const mPlot = new THREE.MeshBasicMaterial({ color: 0x8a5cff, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false });
@@ -421,7 +423,7 @@ function placerSurTrajet(r) {
   r.cibleY = P.y ?? (r.zone === 'kasumi' ? hauteurKasumi(r.x, r.z) : 0);
 }
 
-const TEINTES_BOITE = [0x8a4fe0, 0xd02ab0, 0x3a62d8, 0x6a50a8, 0xe05ab8];
+const TEINTES_BOITE = [0xb87cff, 0xff6ad8, 0x7a9cff, 0xa898f0, 0xff9ae0];
 const _col = new THREE.Color();
 
 // ---------- Sites de ramassage et stations de livraison ----------

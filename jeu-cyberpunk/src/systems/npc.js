@@ -8,7 +8,7 @@ import * as C from '../data/calque.js';
 
 // Système « npc » : les habitants de Kasumi (bible §2.4, §2.5, §3.2 « silhouettes »).
 //
-// Foule : 168 silhouettes sombres sans visage (trois gabarits : long manteau, veste, poncho à
+// Foule : 200 silhouettes sombres sans visage (trois gabarits : long manteau, veste, poncho à
 // capuche), chacune surmontée de son halo. Un InstancedMesh par gabarit + un pour les halos
 // (4 appels de dessin, quel que soit le nombre d'habitants affichés). Les pieds et les bras
 // balancent dans le vertex shader (attribut aRig), le reste du balancement est dans la matrice.
@@ -28,9 +28,9 @@ import * as C from '../data/calque.js';
 //   accessoire : 'chapeau' | 'sac' | 'canne' | 'echarpe' | 'capuche'
 
 // ---------------------------------------------------------------- réglages
-const NB = 168; // habitants dans la ville
-const RAYON_AFFICHAGE = 130; // m
-const RAYON_REAFFECTATION = 150; // au-delà : l'habitant est replacé près du joueur
+const NB = 200; // habitants dans la ville
+const RAYON_AFFICHAGE = 115; // m
+const RAYON_REAFFECTATION = 125; // au-delà : l'habitant est replacé près du joueur
 const VOIE = 20.5; // distance du centre d'un pâté à l'axe du trottoir
 const BORD = 19.15; // en deçà : la façade (lot de 38 m)
 const HAUT_TROTTOIR = 0.3;
@@ -162,7 +162,7 @@ function corps(variante, acc = null) {
     for (const s of [-1, 1]) p.push(partie(_cyl(0.075, 0.055, 0.86, 8), { x: s * 0.095, y: 0.43, rig: [s * 1, 0.86] }));
     p.push(partie(_cyl(0.18, 0.2, 0.66), { y: 1.15, sz: 0.72 }));
     p.push(partie(_sph(0.2, 10, 8), { y: 1.42, sx: 1.2, sy: 0.62, sz: 0.76 }));
-    for (const s of [-1, 1]) p.push(partie(_cyl(0.042, 0.04, 0.62, 7), { x: s * 0.27, y: 1.1, rig: [-s * 0.85, 1.4] }));
+    for (const s of [-1, 1]) p.push(partie(_cyl(0.045, 0.038, 0.6, 7), { x: s * 0.245, y: 1.11, rz: s * 0.05, rig: [-s * 0.85, 1.4] }));
     p.push(partie(_cyl(0.045, 0.045, 0.14, 6), { y: 1.53 }));
     tete(1.65);
   } else {
@@ -178,7 +178,7 @@ const HAUT_HALO = [1.66, 1.66, 1.78]; // hauteur du centre du halo (m, avant éc
 
 // ---------------------------------------------------------------- matériaux
 function materiauCorps() {
-  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.15 });
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65, metalness: 0.05 });
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>
@@ -196,13 +196,13 @@ function materiauCorps() {
       .replace('#include <common>', `#include <common>
         varying vec4 vHalo; varying float vY;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        diffuseColor.rgb = mix(vec3(0.022, 0.013, 0.05), vec3(0.09, 0.058, 0.18), vHalo.w);`)
+        diffuseColor.rgb = mix(vec3(0.012, 0.008, 0.03), vec3(0.055, 0.035, 0.11), vHalo.w);`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {
           float nv = clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
           float rim = pow(1.0 - nv, 2.4);
           float haut = smoothstep(1.0, 1.78, vY);
-          totalEmissiveRadiance += vHalo.rgb * (rim * (0.32 + 0.95 * haut) + haut * 0.2);
+          totalEmissiveRadiance += vHalo.rgb * (rim * (0.2 + 0.8 * haut) + haut * 0.07);
         }`);
   };
   return m;
@@ -223,6 +223,8 @@ function materiauHalo() {
         mat4 m = modelMatrix * instanceMatrix;
         vec3 c = m[3].xyz;
         float s = length(m[0].xyz);
+        float dd0 = length((viewMatrix * vec4(c, 1.0)).xyz);
+        s *= 1.0 + 0.9 * smoothstep(12.0, 90.0, dd0); // les halos lointains restent lisibles
         vec4 mv = viewMatrix * vec4(c, 1.0);
         float d = -mv.z;
         mv.z -= 0.3; // le halo reste derrière la tête
@@ -239,12 +241,12 @@ function materiauHalo() {
       void main() {
         vec2 p = (vUv - 0.5) * 2.0;
         vec2 q = p - vec2(0.0, -0.06);
-        float aura = exp(-dot(q * vec2(0.85, 1.0), q * vec2(0.85, 1.0)) * 4.2);
+        float aura = exp(-dot(q * vec2(0.85, 1.0), q * vec2(0.85, 1.0)) * 6.5);
         float coeur = exp(-dot(q, q) * 26.0);
         vec2 r = p - vec2(0.0, 0.36);
         float anneau = smoothstep(0.085, 0.0, abs(length(vec2(r.x, r.y * 2.4)) - 0.21));
         float pouls = 0.92 + 0.08 * sin(uTime * 1.4 + vPh);
-        vec3 col = vCol * (aura * 0.62 + coeur * 0.3 + anneau * 1.25) * pouls * vFog;
+        vec3 col = vCol * (aura * 0.42 + coeur * 0.26 + anneau * 1.25) * pouls * vFog;
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
@@ -369,13 +371,12 @@ function viseArete(n, a, b, t) {
   n.y = hauteurSol(n.x, n.z);
 }
 
-function placer(n, { minD, horsVue, rayonBlocs = 2, depuisLeDebut = false }) {
+function placer(n, { minD, horsVue, rayonBlocs = 1.4, depuisLeDebut = false }) {
   const pbi = indiceBloc(joueur.x), pbj = indiceBloc(joueur.z);
-  for (let essai = 0; essai < 24; essai++) {
-    const R = rayonBlocs + (essai > 14 ? 1 : 0);
-    // décalage de pâtés en loi triangulaire : la foule se concentre autour du joueur
-    const i = clamp(pbi + Math.round((rnd() + rnd() - 1) * (R + 0.4)), 0, BLOCKS - 1);
-    const j = clamp(pbj + Math.round((rnd() + rnd() - 1) * (R + 0.4)), 0, BLOCKS - 1);
+  for (let essai = 0; essai < 40; essai++) {
+    const R = rayonBlocs + (essai > 26 ? 1 : 0);
+    const i = clamp(pbi + Math.round((rnd() * 2 - 1) * (R + 0.5)), 0, BLOCKS - 1);
+    const j = clamp(pbj + Math.round((rnd() * 2 - 1) * (R + 0.5)), 0, BLOCKS - 1);
     const c = Math.floor(rnd() * 4);
     const a = idNoeud(i, j, c);
     const voisins = VOISINS[a];
@@ -385,6 +386,7 @@ function placer(n, { minD, horsVue, rayonBlocs = 2, depuisLeDebut = false }) {
     const dx = n.x - joueur.x, dz = n.z - joueur.z, d = Math.hypot(dx, dz);
     if (d < minD) continue;
     if (horsVue && d < 85 && (dx * joueur.fx + dz * joueur.fz) / d > 0.15) continue;
+    if (rnd() > Math.exp(-(d - minD) / 42) && essai < 36) continue; // plus dense près du joueur
     break;
   }
   n.speed = 0;
@@ -437,7 +439,6 @@ function reprendre(n) {
   n.etat = MARCHE;
   n.partenaire = null;
   n.prochainePause = 8 + rnd() * 30;
-  n.cible = null;
 }
 
 function choisirSuite(n) {
@@ -492,9 +493,9 @@ function bribeFumee(ancien) {
 // ---------------------------------------------------------------- DOM des bribes
 const CSS = `
 .npc-bribe { position: fixed; left: 0; top: 0; z-index: 40; pointer-events: none; max-width: 270px; text-align: center;
-  font-family: var(--ui-police, ui-monospace, Menlo, Consolas, monospace); font-size: 13px; line-height: 1.35; font-style: italic;
-  color: #f3dcff; padding: 3px 9px 4px; background: rgba(18, 7, 38, 0.55); border-bottom: 1px solid rgba(255, 90, 208, 0.5);
-  text-shadow: 0 0 8px rgba(196, 75, 255, 0.7); opacity: 0; display: none; will-change: transform, opacity; -webkit-font-smoothing: none; }
+  font-family: var(--ui-police, ui-monospace, Menlo, Consolas, monospace); font-size: 14px; line-height: 1.35; font-style: italic;
+  color: #fff0ff; padding: 4px 10px 5px; background: rgba(12, 5, 28, 0.74); border-bottom: 2px solid rgba(255, 90, 208, 0.6);
+  text-shadow: 0 1px 2px #000, 0 0 8px rgba(196, 75, 255, 0.6); opacity: 0; display: none; will-change: transform, opacity; -webkit-font-smoothing: none; }
 `;
 let racineDom = null;
 const poolDom = [];
@@ -546,9 +547,10 @@ function simuler(dt, t) {
   const px = joueur.x, pz = joueur.z;
   const etatCig = jeu.smoking?.etat ?? 'idle';
   const fume = etatCig !== 'idle';
-  if (fume && !fumee.actif) { fumee.actif = true; fumee.depuis = t; }
+  if (fume && !fumee.actif) fumee.depuis = t;
   if (fume) fumee.fin = t;
-  if (!fume && fumee.actif && t - fumee.fin > 3.2) fumee.actif = false;
+  // ils continuent de regarder un moment après la dernière bouffée ou la cigarette jetée
+  fumee.actif = fume || t - fumee.fin < 2.2;
   const regardent = fumee.actif;
 
   // grille de voisinage
@@ -574,7 +576,7 @@ function simuler(dt, t) {
         const m = habitants[Math.floor(rnd() * NB)];
         if (m !== n && m.d > RAYON_REAFFECTATION && m.etat === MARCHE && formerGroupe(n, m)) continue;
       }
-      placer(n, { minD: 60, horsVue: true });
+      placer(n, { minD: 55, horsVue: true });
       continue;
     }
     n.vis += ((d < RAYON_AFFICHAGE ? 1 : 0) - n.vis) * Math.min(1, dt * 1.6);
@@ -591,7 +593,7 @@ function simuler(dt, t) {
         }
       }
     }
-    if ((n.etat === REGARD || n.etat === APPROCHE) && !regardent && t - fumee.fin > 3.2 - 2.4 + n.delai) {
+    if ((n.etat === REGARD || n.etat === APPROCHE) && !fume && t - fumee.fin > 2.2 + n.delai) {
       reprendre(n);
     }
 
@@ -599,9 +601,6 @@ function simuler(dt, t) {
     let cx = 0, cz = 0, vcible = 0, regarde = 0, tourner = true;
     switch (n.etat) {
       case MARCHE: {
-        if (n.vers === n.de && n.cible == null) {
-          // sortie d'un état statique : va au coin choisi par reprendre()
-        }
         const o = n.vers;
         const dx = nx[o] - nx[n.de], dz = nz[o] - nz[n.de], L = Math.hypot(dx, dz) || 1;
         const ux = dx / L, uz = dz / L;
@@ -710,7 +709,6 @@ function simuler(dt, t) {
       const om = 4.2 * dt;
       n.h += clamp(dh, -om, om);
       if (n.etat === MARCHE && dc < 0.9) {
-        if (n.de === n.vers) { n.de = n.vers; }
         const suivant = choisirSuite(n);
         n.de = n.vers;
         n.vers = suivant;
@@ -881,7 +879,7 @@ function placerBribes(camera) {
     const b = bribes.affichees[i];
     const age = t - b.t0;
     const veut = calme && age < b.duree && b.n.vis > 0.3 && b.n.d < 9;
-    b.a += ((veut ? 1 : 0) - b.a) * 0.18;
+    b.a += ((veut ? 1 : 0) - b.a) * 0.25;
     _p.set(b.n.x, b.n.y + 2.55 * b.n.taille, b.n.z).project(camera);
     const dehors = _p.z > 1 || _p.z < -1 || Math.abs(_p.x) > 1.1 || Math.abs(_p.y) > 1.1;
     b.el.style.opacity = dehors ? '0' : (b.a * 0.95).toFixed(2);
@@ -1019,7 +1017,7 @@ function replacerTous() {
       i += 2;
       continue;
     }
-    placer(n, { minD: 9, horsVue: false, rayonBlocs: 2, depuisLeDebut: true });
+    placer(n, { minD: 7, horsVue: false, rayonBlocs: 1.3, depuisLeDebut: true });
     n.speed = n.vmax * 0.8;
     i++;
   }
