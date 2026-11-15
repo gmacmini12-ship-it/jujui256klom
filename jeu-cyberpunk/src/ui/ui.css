@@ -29,7 +29,7 @@
 }
 
 /* ---------- Sceau de Mima : anneau traversé d'une ligne ---------- */
-.ui-sceau { position: relative; width: 30px; height: 30px; flex: none; }
+.ui-sceau { position: relative; width: 34px; height: 34px; flex: none; }
 .ui-sceau::before {
   content: ""; position: absolute; inset: 5px; border-radius: 50%;
   border: 2px solid var(--ui-magenta);
@@ -37,7 +37,7 @@
   animation: ui-sceau-pouls 2.8s ease-in-out infinite;
 }
 .ui-sceau::after {
-  content: ""; position: absolute; left: 0; right: 0; top: 14px; height: 2px;
+  content: ""; position: absolute; left: 0; right: 0; top: 16px; height: 2px;
   background: var(--ui-violet); box-shadow: 0 0 6px var(--ui-violet);
   transform: rotate(-18deg); animation: ui-sceau-ligne 5s ease-in-out infinite;
 }
@@ -101,7 +101,7 @@
   color: #fff; text-shadow: 0 0 10px var(--ui-magenta), 0 0 34px rgba(255, 43, 214, 0.75), 3px 3px 0 rgba(61, 107, 255, 0.55);
 }
 .ui-titre-sous {
-  margin-top: 14px; font-size: clamp(15px, 2.2vw, 22px); letter-spacing: 0.5em; padding-left: 0.5em;
+  margin-top: 14px; font-size: clamp(22px, 3.2vw, 34px); letter-spacing: 0.5em; padding-left: 0.5em;
   color: var(--ui-violet); text-shadow: 0 0 12px rgba(196, 75, 255, 0.7);
 }
 .ui-titre-trait { width: 120px; height: 2px; margin: 18px auto 0; background: linear-gradient(90deg, transparent, var(--ui-magenta), transparent); }
@@ -148,7 +148,6 @@
 .ui-choix-num { color: var(--ui-bleu); font-weight: 700; flex: none; }
 .ui-choix.actif { border-color: var(--ui-magenta); background: rgba(255, 43, 214, 0.12); color: #fff; }
 .ui-choix.actif .ui-choix-num { color: var(--ui-magenta); }
-.ui-choix.actif::before { content: "▶"; position: absolute; margin-left: -10px; font-size: 9px; color: var(--ui-magenta); transform: translate(-3px, 4px); }
 
 /* ---------- Frise de l'absence ---------- */
 .ui-frise {
