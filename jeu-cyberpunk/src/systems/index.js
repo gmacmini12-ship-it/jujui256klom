@@ -9,9 +9,15 @@ import { exemple } from './exemple.js';
 
 jeu.enregistrer(exemple);
 
-// Systèmes prévus (étape 1), un fichier chacun :
-// import { calque } from './calque.js';           jeu.enregistrer(calque);
-// import { fragments } from './fragments.js';     jeu.enregistrer(fragments);
-// import { paquet } from './paquet.js';           jeu.enregistrer(paquet);
-// import { hashira } from './hashira.js';         jeu.enregistrer(hashira);
-// import { conseils } from './conseils.js';       jeu.enregistrer(conseils);
+// Étape 1
+import { calque } from './calque.js';
+import { fragments } from './fragments.js';
+import { paquet } from './paquet.js';
+import { hashira } from './hashira.js';
+import { conseils } from './conseils.js';
+
+jeu.enregistrer(calque);
+jeu.enregistrer(fragments);
+jeu.enregistrer(paquet);
+jeu.enregistrer(hashira);
+jeu.enregistrer(conseils);
